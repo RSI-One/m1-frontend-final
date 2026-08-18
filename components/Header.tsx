@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSite, BUDGET_MIN, BUDGET_MAX } from "../lib/site-context";
 import { useTypewriterPlaceholder } from "../lib/useTypewriterPlaceholder";
+import { getSearchSuggestions } from "../lib/api/search";
 
 type PanelKey = "menu" | "profile" | "filter" | null;
 
@@ -30,6 +31,27 @@ export default function Header({
   const headerRef = useRef<HTMLElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchPlaceholder = useTypewriterPlaceholder(searchInputRef, true, search.length > 0);
+
+  // Backend integration: GET /api/search/suggestions (debounced)
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!search.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const results = await getSearchSuggestions(search);
+        setSuggestions(results);
+      } catch (err) {
+        console.error(err);
+        setSuggestions([]);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -98,7 +120,27 @@ export default function Header({
           autoComplete="off"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onFocus={() => setSuggestionsOpen(true)}
+          onBlur={() => setTimeout(() => setSuggestionsOpen(false), 150)}
         />
+        {suggestionsOpen && suggestions.length > 0 && (
+          <div className="drawer show" style={{ top: "calc(100% + 6px)", left: 0, right: "auto", width: 260 }}>
+            <ul>
+              {suggestions.map((sug) => (
+                <li
+                  key={sug}
+                  className="menu-item"
+                  onMouseDown={() => {
+                    setSearch(sug);
+                    setSuggestionsOpen(false);
+                  }}
+                >
+                  {sug}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="nav-utility">

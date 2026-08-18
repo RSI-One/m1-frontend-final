@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { sfSpecsFor } from "../lib/data";
 import { SfItem } from "../lib/types";
 
+
 interface ComparisonRow {
   label: string;
   numeric: ((value: ReturnType<typeof sfSpecsFor>) => number) | null;
@@ -72,7 +73,12 @@ export default function CompareModal({
   items,
   onClose,
 }: CompareModalProps) {
-  const specs = items.map((item) => sfSpecsFor(item));
+  const specs = items.map((item) => {
+    const spec = sfSpecsFor(item);
+    // Prefer the real backend price (SfItem.price) over the synthetic
+    // formula value when this item came from the API.
+    return item.price ? { ...spec, price: item.price } : spec;
+  });
   const count = specs.length;
   const maxRange = count
     ? Math.max(...specs.map((spec) => spec.range))

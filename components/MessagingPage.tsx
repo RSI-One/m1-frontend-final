@@ -1,7 +1,60 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { initialConversations, MpConversation } from "../lib/messaging-data";
+import { initialConversations, MpConversation, MpMessage } from "../lib/messaging-data";
+import {
+  listConversations,
+  getMessages,
+  markConversationRead,
+  ConversationRead,
+  MessageRead,
+} from "../lib/api/messaging";
+const avatarColors = ["#5b8def", "#e0a458", "#57b894", "#c15b6c", "#8a7dd9", "#4fb0c6"];
+function colorForId(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return avatarColors[hash % avatarColors.length];
+}
+function initialsForId(id: string) {
+  return id.slice(0, 2).toUpperCase();
+}
+function fmtTime(iso: string) {
+  const d = new Date(iso);
+  const diffMs = Date.now() - d.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d`;
+}
+
+function mapConversation(c: ConversationRead, myUserId: string | null): MpConversation {
+  const otherId = myUserId && c.buyer_id === myUserId ? c.seller_id : c.buyer_id;
+  return {
+    id: c.id,
+    name: `User ${otherId.slice(0, 6)}`,
+    role: "M1 Marketplace contact",
+    initials: initialsForId(otherId),
+    color: colorForId(otherId),
+    online: false,
+    tab: "focused",
+    time: fmtTime(c.updated_at),
+    unread: c.unread_count ?? 0,
+    messages: c.last_message
+      ? [{ from: "them", text: c.last_message.content, time: fmtTime(c.last_message.created_at) }]
+      : [],
+  };
+}
+
+function mapMessage(m: MessageRead, myUserId: string | null): MpMessage {
+  return {
+    from: myUserId && m.sender_id === myUserId ? "me" : "them",
+    text: m.content,
+    time: fmtTime(m.created_at),
+  };
+}
 
 export default function MessagingPage({
   open,
@@ -11,11 +64,38 @@ export default function MessagingPage({
   onClose: () => void;
 }) {
   const [conversations, setConversations] = useState<MpConversation[]>(initialConversations);
+  const [usingLiveData, setUsingLiveData] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<"focused" | "other">("focused");
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Backend integration: GET /conversations 
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setLoadError(null);
+      try {
+        const myUserId =
+          typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+        const rows = await listConversations();
+        if (cancelled) return;
+        if (rows.length) {
+          setConversations(rows.map((c) => mapConversation(c, myUserId)));
+          setUsingLiveData(true);
+        }
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) setLoadError("Doesn't load the conversation from backend.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -32,12 +112,36 @@ export default function MessagingPage({
       document.body.style.overflow = "";
       document.removeEventListener("keydown", onKey);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+    
+  }, [open, conversations]);
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
   }, [activeId, conversations]);
+
+ 
+  useEffect(() => {
+    if (!activeId || !usingLiveData) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const myUserId =
+          typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+        const rows = await getMessages(activeId);
+        if (cancelled) return;
+       
+        const ordered = [...rows].reverse().map((m) => mapMessage(m, myUserId));
+        setConversations((prev) =>
+          prev.map((c) => (c.id === activeId ? { ...c, messages: ordered } : c)),
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId, usingLiveData]);
 
   const changeTab = (next: "focused" | "other") => {
     setTab(next);
@@ -48,8 +152,16 @@ export default function MessagingPage({
   const selectConversation = (id: string) => {
     setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c)));
     setActiveId(id);
+    // POST /conversations/{id}/read
+    if (usingLiveData) {
+      markConversationRead(id).catch((err) => console.error(err));
+    }
   };
 
+  // NOTE: there's no POST send-message endpoint in the current backend spec
+  // (only create-conversation, list, get, mark-read, delete). This appends
+  // the message locally (optimistic) so the UI stays usable — swap in a
+  // real API call here once that endpoint / websocket exists.
   const sendMessage = () => {
     const textarea = composeRef.current;
     if (!textarea || !activeId) return;
@@ -107,6 +219,9 @@ export default function MessagingPage({
         </button>
         <h2>Messaging</h2>
       </div>
+      {loadError && (
+        <div style={{ padding: "6px 20px", color: "#c0392b", fontSize: 12.5 }}>{loadError}</div>
+      )}
       <div className="mp-body">
         <div className="mp-list-col">
           <div className="mp-search">
@@ -153,7 +268,7 @@ export default function MessagingPage({
                         <span className="mp-convo-name">{c.name}</span>
                         <span className="mp-convo-time">{c.time}</span>
                       </div>
-                      <div className="mp-convo-preview">{last.text}</div>
+                      <div className="mp-convo-preview">{last ? last.text : "No messages yet"}</div>
                     </div>
                     {unread && <span className="mp-unread-dot"></span>}
                   </div>

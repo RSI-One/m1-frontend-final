@@ -1,6 +1,4 @@
-// Base fetch wrapper for talking to the M1 backend (FastAPI).
-//
-// Set NEXT_PUBLIC_API_BASE_URL in your .env.local, e.g.:
+
 //   NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 
 const API_BASE_URL =
