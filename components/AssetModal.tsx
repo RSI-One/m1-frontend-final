@@ -60,6 +60,8 @@ export default function AssetModal({ asset, onClose }: AssetModalProps) {
   const category = asset.cat;
   const overview = getAssetOverview(asset.name, category);
   const accent = getCategoryAccent(category);
+  const realPrice = "price" in asset ? asset.price : undefined;
+  const realDescription = "description" in asset ? asset.description : undefined;
 
   const nextImage = () => {
     setActiveImage((current) => (current === exteriorImages.length - 1 ? 0 : current + 1));
@@ -72,6 +74,8 @@ export default function AssetModal({ asset, onClose }: AssetModalProps) {
     showToast(`Interest registered for ${overview.name}. Our team will reach out shortly.`);
     onClose();
   };
+  
+
 
   const specChips: { label: string; value: string }[] = [
     { label: "Engine", value: overview.engine },
@@ -81,7 +85,7 @@ export default function AssetModal({ asset, onClose }: AssetModalProps) {
     { label: "Last Unit Production", value: overview.lastProduction },
     { label: "Brand New Price Range", value: overview.brandNewPriceRange },
     { label: "Used Price Range", value: overview.usedPriceRange },
-    { label: "Average Market Price", value: overview.avgMarketPrice },
+    { label: "Asking Price", value: realPrice || overview.avgMarketPrice },
     { label: "Variance", value: overview.variance },
   ];
 
@@ -149,6 +153,15 @@ export default function AssetModal({ asset, onClose }: AssetModalProps) {
                     ))}
                   </div>
                 </div>
+
+                {realDescription && (
+                  <div className="am3-cabin-options">
+                    <small>Seller Notes</small>
+                    <p style={{ margin: "6px 0 0", fontSize: 13.5, lineHeight: 1.5, opacity: 0.9 }}>
+                      {realDescription}
+                    </p>
+                  </div>
+                )}
 
                 <button type="button" className="btn-sharp btn-gold am3-cta" onClick={handleGetThisPlane}>
                   Get This Plane

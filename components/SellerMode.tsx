@@ -4,18 +4,30 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Jet } from "../lib/types";
 import { useTypewriterPlaceholder } from "../lib/useTypewriterPlaceholder";
 import NewListingWizard from "./NewListingWizard";
+import { getMyListings, ListingResponse } from "../lib/api/sellerListings";
+import { getCarousels, toJet } from "../lib/api/listings";
+import { ApiError } from "../lib/api/client";
+
+
+function sellerListingToJet(listing: ListingResponse): Jet {
+  return {
+    id: listing.id,
+    name: listing.variant ? `${listing.variant} listing` : `Listing #${listing.id.slice(0, 8)}`,
+    price: typeof listing.price === "number" ? `$${(listing.price / 1_000_000).toFixed(1)}M` : "Price pending",
+    cat: listing.status,
+    loc: listing.is_verified ? "Verified" : "Unverified",
+  };
+}
 
 export default function SellerMode({
   open,
   onClose,
-  jets,
   onOpenAsset,
   onToggleChat,
   showToast,
 }: {
   open: boolean;
   onClose: () => void;
-  jets: Jet[];
   onOpenAsset: (jet: Jet) => void;
   onToggleChat: () => void;
   showToast: (msg: string) => void;
@@ -24,6 +36,13 @@ export default function SellerMode({
   const [newListingOpen, setNewListingOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchPlaceholder = useTypewriterPlaceholder(searchInputRef, open, term.length > 0);
+
+  const [myListings, setMyListings] = useState<Jet[]>([]);
+  const [myListingsLoading, setMyListingsLoading] = useState(false);
+  const [myListingsAuthError, setMyListingsAuthError] = useState(false);
+
+  const [trendingList, setTrendingList] = useState<Jet[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -38,14 +57,61 @@ export default function SellerMode({
     };
   }, [open, onClose]);
 
+  // Seller's own listings — requires auth (see lib/api/sellerListings.ts note).
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setMyListingsLoading(true);
+    setMyListingsAuthError(false);
+    getMyListings({ limit: 20 })
+      .then((res) => {
+        if (cancelled) return;
+        setMyListings(res.results.map(sellerListingToJet));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          setMyListingsAuthError(true);
+        } else {
+          console.error(err);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setMyListingsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  // "Trending" — no dedicated backend endpoint yet, so reuse the public
+  // featured/verified carousel as a reasonable stand-in.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setTrendingLoading(true);
+    getCarousels()
+      .then((data) => {
+        if (cancelled) return;
+        setTrendingList([...data.featured, ...data.verified].map(toJet));
+      })
+      .catch((err) => console.error(err))
+      .finally(() => {
+        if (!cancelled) setTrendingLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
   const match = (j: Jet) => {
     const q = term.trim().toLowerCase();
     if (!q) return true;
     return j.name.toLowerCase().includes(q) || j.cat.toLowerCase().includes(q);
   };
 
-  const activeListings = useMemo(() => jets.filter(match).slice(0, 6), [jets, term]);
-  const trending = useMemo(() => jets.filter(match).slice(0, 8), [jets, term]);
+  const activeListings = useMemo(() => myListings.filter(match).slice(0, 6), [myListings, term]);
+  const filteredTrending = useMemo(() => trendingList.filter(match).slice(0, 8), [trendingList, term]);
 
   const card = (j: Jet, idx: number) => (
     <div className="carousel-card" key={j.name + idx} onClick={() => { onClose(); onOpenAsset(j); }}>
@@ -145,7 +211,13 @@ export default function SellerMode({
         <div className="container">
           <h2>Your Active Listings</h2>
           <div className="carousel-track">
-            {activeListings.length ? (
+            {myListingsLoading ? (
+              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>Loading your listings…</p>
+            ) : myListingsAuthError ? (
+              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>
+                Log in as a seller to see your listings here.
+              </p>
+            ) : activeListings.length ? (
               activeListings.map(card)
             ) : (
               <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>No matching listings.</p>
@@ -158,8 +230,10 @@ export default function SellerMode({
         <div className="container">
           <h2>Trending on M1 Marketplace</h2>
           <div className="carousel-track">
-            {trending.length ? (
-              trending.map(card)
+            {trendingLoading ? (
+              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>Loading…</p>
+            ) : filteredTrending.length ? (
+              filteredTrending.map(card)
             ) : (
               <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>No matching listings.</p>
             )}
@@ -188,7 +262,7 @@ export default function SellerMode({
             <div className="footer-col">
               <h5>Seller Tools</h5>
               <ul>
-                <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Create Listing — coming soon."); }}>Create Listing</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); setNewListingOpen(true); }}>Create Listing</a></li>
                 <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Manage Listings — coming soon."); }}>Manage Listings</a></li>
                 <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Buyer Inquiries — coming soon."); }}>Buyer Inquiries</a></li>
                 <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Seller Analytics — coming soon."); }}>Seller Analytics</a></li>

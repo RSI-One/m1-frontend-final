@@ -12,6 +12,14 @@ import {
   sfFeatured,
 } from "../lib/data";
 import { SfItem } from "../lib/types";
+import {
+  updateEAcquisitionSession,
+  getSessionMatches,
+  submitLead,
+  EAcquisitionMatch,
+  PlaneTypeEnum,
+  UrgencyEnum,
+} from "../lib/api/eAcquisition";
 
 const planeCategories = [
   "Light Jets",
@@ -25,6 +33,36 @@ const planeCategories = [
   "Turboprop",
 ];
 
+const planeCategoryToEnum: Record<string, PlaneTypeEnum> = {
+  "Light Jets": "light_jet",
+  "Mid-Size": "mid_size_jet",
+  "Heavy Jets": "heavy_jet",
+  "🚁 Helicopter": "helicopter",
+  "Long Range": "long_range_jet",
+  "VIP Airliner": "vip_airline",
+  Turboprop: "turboprop",
+};
+function monthsToUrgencyEnum(months: number): UrgencyEnum {
+  if (months <= 1) return "month_1";
+  if (months <= 3) return "months_3";
+  if (months <= 6) return "months_6";
+  return "months_12";
+}
+
+
+function mapMatchToSfItem(match: EAcquisitionMatch): SfItem {
+  return {
+    name:
+      match.aircraft_name ||
+      [match.manufacturer, match.model, match.variant]
+        .filter(Boolean)
+        .join(" ") ||
+      "Unnamed Asset",
+    cat: match.manufacturer || "",
+    year: match.year_of_manufacture ?? 0,
+    image: match.thumbnail || "",
+  };
+}
 const wizTitles = ["Plane Type", "Budget", "Range", "Usage"];
 
 const wizSubtitles = [
@@ -65,7 +103,21 @@ export default function Wizard({
 
   const [sfSelected, setSfSelected] = useState<SfItem[]>([]);
 
+  //  Backend integration state 
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [matches, setMatches] = useState<EAcquisitionMatch[] | null>(null);
+  const [matchesLoading, setMatchesLoading] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadSubmitted, setLeadSubmitted] = useState(false);
+  const [leadError, setLeadError] = useState<string | null>(null);
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopAutoAdvance = () => {
     if (timerRef.current) {
@@ -95,8 +147,51 @@ export default function Wizard({
     return () => {
       stopAutoAdvance();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
+
+  //  Sync answers to the backend session whenever they change 
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      setSessionError(null);
+      try {
+        const res = await updateEAcquisitionSession({
+          session_token: sessionToken,
+          answers: {
+            plane_type: planeCategoryToEnum[selectedPlane] ?? null,
+            budget: budget * 1_000_000, 
+            usage_hours_per_year: usage,
+            range_from: from || null,
+            range_to: to || null,
+            passengers: pax,
+            model_year_min: year,
+            urgency_weeks: urgency * 4, 
+          },
+        });
+
+        const token = res.session_token ?? res.id;
+        setSessionToken(token);
+
+        if (token) {
+          setMatchesLoading(true);
+          const results = await getSessionMatches(token);
+          setMatches(results);
+        }
+      } catch (err) {
+        console.error(err);
+        setSessionError("Doesn't connect with backend try again.");
+      } finally {
+        setMatchesLoading(false);
+      }
+    }, 700);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    
+  }, [selectedPlane, budget, usage, from, to, pax, year, urgency]);
 
   const goPrev = () => {
     if (wstep > 0) {
@@ -139,8 +234,6 @@ export default function Wizard({
 
   const isSelected = (name: string) =>
     sfSelected.some((item) => item.name === name);
-
-  // Card click now selects the asset for comparison and opens its modal.
   const handleAssetClick = (item: SfItem) => {
     toggleCompare(item);
     onOpenAsset(item);
@@ -148,6 +241,43 @@ export default function Wizard({
 
   const rangeHint =
     from && to ? "≈ 3,414 NM" : "Select both cities to calculate";
+
+  const liveMatches = matches?.map(mapMatchToSfItem) ?? null;
+  const featuredList = liveMatches ?? sfFeatured;
+  const alternativeList = sfAlternative; 
+  const additionalList = sfAdditional;
+
+  async function handleSubmitLead() {
+    if (!contactName || !contactEmail || !contactPhone) {
+      setLeadError("Name,email and password is compulsory.");
+      return;
+    }
+
+    setLeadSubmitting(true);
+    setLeadError(null);
+
+    try {
+      await submitLead({
+        full_name: contactName,
+        email: contactEmail,
+        phone_number: contactPhone,
+        plane_type: planeCategoryToEnum[selectedPlane] ?? "light_jet",
+        budget_max: budget * 1_000_000,
+        range_from_city: from || "N/A",
+        range_to_city: to || "N/A",
+        usage_hours_per_year: usage,
+        passengers_count: pax,
+        model_year_min: year,
+        acquisition_urgency: monthsToUrgencyEnum(urgency),
+      });
+      setLeadSubmitted(true);
+    } catch (err) {
+      console.error(err);
+      setLeadError("Lead not submitted. Try again.");
+    } finally {
+      setLeadSubmitting(false);
+    }
+  }
 
   return (
     <div className="wiz-card">
@@ -157,11 +287,7 @@ export default function Wizard({
       />
 
       <div className="wizard-topbar">
-        <button
-          type="button"
-          className="wiz-back-btn"
-          onClick={onBack}
-        >
+        <button type="button" className="wiz-back-btn" onClick={onBack}>
           ← Back
         </button>
 
@@ -169,47 +295,33 @@ export default function Wizard({
           {[0, 1, 2, 3].map((index) => (
             <span
               key={index}
-              className={
-                index === wstep ? "wiz-dot active" : "wiz-dot"
-              }
+              className={index === wstep ? "wiz-dot active" : "wiz-dot"}
             />
           ))}
         </div>
 
-        <span className="wizard-counter">
-          {wstep + 1} / 4
-        </span>
+        <span className="wizard-counter">{wstep + 1} / 4</span>
 
-        <span className="wizard-heading-inline">
-          {wizTitles[wstep]}
-        </span>
+        <span className="wizard-heading-inline">{wizTitles[wstep]}</span>
 
         <div className="wiz-arrows">
           <button
             type="button"
             className={
-              wstep === 0
-                ? "wiz-arrow-btn prev disabled"
-                : "wiz-arrow-btn prev"
+              wstep === 0 ? "wiz-arrow-btn prev disabled" : "wiz-arrow-btn prev"
             }
             onClick={goPrev}
           >
             ‹
           </button>
 
-          <button
-            type="button"
-            className="wiz-arrow-btn next"
-            onClick={goNext}
-          >
+          <button type="button" className="wiz-arrow-btn next" onClick={goNext}>
             ›
           </button>
         </div>
       </div>
 
-      <div className="wizard-subtitle">
-        {wizSubtitles[wstep]}
-      </div>
+      <div className="wizard-subtitle">{wizSubtitles[wstep]}</div>
 
       <div className="wiz-divider" />
 
@@ -223,17 +335,12 @@ export default function Wizard({
         >
           {wstep === 0 && (
             <div>
-              <div className="cat-label">
-                Select aircraft category:
-              </div>
+              <div className="cat-label">Select aircraft category:</div>
 
               <div className="plane-buttons-light">
                 {planeCategories.map((category, index) =>
                   category === "DIVIDER" ? (
-                    <div
-                      className="plane-divider-light"
-                      key={`divider-${index}`}
-                    />
+                    <div className="plane-divider-light" key={`divider-${index}`} />
                   ) : (
                     <button
                       type="button"
@@ -279,9 +386,7 @@ export default function Wizard({
                 min={1}
                 max={100}
                 value={budget}
-                onChange={(event) =>
-                  setBudget(Number(event.target.value))
-                }
+                onChange={(event) => setBudget(Number(event.target.value))}
                 style={{
                   background: `linear-gradient(90deg, #1a1c22 ${paintPct(budget, 1, 100)}%, rgba(0,0,0,0.12) ${paintPct(budget, 1, 100)}%)`,
                 }}
@@ -323,9 +428,7 @@ export default function Wizard({
                   onChange={(event) => setTo(event.target.value)}
                 />
 
-                <span className="wiz-range-hint">
-                  {rangeHint}
-                </span>
+                <span className="wiz-range-hint">{rangeHint}</span>
               </div>
 
               <datalist id="cityOptions">
@@ -361,9 +464,7 @@ export default function Wizard({
                 min={0}
                 max={1500}
                 value={usage}
-                onChange={(event) =>
-                  setUsage(Number(event.target.value))
-                }
+                onChange={(event) => setUsage(Number(event.target.value))}
                 style={{
                   background: `linear-gradient(90deg, #1a1c22 ${paintPct(usage, 0, 1500)}%, rgba(0,0,0,0.12) ${paintPct(usage, 0, 1500)}%)`,
                 }}
@@ -378,7 +479,14 @@ export default function Wizard({
           )}
         </motion.div>
       </AnimatePresence>
- {/* Always-visible asset preview */}
+
+      {sessionError && (
+        <div className="wiz-error-text" style={{ color: "#c0392b", marginTop: 8 }}>
+          {sessionError}
+        </div>
+      )}
+
+      {/* Always-visible asset preview */}
       <div className="wiz-refine-divider" />
 
       <div className="assets-body wiz-assets-preview">
@@ -397,9 +505,7 @@ export default function Wizard({
               min={2}
               max={100}
               value={pax}
-              onChange={(event) =>
-                setPax(Number(event.target.value))
-              }
+              onChange={(event) => setPax(Number(event.target.value))}
               style={{
                 background: `linear-gradient(90deg, #1a1c22 ${paintPct(pax, 2, 100)}%, rgba(0,0,0,0.12) ${paintPct(pax, 2, 100)}%)`,
               }}
@@ -425,9 +531,7 @@ export default function Wizard({
               min={0}
               max={50}
               value={year}
-              onChange={(event) =>
-                setYear(Number(event.target.value))
-              }
+              onChange={(event) => setYear(Number(event.target.value))}
               style={{
                 background: `linear-gradient(90deg, #1a1c22 ${paintPct(year, 0, 50)}%, rgba(0,0,0,0.12) ${paintPct(year, 0, 50)}%)`,
               }}
@@ -453,9 +557,7 @@ export default function Wizard({
               min={1}
               max={12}
               value={urgency}
-              onChange={(event) =>
-                setUrgency(Number(event.target.value))
-              }
+              onChange={(event) => setUrgency(Number(event.target.value))}
               style={{
                 background: `linear-gradient(90deg, #1a1c22 ${paintPct(urgency, 1, 12)}%, rgba(0,0,0,0.12) ${paintPct(urgency, 1, 12)}%)`,
               }}
@@ -474,26 +576,24 @@ export default function Wizard({
             style={{
               opacity: sfSelected.length < SF_COMPARE_MIN ? 0.55 : 1,
               cursor:
-                sfSelected.length < SF_COMPARE_MIN
-                  ? "not-allowed"
-                  : "pointer",
+                sfSelected.length < SF_COMPARE_MIN ? "not-allowed" : "pointer",
             }}
             onClick={() => onOpenCompare(sfSelected)}
           >
             ⧉ Compare
-            {sfSelected.length
-              ? ` (${sfSelected.length}/${SF_COMPARE_MAX})`
-              : ""}
+            {sfSelected.length ? ` (${sfSelected.length}/${SF_COMPARE_MAX})` : ""}
           </button>
         </div>
 
         <div className="wiz-assets-lists">
-          <CarouselRow
-            title="Featured"
-            small
-            headClassName="assets-header"
-          >
-            {sfFeatured.map((item) => (
+          {matchesLoading && (
+            <div style={{ padding: "8px 0", opacity: 0.7 }}>
+              Matches are being updated...
+            </div>
+          )}
+
+          <CarouselRow title="Featured" small headClassName="assets-header">
+            {featuredList.map((item) => (
               <AssetCard
                 key={item.name}
                 name={item.name}
@@ -509,7 +609,7 @@ export default function Wizard({
           </CarouselRow>
 
           <CarouselRow title="Alternative Options" small>
-            {sfAlternative.map((item) => (
+            {alternativeList.map((item) => (
               <AssetCard
                 key={item.name}
                 name={item.name}
@@ -525,7 +625,7 @@ export default function Wizard({
           </CarouselRow>
 
           <CarouselRow title="Additional Selection" small>
-            {sfAdditional.map((item) => (
+            {additionalList.map((item) => (
               <AssetCard
                 key={item.name}
                 name={item.name}
@@ -541,6 +641,55 @@ export default function Wizard({
           </CarouselRow>
         </div>
       </div>
+
+      {/* Contact + lead submission — shown once we have a live session */}
+      {sessionToken && !leadSubmitted && (
+        <div className="wiz-lead-form" style={{ marginTop: 24 }}>
+          <div className="wiz-divider" />
+          <div className="cat-label">Add your credentials:</div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <input
+              type="text"
+              placeholder="Full name"
+              value={contactName}
+              onChange={(event) => setContactName(event.target.value)}
+            />
+            <input
+              type="email"
+              placeholder="Email"
+              value={contactEmail}
+              onChange={(event) => setContactEmail(event.target.value)}
+            />
+            <input
+              type="tel"
+              placeholder="Phone number"
+              value={contactPhone}
+              onChange={(event) => setContactPhone(event.target.value)}
+            />
+          </div>
+
+          {leadError && (
+            <div style={{ color: "#c0392b", marginTop: 8 }}>{leadError}</div>
+          )}
+
+          <button
+            type="button"
+            className="btn-sharp btn-silver"
+            style={{ marginTop: 12 }}
+            disabled={leadSubmitting}
+            onClick={handleSubmitLead}
+          >
+            {leadSubmitting ? "Submitting..." : "Get Matched"}
+          </button>
+        </div>
+      )}
+
+      {leadSubmitted && (
+        <div style={{ marginTop: 24, color: "#2e7d32" }}>
+          Thankyou! our team contact you soon.
+        </div>
+      )}
     </div>
   );
 }

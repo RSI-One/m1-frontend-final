@@ -14,7 +14,6 @@ interface SiteContextValue {
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null);
-
 export const BUDGET_MIN = 5;
 export const BUDGET_MAX = 80;
 
