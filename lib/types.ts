@@ -45,3 +45,24 @@ export interface CompareSpec {
   hours: number;
   health: number;
 }
+// lib/apiTypes.ts
+export interface ListingResponse {
+  id: string;
+  asset_id: string;
+  seller_id: string;
+  listing_type: string;
+  status: string;
+  is_verified: boolean;
+  is_featured: boolean;
+  price: number | null;
+  manufacturer: string | null;
+  model: string | null;
+  jet_type: string | null;
+  thumbnail_url: string | null;
+  created_at: string;
+}
+
+export interface SellerListingsResponse {
+  count: number;
+  results: ListingResponse[];
+}

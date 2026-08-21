@@ -1,25 +1,101 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Jet } from "../lib/types";
+import { SfItem } from "../lib/types";
+import { api } from "../lib/api";
+import { sellerFairNews } from "../lib/seller-data";
 import { useTypewriterPlaceholder } from "../lib/useTypewriterPlaceholder";
+import AssetCard from "./AssetCard";
+import CarouselRow from "./CarouselRow";
 import NewListingWizard from "./NewListingWizard";
-import { getMyListings, ListingResponse } from "../lib/api/sellerListings";
-import { getCarousels, toJet } from "../lib/api/listings";
-import { ApiError } from "../lib/api/client";
 
+const sellerMenuItems = [
+  "Manage Listings",
+  "Buyer Inquiries",
+  "Seller Analytics",
+  "Switch to buying mode",
+  "M1 Ecosystem",
+  "Report a problem",
+  "Contact support",
+];
 
-function sellerListingToJet(listing: ListingResponse): Jet {
-  return {
-    id: listing.id,
-    name: listing.variant ? `${listing.variant} listing` : `Listing #${listing.id.slice(0, 8)}`,
-    price: typeof listing.price === "number" ? `$${(listing.price / 1_000_000).toFixed(1)}M` : "Price pending",
-    cat: listing.status,
-    loc: listing.is_verified ? "Verified" : "Unverified",
-  };
+//  Backend 
+interface ListingResponse {
+  id: string;
+  asset_id: string;
+  seller_id: string;
+  listing_type: string;
+  status: string;
+  is_verified: boolean;
+  is_featured: boolean;
+  price: number | null;
+  total_flight_hours: number | null;
+  manufacturer: string | null;
+  model: string | null;
+  jet_type: string | null;
+  thumbnail_url: string | null;
+  created_at: string;
 }
 
-type SellerPanelKey = "notifications" | "menu" | "profile" | "filter" | null;
+interface SellerListingsResponse {
+  count: number;
+  results: ListingResponse[];
+}
+
+interface CarouselsResponse {
+  featured?: ListingResponse[];
+  verified?: ListingResponse[];
+  new?: ListingResponse[];
+  general?: ListingResponse[];
+}
+
+interface OffMarketListingResponse {
+  id: string;
+  asset_id?: string;
+  price?: number | null;
+  manufacturer?: string | null;
+  model?: string | null;
+  jet_type?: string | null;
+  thumbnail_url?: string | null;
+  created_at?: string;
+  discount_percentage?: number | null;
+  off_market_interval?: string | null;
+}
+
+interface OffMarketDbResponse {
+  count?: number;
+  results?: OffMarketListingResponse[];
+}
+
+interface OffMarketRow {
+  item: SfItem;
+  discount: string;
+  interval: string;
+}
+
+function mapListingToSfItem(l: ListingResponse): SfItem {
+  return {
+    name: `${l.manufacturer ?? ""} ${l.model ?? ""}`.trim() || "Unnamed Listing",
+    cat: l.jet_type ?? "—",
+    year: l.created_at ? new Date(l.created_at).getFullYear() : new Date().getFullYear(),
+    image: l.thumbnail_url ?? "/images/placeholder.jpg",
+    price: l.price ?? undefined,
+  } as SfItem;
+}
+
+function mapOffMarketToRow(l: OffMarketListingResponse): OffMarketRow {
+  return {
+    item: {
+      name: `${l.manufacturer ?? ""} ${l.model ?? ""}`.trim() || "Unnamed Listing",
+      cat: l.jet_type ?? "—",
+      year: l.created_at ? new Date(l.created_at).getFullYear() : new Date().getFullYear(),
+      image: l.thumbnail_url ?? "/images/placeholder.jpg",
+      price: l.price ?? undefined,
+    } as SfItem,
+    discount: l.discount_percentage != null ? `${l.discount_percentage}% off` : "Off-Market",
+    interval: l.off_market_interval ?? "",
+  };
+}
 
 export default function SellerMode({
   open,
@@ -30,137 +106,148 @@ export default function SellerMode({
 }: {
   open: boolean;
   onClose: () => void;
-  onOpenAsset: (jet: Jet) => void;
+  onOpenAsset: (item: SfItem) => void;
   onToggleChat: () => void;
   showToast: (msg: string) => void;
 }) {
   const [term, setTerm] = useState("");
   const [newListingOpen, setNewListingOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [newsIndex, setNewsIndex] = useState(0);
+  const headerRef = useRef<HTMLElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchPlaceholder = useTypewriterPlaceholder(searchInputRef, open, term.length > 0);
 
-  const [myListings, setMyListings] = useState<Jet[]>([]);
-  const [myListingsLoading, setMyListingsLoading] = useState(false);
-  const [myListingsAuthError, setMyListingsAuthError] = useState(false);
-
-  const [trendingList, setTrendingList] = useState<Jet[]>([]);
-  const [trendingLoading, setTrendingLoading] = useState(false);
-
-  // NEW: dropdown panel state (notifications / menu / profile / filter)
-  const [openPanel, setOpenPanel] = useState<SellerPanelKey>(null);
-  const navRef = useRef<HTMLElement>(null);
-
-  const togglePanel = (key: SellerPanelKey) => {
-    setOpenPanel((cur) => (cur === key ? null : key));
-  };
+  // ---- Backend-driven state ----
+  const [myListings, setMyListings] = useState<SfItem[]>([]);
+  const [featuredData, setFeaturedData] = useState<SfItem[]>([]);
+  const [newData, setNewData] = useState<SfItem[]>([]);
+  const [trendingData, setTrendingData] = useState<SfItem[]>([]);
+  const [offMarketData, setOffMarketData] = useState<OffMarketRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    let cancelled = false;
+
+    async function loadSellerData() {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const [myListingsRes, carouselsRes, offMarketRes] = await Promise.all([
+          api.get<SellerListingsResponse>("/api/listings?limit=50"),
+          api.get<CarouselsResponse>("/listings/carousels"),
+          api.get<OffMarketDbResponse>("/admin/databases/off-market?limit=20"),
+        ]);
+
+        if (cancelled) return;
+
+        setMyListings(myListingsRes.results.map(mapListingToSfItem));
+        setFeaturedData((carouselsRes.featured ?? []).map(mapListingToSfItem));
+        setNewData((carouselsRes.new ?? []).map(mapListingToSfItem));
+        setTrendingData(
+          (carouselsRes.general ?? carouselsRes.verified ?? []).map(mapListingToSfItem)
+        );
+        setOffMarketData((offMarketRes.results ?? []).map(mapOffMarketToRow));
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to load seller data:", err);
+        setLoadError("Could not load listings. Please try again.");
+        showToast("Could not load listings. Please try again.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadSellerData();
+    return () => {
+      cancelled = true;
+    };
+
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setMenuOpen(false);
+      return;
+    }
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      if (newListingOpen) return;
+      if (menuOpen) {
+        setMenuOpen(false);
+        return;
+      }
+      onClose();
     };
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, onClose]);
+  }, [open, onClose, newListingOpen, menuOpen]);
 
-  // NEW: close dropdown panels on outside click / Escape
   useEffect(() => {
-    if (!openPanel) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenPanel(null);
-    };
+    if (!menuOpen) return;
     const onClickOutside = (e: MouseEvent) => {
-      if (navRef.current && !navRef.current.contains(e.target as Node)) {
-        setOpenPanel(null);
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
       }
     };
-    window.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onClickOutside);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onClickOutside);
-    };
-  }, [openPanel]);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [menuOpen]);
 
-  // Seller's own listings — requires auth (see lib/api/sellerListings.ts note).
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setMyListingsLoading(true);
-    setMyListingsAuthError(false);
-    getMyListings({ limit: 20 })
-      .then((res) => {
-        if (cancelled) return;
-        setMyListings(res.results.map(sellerListingToJet));
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-          setMyListingsAuthError(true);
-        } else {
-          console.error(err);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setMyListingsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
-
-  // "Trending" — no dedicated backend endpoint yet, so reuse the public
-  // featured/verified carousel as a reasonable stand-in.
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setTrendingLoading(true);
-    getCarousels()
-      .then((data) => {
-        if (cancelled) return;
-        setTrendingList([...data.featured, ...data.verified].map(toJet));
-      })
-      .catch((err) => console.error(err))
-      .finally(() => {
-        if (!cancelled) setTrendingLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
-
-  const match = (j: Jet) => {
+  const match = (j: { name: string; cat: string }) => {
     const q = term.trim().toLowerCase();
     if (!q) return true;
     return j.name.toLowerCase().includes(q) || j.cat.toLowerCase().includes(q);
   };
 
-  const activeListings = useMemo(() => myListings.filter(match).slice(0, 6), [myListings, term]);
-  const filteredTrending = useMemo(() => trendingList.filter(match).slice(0, 8), [trendingList, term]);
-
-  const card = (j: Jet, idx: number) => (
-    <div className="carousel-card" key={j.name + idx} onClick={() => { onClose(); onOpenAsset(j); }}>
-      {j.image && <img src={j.image} alt={j.name} />}
-      <div className="carousel-card-body">
-        <div className="cc-name">{j.name}</div>
-        <div className="cc-meta">{j.cat}</div>
-        <div className="cc-price">{j.price}</div>
-      </div>
-    </div>
+  // ---- Filtered views (now sourced from backend state) ----
+  const activeListings = useMemo(() => myListings.filter(match), [term, myListings]);
+  const trending = useMemo(() => trendingData.filter(match), [term, trendingData]);
+  const newest = useMemo(() => newData.filter(match), [term, newData]);
+  const featured = useMemo(() => featuredData.filter(match), [term, featuredData]);
+  const offMarket = useMemo(
+    () => offMarketData.filter((row: OffMarketRow) => match(row.item)),
+    [term, offMarketData]
   );
 
+  const news = sellerFairNews[newsIndex];
+  const newsCount = sellerFairNews.length;
+
   const handleMenuItem = (label: string) => {
+    setMenuOpen(false);
+    if (label === "Switch to buying mode") {
+      onClose();
+      return;
+    }
     showToast(label + " — opening…");
-    setOpenPanel(null);
   };
+
+  const openListing = (item: SfItem) => {
+    onClose();
+    onOpenAsset(item);
+  };
+
+  const empty = (
+    <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>
+      No matching listings.
+    </p>
+  );
+
+  const loadingState = (
+    <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>
+      Loading…
+    </p>
+  );
 
   return (
     <div className={`seller-page ${open ? "open" : ""}`} id="sellerPage">
-      <header className="navbar seller-navbar" ref={navRef}>
+      <header className="navbar seller-navbar" ref={headerRef}>
         <div className="nav-brand">
           <img src="/images/logo.png" alt="M1" className="brand-mark-img" />
           <div className="brand-copy">
@@ -186,32 +273,19 @@ export default function SellerMode({
 
         <div className="nav-utility-stack">
           <div className="nav-utility-row">
-            <button
-              className="icon-btn"
-              title="Notifications"
-              aria-label="Notifications"
-              aria-expanded={openPanel === "notifications"}
-              onClick={() => togglePanel("notifications")}
-            >
+            <button className="icon-btn" title="Notifications" aria-label="Notifications" onClick={() => showToast("Notifications — opening…")}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
               <span className="dot"></span>
             </button>
-            {openPanel === "notifications" && (
-              <div className="drawer show">
-                <h3>Notifications</h3>
-                <p>Buyer inquiries, listing status changes, and platform updates will appear here.</p>
-              </div>
-            )}
-
             <button
               className="icon-btn"
               title="Menu"
               aria-label="Menu"
-              aria-expanded={openPanel === "menu"}
-              onClick={() => togglePanel("menu")}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((v) => !v)}
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -219,46 +293,21 @@ export default function SellerMode({
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
-            {openPanel === "menu" && (
+            {menuOpen && (
               <div className="drawer show">
                 <h3>Menu</h3>
                 <ul>
-                  <li className="menu-item" onClick={() => handleMenuItem("Saved Assets")}>Saved Assets</li>
-                  <li className="menu-item" onClick={() => handleMenuItem("Acquisition history")}>Acquisition history</li>
-                  <li className="menu-item" onClick={() => { setOpenPanel(null); onClose(); }}>Switch to buying mode</li>
-                  <li className="menu-item" onClick={() => handleMenuItem("M1 Ecosystem")}>M1 Ecosystem</li>
-                  <li className="menu-item" onClick={() => handleMenuItem("Report a problem")}>Report a problem</li>
-                  <li className="menu-item" onClick={() => handleMenuItem("Contact support")}>Contact support</li>
-                  <li className="menu-item" onClick={() => handleMenuItem("Join the exclusive circle")}>Join the exclusive circle</li>
+                  {sellerMenuItems.map((item) => (
+                    <li key={item} className="menu-item" onClick={() => handleMenuItem(item)}>
+                      {item}
+                    </li>
+                  ))}
                 </ul>
               </div>
             )}
-
-            <button
-              className="avatar-btn"
-              title="Profile"
-              aria-label="Profile menu"
-              aria-expanded={openPanel === "profile"}
-              onClick={() => togglePanel("profile")}
-            >
+            <button className="avatar-btn" title="Profile" aria-label="Profile menu" onClick={() => showToast("Profile — opening…")}>
               <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
             </button>
-            {openPanel === "profile" && (
-              <div className="drawer show">
-                <h3>Profile</h3>
-                <p>Full name, username, company, and location. Edit profile, credentials, and account actions live here.</p>
-                <div className="mini">
-                  <div>
-                    <div className="badge">Account</div>
-                    <div className="tight">Full name<br />Username<br />Company name<br />Location</div>
-                  </div>
-                </div>
-                <div className="btn-row">
-                  <button className="ghost-btn" onClick={() => handleMenuItem("Edit profile")}>Edit profile</button>
-                  <button className="ghost-btn" onClick={() => handleMenuItem("Delete account")}>Delete account</button>
-                </div>
-              </div>
-            )}
           </div>
           <div className="nav-utility-row">
             <button className="icon-btn" title="Messages" aria-label="Messages" onClick={onToggleChat}>
@@ -266,7 +315,7 @@ export default function SellerMode({
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
               </svg>
             </button>
-            <button className="new-listing-btn" title="New Listing" aria-label="New Listing" onClick={() => setNewListingOpen(true)}>
+            <button id="newListingBtn" className="new-listing-btn" title="New Listing" aria-label="New Listing" onClick={() => setNewListingOpen(true)}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -275,102 +324,190 @@ export default function SellerMode({
           </div>
         </div>
 
-        <button
-          className="filters-btn"
-          aria-expanded={openPanel === "filter"}
-          onClick={() => togglePanel("filter")}
-        >
+        <button className="filters-btn" onClick={() => showToast("Filters — opening…")}>
           <span>Filters</span>
         </button>
-        {openPanel === "filter" && (
-          <div className="drawer left show">
-            <h3>Filter</h3>
-            <p>Filtering for your listings and trending items — refine by keyword using the search bar above.</p>
-            <div className="btn-row">
-              <button
-                className="ghost-btn primary"
-                onClick={() => {
-                  setTerm("");
-                  showToast("Filters cleared.");
-                  setOpenPanel(null);
-                }}
-              >
-                Clear filters
-              </button>
-            </div>
-          </div>
-        )}
-
         <button className="all-listings-btn active" aria-pressed="true">
           <span>All Listings</span>
         </button>
       </header>
 
-      <section className="seller-hero" style={{ position: "relative" }}>
+      <button className="seller-back" title="Exit Seller Mode" aria-label="Exit Seller Mode" onClick={onClose}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </button>
+
+      <section className="fair-news-section">
         <div className="container">
-          <button
-            title="Exit Seller Mode"
-            aria-label="Exit Seller Mode"
-            onClick={onClose}
-            style={{
-              position: "absolute",
-              top: 40,
-              left: 18,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              background: "transparent",
-              border: "1px solid rgba(255,255,255,0.2)",
-              color: "inherit",
-              borderRadius: 999,
-              padding: "6px 14px",
-              fontSize: 13,
-              cursor: "pointer",
-              zIndex: 5,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            <span>Back</span>
-          </button>
-          <h1>Your Seller Dashboard</h1>
-          <p>Manage your active listings, track buyer interest, and publish new assets.</p>
+          <div className="fair-news-frame">
+            <button
+              type="button"
+              className="fair-news-arrow prev"
+              aria-label="Previous news"
+              onClick={() => setNewsIndex((i) => (i - 1 + newsCount) % newsCount)}
+            >
+              ←
+            </button>
+            <div className={`fair-news-card theme-${news.theme}`}>
+              <div className="fair-news-media">
+                {news.image && <img src={news.image} alt={news.heading} />}
+                <div className="fair-news-dots" aria-label="News items">
+                  {sellerFairNews.map((item, i) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`fair-news-dot ${i === newsIndex ? "active" : ""}`}
+                      aria-label={`News ${i + 1}`}
+                      aria-current={i === newsIndex}
+                      onClick={() => setNewsIndex(i)}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="fair-news-copy">
+                <div className="fair-news-kicker">Fair News</div>
+                <h2>{news.heading}</h2>
+                <p>{news.description}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="fair-news-arrow next"
+              aria-label="Next news"
+              onClick={() => setNewsIndex((i) => (i + 1) % newsCount)}
+            >
+              →
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {loadError && (
+        <div className="container" style={{ marginTop: 8 }}>
+          <p style={{ color: "#c0392b", fontSize: 12.5 }}>{loadError}</p>
+        </div>
+      )}
+
+      <section className="carousel-section">
+        <div className="container">
+          <CarouselRow title="Your Active Listings" headingTag="h2" headClassName="carousel-block-head" small>
+            {loading
+              ? loadingState
+              : activeListings.length
+              ? activeListings.map((item) => (
+                  <AssetCard
+                    key={item.name}
+                    name={item.name}
+                    cat={item.cat}
+                    year={item.year}
+                    image={item.image}
+                    small
+                    minimal
+                    onClick={() => openListing(item)}
+                  />
+                ))
+              : empty}
+          </CarouselRow>
         </div>
       </section>
 
       <section className="carousel-section">
         <div className="container">
-          <h2>Your Active Listings</h2>
-          <div className="carousel-track">
-            {myListingsLoading ? (
-              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>Loading your listings…</p>
-            ) : myListingsAuthError ? (
-              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>
-                Log in as a seller to see your listings here.
-              </p>
-            ) : activeListings.length ? (
-              activeListings.map(card)
-            ) : (
-              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>No matching listings.</p>
-            )}
-          </div>
+          <CarouselRow title="Trending on M1 Marketplace" headingTag="h2" headClassName="carousel-block-head" small>
+            {loading
+              ? loadingState
+              : trending.length
+              ? trending.map((item) => (
+                  <AssetCard
+                    key={item.name}
+                    name={item.name}
+                    cat={item.cat}
+                    year={item.year}
+                    image={item.image}
+                    small
+                    minimal
+                    onClick={() => openListing(item)}
+                  />
+                ))
+              : empty}
+          </CarouselRow>
         </div>
       </section>
 
       <section className="carousel-section">
         <div className="container">
-          <h2>Trending on M1 Marketplace</h2>
-          <div className="carousel-track">
-            {trendingLoading ? (
-              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>Loading…</p>
-            ) : filteredTrending.length ? (
-              filteredTrending.map(card)
-            ) : (
-              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>No matching listings.</p>
-            )}
-          </div>
+          <CarouselRow title="Off-Market Discount" headingTag="h2" headClassName="carousel-block-head" small>
+            {loading
+              ? loadingState
+              : offMarket.length
+              ? offMarket.map((row: OffMarketRow) => (
+                  <div className="seller-listing-card" key={row.item.name}>
+                    <span className="cc-tag">Off-Market</span>
+                    <AssetCard
+                      name={row.item.name}
+                      cat={`${row.discount} · ${row.item.cat}`}
+                      year={row.item.year}
+                      loc={row.interval}
+                      image={row.item.image}
+                      small
+                      onClick={() => openListing(row.item)}
+                    />
+                  </div>
+                ))
+              : empty}
+          </CarouselRow>
+        </div>
+      </section>
+
+      <section className="carousel-section">
+        <div className="container">
+          <CarouselRow title="New" headingTag="h2" headClassName="carousel-block-head" small>
+            {loading
+              ? loadingState
+              : newest.length
+              ? newest.map((item) => (
+                  <div className="seller-listing-card" key={item.name}>
+                    <span className="cc-tag">New</span>
+                    <AssetCard
+                      name={item.name}
+                      cat={item.cat}
+                      year={item.year}
+                      image={item.image}
+                      small
+                      minimal
+                      onClick={() => openListing(item)}
+                    />
+                  </div>
+                ))
+              : empty}
+          </CarouselRow>
+        </div>
+      </section>
+
+      <section className="carousel-section">
+        <div className="container">
+          <CarouselRow title="Featured" headingTag="h2" headClassName="carousel-block-head" small>
+            {loading
+              ? loadingState
+              : featured.length
+              ? featured.map((item) => (
+                  <AssetCard
+                    key={item.name}
+                    name={item.name}
+                    cat={item.cat}
+                    year={item.year}
+                    image={item.image}
+                    ribbon="featured"
+                    small
+                    minimal
+                    showRibbon
+                    onClick={() => openListing(item)}
+                  />
+                ))
+              : empty}
+          </CarouselRow>
         </div>
       </section>
 
@@ -395,7 +532,7 @@ export default function SellerMode({
             <div className="footer-col">
               <h5>Seller Tools</h5>
               <ul>
-                <li><a href="#" onClick={(e) => { e.preventDefault(); setNewListingOpen(true); }}>Create Listing</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Create Listing — coming soon."); }}>Create Listing</a></li>
                 <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Manage Listings — coming soon."); }}>Manage Listings</a></li>
                 <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Buyer Inquiries — coming soon."); }}>Buyer Inquiries</a></li>
                 <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Seller Analytics — coming soon."); }}>Seller Analytics</a></li>
