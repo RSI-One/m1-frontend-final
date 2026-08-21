@@ -870,10 +870,28 @@ body { overflow-x: hidden; }
 .carousel-card-body .cc-name { font-size: 13px; font-weight: 700; color: var(--text); }
 .carousel-card-body .cc-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
 .carousel-card-body .cc-price { font-size: 13px; font-weight: 800; color: var(--gold-2); margin-top: 8px; }
-@media (max-width: 640px) {
-  .nav-utility-stack { grid-column: 2; grid-row: 2; justify-self: end; }
+
+@media (max-width: 420px) {
+  .new-listing-btn { width: 36px; height: 36px; }
 }
 
+@media (max-width: 480px) {
+  .seller-navbar .nav-brand { gap: 8px; }
+  .seller-navbar .brand-copy span { display: none; } /* hide "Seller Console" subtitle */
+  .seller-navbar .brand-mark-img { height: 30px; }
+
+  .nav-utility-stack { gap: 6px; }
+  .nav-utility-row { gap: 6px; }
+}
+@media (max-width: 380px) {
+  .nav-utility-stack {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 170px;
+  }
+  .nav-utility-row { gap: 6px; }
+}
 /* Seller Mode — replace golden accents with black/white combination */
 .seller-navbar .brand-mark-img {
   background: linear-gradient(145deg,#1c1f27,#0a0b0e); border: 1px solid rgba(255,255,255,.1);

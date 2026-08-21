@@ -19,6 +19,8 @@ function sellerListingToJet(listing: ListingResponse): Jet {
   };
 }
 
+type SellerPanelKey = "notifications" | "menu" | "profile" | "filter" | null;
+
 export default function SellerMode({
   open,
   onClose,
@@ -44,6 +46,14 @@ export default function SellerMode({
   const [trendingList, setTrendingList] = useState<Jet[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(false);
 
+  // NEW: dropdown panel state (notifications / menu / profile / filter)
+  const [openPanel, setOpenPanel] = useState<SellerPanelKey>(null);
+  const navRef = useRef<HTMLElement>(null);
+
+  const togglePanel = (key: SellerPanelKey) => {
+    setOpenPanel((cur) => (cur === key ? null : key));
+  };
+
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = "hidden";
@@ -56,6 +66,25 @@ export default function SellerMode({
       document.removeEventListener("keydown", onKey);
     };
   }, [open, onClose]);
+
+  // NEW: close dropdown panels on outside click / Escape
+  useEffect(() => {
+    if (!openPanel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenPanel(null);
+    };
+    const onClickOutside = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setOpenPanel(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClickOutside);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClickOutside);
+    };
+  }, [openPanel]);
 
   // Seller's own listings — requires auth (see lib/api/sellerListings.ts note).
   useEffect(() => {
@@ -124,9 +153,14 @@ export default function SellerMode({
     </div>
   );
 
+  const handleMenuItem = (label: string) => {
+    showToast(label + " — opening…");
+    setOpenPanel(null);
+  };
+
   return (
     <div className={`seller-page ${open ? "open" : ""}`} id="sellerPage">
-      <header className="navbar seller-navbar">
+      <header className="navbar seller-navbar" ref={navRef}>
         <div className="nav-brand">
           <img src="/images/logo.png" alt="M1" className="brand-mark-img" />
           <div className="brand-copy">
@@ -152,23 +186,79 @@ export default function SellerMode({
 
         <div className="nav-utility-stack">
           <div className="nav-utility-row">
-            <button className="icon-btn" title="Notifications" aria-label="Notifications" onClick={() => showToast("Notifications — opening…")}>
+            <button
+              className="icon-btn"
+              title="Notifications"
+              aria-label="Notifications"
+              aria-expanded={openPanel === "notifications"}
+              onClick={() => togglePanel("notifications")}
+            >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
               <span className="dot"></span>
             </button>
-            <button className="icon-btn" title="Menu" aria-label="Menu" onClick={() => showToast("Menu — opening…")}>
+            {openPanel === "notifications" && (
+              <div className="drawer show">
+                <h3>Notifications</h3>
+                <p>Buyer inquiries, listing status changes, and platform updates will appear here.</p>
+              </div>
+            )}
+
+            <button
+              className="icon-btn"
+              title="Menu"
+              aria-label="Menu"
+              aria-expanded={openPanel === "menu"}
+              onClick={() => togglePanel("menu")}
+            >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
-            <button className="avatar-btn" title="Profile" aria-label="Profile menu" onClick={() => showToast("Profile — opening…")}>
+            {openPanel === "menu" && (
+              <div className="drawer show">
+                <h3>Menu</h3>
+                <ul>
+                  <li className="menu-item" onClick={() => handleMenuItem("Saved Assets")}>Saved Assets</li>
+                  <li className="menu-item" onClick={() => handleMenuItem("Acquisition history")}>Acquisition history</li>
+                  <li className="menu-item" onClick={() => { setOpenPanel(null); onClose(); }}>Switch to buying mode</li>
+                  <li className="menu-item" onClick={() => handleMenuItem("M1 Ecosystem")}>M1 Ecosystem</li>
+                  <li className="menu-item" onClick={() => handleMenuItem("Report a problem")}>Report a problem</li>
+                  <li className="menu-item" onClick={() => handleMenuItem("Contact support")}>Contact support</li>
+                  <li className="menu-item" onClick={() => handleMenuItem("Join the exclusive circle")}>Join the exclusive circle</li>
+                </ul>
+              </div>
+            )}
+
+            <button
+              className="avatar-btn"
+              title="Profile"
+              aria-label="Profile menu"
+              aria-expanded={openPanel === "profile"}
+              onClick={() => togglePanel("profile")}
+            >
               <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
             </button>
+            {openPanel === "profile" && (
+              <div className="drawer show">
+                <h3>Profile</h3>
+                <p>Full name, username, company, and location. Edit profile, credentials, and account actions live here.</p>
+                <div className="mini">
+                  <div>
+                    <div className="badge">Account</div>
+                    <div className="tight">Full name<br />Username<br />Company name<br />Location</div>
+                  </div>
+                </div>
+                <div className="btn-row">
+                  <button className="ghost-btn" onClick={() => handleMenuItem("Edit profile")}>Edit profile</button>
+                  <button className="ghost-btn" onClick={() => handleMenuItem("Delete account")}>Delete account</button>
+                </div>
+              </div>
+            )}
           </div>
           <div className="nav-utility-row">
             <button className="icon-btn" title="Messages" aria-label="Messages" onClick={onToggleChat}>
@@ -185,23 +275,66 @@ export default function SellerMode({
           </div>
         </div>
 
-        <button className="filters-btn" onClick={() => showToast("Filters — opening…")}>
+        <button
+          className="filters-btn"
+          aria-expanded={openPanel === "filter"}
+          onClick={() => togglePanel("filter")}
+        >
           <span>Filters</span>
         </button>
+        {openPanel === "filter" && (
+          <div className="drawer left show">
+            <h3>Filter</h3>
+            <p>Filtering for your listings and trending items — refine by keyword using the search bar above.</p>
+            <div className="btn-row">
+              <button
+                className="ghost-btn primary"
+                onClick={() => {
+                  setTerm("");
+                  showToast("Filters cleared.");
+                  setOpenPanel(null);
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+          </div>
+        )}
+
         <button className="all-listings-btn active" aria-pressed="true">
           <span>All Listings</span>
         </button>
       </header>
 
-      <button className="seller-back" title="Exit Seller Mode" aria-label="Exit Seller Mode" onClick={onClose}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <line x1="19" y1="12" x2="5" y2="12"></line>
-          <polyline points="12 19 5 12 12 5"></polyline>
-        </svg>
-      </button>
-
-      <section className="seller-hero">
+      <section className="seller-hero" style={{ position: "relative" }}>
         <div className="container">
+          <button
+            title="Exit Seller Mode"
+            aria-label="Exit Seller Mode"
+            onClick={onClose}
+            style={{
+              position: "absolute",
+              top: 40,
+              left: 18,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,0.2)",
+              color: "inherit",
+              borderRadius: 999,
+              padding: "6px 14px",
+              fontSize: 13,
+              cursor: "pointer",
+              zIndex: 5,
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Back</span>
+          </button>
           <h1>Your Seller Dashboard</h1>
           <p>Manage your active listings, track buyer interest, and publish new assets.</p>
         </div>
