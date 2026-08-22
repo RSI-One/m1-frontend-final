@@ -1,4 +1,4 @@
-// lib/api.ts
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 function getAccessToken(): string | null {
@@ -26,7 +26,7 @@ async function apiFetch<T>(
     throw new Error(errBody?.detail?.[0]?.msg || `API error: ${res.status}`);
   }
 
-  // 204 No Content jaisay responses ke liye
+
   if (res.status === 204) return undefined as T;
 
   return res.json();

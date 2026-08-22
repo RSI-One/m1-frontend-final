@@ -1,10 +1,7 @@
 import { apiGet, apiPost } from "./client";
 import { Jet, SfItem } from "../types";
 
-// ---------------------------------------------------------------------------
-// Public listings (search-shaped items) — used by AllListings, Featured,
-// Verified sections. UNCHANGED from the original file.
-// ---------------------------------------------------------------------------
+ 
 
 export interface ApiListingItem {
   listing_id: string;
@@ -88,14 +85,13 @@ export async function getAllListings(params: GetAllListingsParams = {}): Promise
   return { results, total: obj.total as number | undefined, count: obj.count as number | undefined };
 }
 
-/** POST /listings/{id}/view  */
+
 export function trackListingView(listingId: string) {
   return apiPost<void>(`/listings/${listingId}/view`, undefined, { auth: false }).catch(() => {
 
   });
 }
 
-/** POST /listings/{id}/click */
 export function trackListingClick(listingId: string) {
   return apiPost<void>(`/listings/${listingId}/click`, undefined, { auth: false }).catch(() => {
 
@@ -146,16 +142,6 @@ export function toSfItem(item: ApiListingItem): SfItem {
 export function listingLocation(item: ApiListingItem): string {
   return item.location_country || "Worldwide";
 }
-
-// ---------------------------------------------------------------------------
-// ADDED — Seller's own listings ("My Listings" / Seller Console).
-// This hits a DIFFERENT backend shape than the public search-shaped
-// ApiListingItem above: GET /api/listings returns SellerListingsResponse
-// (per the OpenAPI spec), where each item is a ListingResponse with
-// manufacturer/model/jet_type/thumbnail_url fields directly, not nested
-// under a search-result shape.
-// ---------------------------------------------------------------------------
-
 export interface ListingResponse {
   id: string;
   asset_id: string;
@@ -197,8 +183,6 @@ function sellerListingDisplayPrice(price?: number | null): string {
   if (typeof price !== "number") return "Price on request";
   return `$${(price / 1_000_000).toFixed(1)}M`;
 }
-
-/** Maps a ListingResponse (from /api/listings) into the `Jet` shape used by SellerMode's cards. */
 export function sellerListingToJet(listing: ListingResponse): Jet {
   const name = [listing.manufacturer, listing.model, listing.variant].filter(Boolean).join(" ") || "Unnamed Asset";
   return {
@@ -206,8 +190,6 @@ export function sellerListingToJet(listing: ListingResponse): Jet {
     name,
     price: sellerListingDisplayPrice(listing.price),
     cat: listing.jet_type || listing.manufacturer || "Aircraft",
-    // ListingResponse doesn't currently carry a location field — falls back
-    // like the public listing adapters above, for visual consistency.
     loc: "Worldwide",
     image: listing.thumbnail_url || undefined,
     description: listing.description || undefined,

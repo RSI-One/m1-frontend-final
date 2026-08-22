@@ -118,64 +118,46 @@ export interface ListingDeclarations {
   agreed_fraud_clause: boolean;
   agreed_terms_of_use: boolean;
 }
-
-/* ---------------------------------------------------------------
-   Asset lookup (public — no auth required)
---------------------------------------------------------------- */
-
-/** GET /api/listings/assets/manufacturers */
 export function searchManufacturers(q: string): Promise<string[]> {
   if (!q.trim()) return Promise.resolve([]);
   return apiGet<string[]>("/api/listings/assets/manufacturers", { q }, { auth: false });
 }
-
-/** GET /api/listings/assets/models */
 export function searchModels(manufacturer: string, q: string): Promise<AssetSearchResult[]> {
   if (!manufacturer.trim() || !q.trim()) return Promise.resolve([]);
   return apiGet<AssetSearchResult[]>("/api/listings/assets/models", { manufacturer, q }, { auth: false });
 }
 
-/*
-   Draft listing lifecycle (seller-authenticated) */
-
-/** GET /api/listings — the current seller's own listings. */
 export function getMyListings(params: { limit?: number; offset?: number } = {}) {
   return apiGet<SellerListingsResponse>("/api/listings", params);
 }
-
-/** GET /api/listings/{id} */
 export function getListing(listingId: string) {
   return apiGet<ListingResponse>(`/api/listings/${listingId}`);
 }
 
-/** POST /api/listings — step 1: create the draft against a chosen asset. */
 export function createListing(payload: { asset_id: string; organization_id?: string; variant?: string }) {
   return apiPost<ListingResponse>("/api/listings", payload);
 }
 
-/** PATCH /api/listings/{id}/details — price / hours / description / reason for selling. */
 export function updateListingDetails(listingId: string, payload: ListingUpdateDetails) {
   return apiPatch<ListingResponse>(`/api/listings/${listingId}/details`, payload);
 }
 
-/** PATCH /api/listings/{id}/market-type — on_market vs off_market. */
 export function updateMarketType(listingId: string, marketType: "on_market" | "off_market") {
   return apiPatch<ListingResponse>(`/api/listings/${listingId}/market-type`, { market_type: marketType });
 }
 
-/** PATCH /api/listings/{id}/verification-choice */
+
 export function setVerificationChoice(listingId: string, verification_choice: VerificationChoice) {
   return apiPatch<ListingResponse | VerificationPurchaseRead>(`/api/listings/${listingId}/verification-choice`, {
     verification_choice,
   });
 }
 
-/** POST /api/listings/{id}/verification-payment */
 export function confirmVerificationPayment(listingId: string, transaction_id: string) {
   return apiPost<VerificationPurchaseRead>(`/api/listings/${listingId}/verification-payment`, { transaction_id });
 }
 
-/** POST /api/listings/{id}/media — multipart photo/video upload. */
+
 export function uploadListingMedia(listingId: string, file: File, mediaType: "photo" | "video") {
   const form = new FormData();
   form.append("file", file);
@@ -183,7 +165,7 @@ export function uploadListingMedia(listingId: string, file: File, mediaType: "ph
   return apiUpload<MediaUploadResponse>(`/api/listings/${listingId}/media`, form);
 }
 
-/** POST /api/listings/{id}/documents — multipart document upload. */
+
 export function uploadListingDocument(listingId: string, documentTypeId: number, file: File) {
   const form = new FormData();
   form.append("document_type_id", String(documentTypeId));
@@ -191,24 +173,19 @@ export function uploadListingDocument(listingId: string, documentTypeId: number,
   return apiUpload<ListingDocumentRead>(`/api/listings/${listingId}/documents`, form);
 }
 
-/** GET /api/listings/{id}/documents/checklist */
 export function getDocumentChecklist(listingId: string) {
   return apiGet<DocumentChecklistResponse>(`/api/listings/${listingId}/documents/checklist`);
 }
 
-/** POST /api/listings/{id}/submit — final declarations, moves the listing to pending_review. */
 export function submitListing(listingId: string, declarations: ListingDeclarations) {
   return apiPost<ListingResponse>(`/api/listings/${listingId}/submit`, declarations);
 }
 
-
-
-/** GET /api/listings/tiers/feature — public. */
 export function getFeatureTiers() {
   return apiGet<FeatureTierRead[]>("/api/listings/tiers/feature", undefined, { auth: false });
 }
 
-/** POST /api/listings/{id}/feature */
+
 export function purchaseFeature(listingId: string, tierName: FeatureTierName) {
   return apiPost<FeaturePurchaseRead>(`/api/listings/${listingId}/feature`, { tier_name: tierName });
 }

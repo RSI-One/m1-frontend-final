@@ -7,7 +7,6 @@ const api = axios.create({
   },
 });
 
-// Attach token automatically if present (client-side only)
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("access_token");
