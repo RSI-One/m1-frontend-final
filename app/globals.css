@@ -774,7 +774,7 @@ body { overflow-x: hidden; }
   background: rgba(255,255,255,.04); color: #cdd3dc; display: grid; place-items: center;
   transition: all .2s var(--ease);
 }
-.icon-btn:hover { transform: translateY(-2px); border-color: rgba(214,173,92,.45); color: var(--gold-2); background: rgba(214,173,92,.08); box-shadow: 0 10px 22px rgba(0,0,0,.35); }
+.icon-btn:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.55); color: #fff; background: rgba(255,255,255,.08); box-shadow: 0 10px 22px rgba(0,0,0,.35); }
 .icon-btn .dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold-2); box-shadow: 0 0 0 2px var(--bg); }
 .avatar-btn {
   width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2);
@@ -999,7 +999,7 @@ body { overflow-x: hidden; }
 .drawer p, .drawer li { color: var(--muted); font-size: 13px; line-height: 1.7; }
 .drawer ul { display: grid; gap: 8px; margin-top: 12px; list-style: none; }
 .drawer .menu-item { padding: 13px 15px; border-radius: 14px; background: rgba(255,255,255,.05); border: 1px solid var(--line); cursor: pointer; color: #fff; font-weight: 700; font-size: 13px; transition: all .18s ease; }
-.drawer .menu-item:hover { background: rgba(214,173,92,.1); border-color: rgba(214,173,92,.4); color: var(--gold-2); }
+.drawer .menu-item:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.4); color: #fff; }
 .drawer .mini { display: flex; gap: 12px; align-items: flex-start; padding: 13px 0; border-top: 1px solid var(--line); }
 .drawer .mini:first-of-type { border-top: none; padding-top: 0; }
 .drawer .badge { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold-2); font-weight: 800; }

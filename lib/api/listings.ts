@@ -1,6 +1,11 @@
-
 import { apiGet, apiPost } from "./client";
 import { Jet, SfItem } from "../types";
+
+// ---------------------------------------------------------------------------
+// Public listings (search-shaped items) — used by AllListings, Featured,
+// Verified sections. UNCHANGED from the original file.
+// ---------------------------------------------------------------------------
+
 export interface ApiListingItem {
   listing_id: string;
   aircraft_name?: string | null;
@@ -86,14 +91,14 @@ export async function getAllListings(params: GetAllListingsParams = {}): Promise
 /** POST /listings/{id}/view  */
 export function trackListingView(listingId: string) {
   return apiPost<void>(`/listings/${listingId}/view`, undefined, { auth: false }).catch(() => {
-    
+
   });
 }
 
 /** POST /listings/{id}/click */
 export function trackListingClick(listingId: string) {
   return apiPost<void>(`/listings/${listingId}/click`, undefined, { auth: false }).catch(() => {
-   
+
   });
 }
 
@@ -111,7 +116,6 @@ function displayPrice(item: ApiListingItem): string {
   return `$${millions.toFixed(1)}M`;
 }
 
-/** Maps a raw listing into the Jet shape used by Featured/Verified sections. */
 /** Maps a raw listing into the `Jet` shape used by Featured/Verified sections. */
 export function toJet(item: ApiListingItem): Jet {
   return {
@@ -141,4 +145,71 @@ export function toSfItem(item: ApiListingItem): SfItem {
 
 export function listingLocation(item: ApiListingItem): string {
   return item.location_country || "Worldwide";
+}
+
+// ---------------------------------------------------------------------------
+// ADDED — Seller's own listings ("My Listings" / Seller Console).
+// This hits a DIFFERENT backend shape than the public search-shaped
+// ApiListingItem above: GET /api/listings returns SellerListingsResponse
+// (per the OpenAPI spec), where each item is a ListingResponse with
+// manufacturer/model/jet_type/thumbnail_url fields directly, not nested
+// under a search-result shape.
+// ---------------------------------------------------------------------------
+
+export interface ListingResponse {
+  id: string;
+  asset_id: string;
+  seller_id: string;
+  organization_id?: string | null;
+  listing_type: string; // "on_market" | "off_market"
+  status: string;
+  verification_status?: string | null;
+  verification_choice?: string | null;
+  variant?: string | null;
+  price?: number | null;
+  total_flight_hours?: number | null;
+  reason_for_selling?: string | null;
+  description?: string | null;
+  is_verified: boolean;
+  is_featured: boolean;
+  view_count: number;
+  click_count: number;
+  chats_initiated: number;
+  created_at: string;
+  manufacturer?: string | null;
+  model?: string | null;
+  jet_type?: string | null;
+  thumbnail_url?: string | null;
+  media_urls?: Record<string, unknown>[] | null;
+}
+
+export interface SellerListingsResponse {
+  count: number;
+  results: ListingResponse[];
+}
+
+/** GET /api/listings — the current seller's own listings (auth required). */
+export async function fetchMyListings(limit = 50, offset = 0): Promise<SellerListingsResponse> {
+  return apiGet<SellerListingsResponse>("/api/listings", { limit, offset }, { auth: true });
+}
+
+function sellerListingDisplayPrice(price?: number | null): string {
+  if (typeof price !== "number") return "Price on request";
+  return `$${(price / 1_000_000).toFixed(1)}M`;
+}
+
+/** Maps a ListingResponse (from /api/listings) into the `Jet` shape used by SellerMode's cards. */
+export function sellerListingToJet(listing: ListingResponse): Jet {
+  const name = [listing.manufacturer, listing.model, listing.variant].filter(Boolean).join(" ") || "Unnamed Asset";
+  return {
+    id: listing.id,
+    name,
+    price: sellerListingDisplayPrice(listing.price),
+    cat: listing.jet_type || listing.manufacturer || "Aircraft",
+    // ListingResponse doesn't currently carry a location field — falls back
+    // like the public listing adapters above, for visual consistency.
+    loc: "Worldwide",
+    image: listing.thumbnail_url || undefined,
+    description: listing.description || undefined,
+  };
 }
