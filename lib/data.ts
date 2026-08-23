@@ -1,49 +1,16 @@
 import { Jet, Yacht, SfItem } from "./types";
 
 export const jets: Jet[] = [
-  // ── Featured (Gold tag) ──────────────────────────────────────────
-  { name: "Gulfstream G650ER",        price: "$66.5M", cat: "Heavy Jet",          loc: "Dubai South, UAE",       image: "/images/g650er.jpeg",          featured: true },
-  { name: "Global 7500",              price: "$75M",   cat: "Long Range Jet",     loc: "Geneva, Switzerland",    image: "/images/global7500.jpeg",       featured: true },
-  { name: "Gulfstream G700",          price: "$78M",   cat: "Flagship Heavy Jet", loc: "Dubai South, UAE",       image: "/images/g700.jpeg",            featured: true },
-  { name: "Embraer Lineage 1000E",    price: "$53M",   cat: "VIP Airliner",       loc: "Doha, Qatar",            image: "/images/lineage1000e.jpg",     featured: true },
-  { name: "Boeing Business Jet 2",    price: "$85M",   cat: "VIP Airliner",       loc: "Abu Dhabi, UAE",         image: "/images/global7500.jpeg",       featured: true },
-  { name: "Airbus ACJ350",            price: "$92M",   cat: "VIP Airliner",       loc: "Paris, France",          image: "/images/falcon8x.jpeg",        featured: true },
-  { name: "Dassault Falcon 10X",      price: "$80M",   cat: "Long Range Jet",     loc: "Nice, France",           image: "/images/g650er.jpeg",          featured: true },
-  { name: "Bombardier Global 8000",   price: "$73M",   cat: "Long Range Jet",     loc: "London, UK",             image: "/images/g700.jpeg",            featured: true },
-  { name: "Gulfstream G800",          price: "$71M",   cat: "Long Range Jet",     loc: "New York, USA",          image: "/images/global7500.jpeg",       featured: true },
-
-  // ── Verified (Silver tag) ────────────────────────────────────────
-  { name: "Falcon 8X",               price: "$58M",   cat: "Long Range Jet",     loc: "Le Bourget, France",     image: "/images/falcon8x.jpeg",        verified: true },
-  { name: "Praetor 600",             price: "$21M",   cat: "Super-Midsize Jet",  loc: "Miami, USA",             image: "/images/praetor600.jpg",       verified: true },
-  { name: "Challenger 650",          price: "$33M",   cat: "Heavy Jet",          loc: "Toronto, Canada",        image: "/images/challenger350.jpg",    verified: true },
-  { name: "Legacy 600",              price: "$26M",   cat: "Heavy Jet",          loc: "São Paulo, Brazil",      image: "/images/legacy500.jpg",        verified: true },
-  { name: "Gulfstream G550",         price: "$42M",   cat: "Heavy Jet",          loc: "Singapore",              image: "/images/g650er.jpeg",          verified: true },
-  { name: "Falcon 7X",               price: "$45M",   cat: "Long Range Jet",     loc: "Monaco",                 image: "/images/falcon8x.jpeg",        verified: true },
-  { name: "Global 6500",             price: "$52M",   cat: "Long Range Jet",     loc: "Zurich, Switzerland",    image: "/images/global7500.jpeg",       verified: true },
-  { name: "Bombardier Learjet 85",   price: "$22M",   cat: "Super-Midsize Jet",  loc: "Dallas, USA",            image: "/images/praetor600.jpg",       verified: true },
-  { name: "Cessna Citation X+",      price: "$23M",   cat: "Super-Midsize Jet",  loc: "Las Vegas, USA",         image: "/images/citationlatitude.jpg", verified: true },
-
-  // ── New Listings ─────────────────────────────────────────────────
-  { name: "Citation Latitude",       price: "$18.9M", cat: "Mid-Size Jet",       loc: "Teterboro, USA",         image: "/images/citationlatitude.jpg", isNew: true },
-  { name: "Challenger 350",          price: "$27M",   cat: "Super-Midsize Jet",  loc: "London, UK",             image: "/images/challenger350.jpg",    isNew: true },
-  { name: "Phenom 300E",             price: "$10.9M", cat: "Light Jet",          loc: "Zurich, Switzerland",    image: "/images/phenom300e.jpeg",      isNew: true },
-  { name: "HondaJet Elite S",        price: "$7.25M", cat: "Light Jet",          loc: "Tokyo, Japan",           image: "/images/phenom300e.jpeg",      isNew: true },
-  { name: "Pilatus PC-24",           price: "$11.5M", cat: "Mid-Size Jet",       loc: "Stans, Switzerland",     image: "/images/citationlatitude.jpg", isNew: true },
-  { name: "Embraer Praetor 500",     price: "$17M",   cat: "Mid-Size Jet",       loc: "Nashville, USA",         image: "/images/praetor600.jpg",       isNew: true },
-  { name: "Bombardier Learjet 75",   price: "$13.5M", cat: "Light Jet",          loc: "Montreal, Canada",       image: "/images/phenom300e.jpeg",      isNew: true },
-  { name: "Cessna Citation CJ4+",    price: "$9.8M",  cat: "Light Jet",          loc: "Wichita, USA",           image: "/images/citationlatitude.jpg", isNew: true },
-  { name: "Dassault Falcon 2000LXS", price: "$32M",   cat: "Super-Midsize Jet",  loc: "Bordeaux, France",       image: "/images/falcon8x.jpeg",        isNew: true },
-
-  // ── Other Listings ───────────────────────────────────────────────
-  { name: "Legacy 500",              price: "$20.5M", cat: "Mid-Size Jet",       loc: "São Paulo, Brazil",      image: "/images/legacy500.jpg" },
-  { name: "Phenom 100EV",            price: "$4.1M",  cat: "Very Light Jet",     loc: "Orlando, USA",           image: "/images/phenom300e.jpeg" },
-  { name: "Beechcraft King Air 350", price: "$8.2M",  cat: "Turboprop",          loc: "Wichita, USA",           image: "/images/citationlatitude.jpg" },
-  { name: "Pilatus PC-12 NGX",       price: "$5.8M",  cat: "Turboprop",          loc: "Stans, Switzerland",     image: "/images/praetor600.jpg" },
-  { name: "Sikorsky S-92 VIP",       price: "$22M",   cat: "Helicopter",         loc: "Houston, USA",           image: "/images/legacy500.jpg" },
-  { name: "AgustaWestland AW139",    price: "$16.5M", cat: "Helicopter",         loc: "Milan, Italy",           image: "/images/challenger350.jpg" },
-  { name: "Cessna Citation M2 Gen2", price: "$5.9M",  cat: "Light Jet",          loc: "Austin, USA",            image: "/images/phenom300e.jpeg" },
-  { name: "Bombardier Global 5500",  price: "$48M",   cat: "Long Range Jet",     loc: "Vancouver, Canada",      image: "/images/global7500.jpeg" },
-  { name: "Gulfstream G280",         price: "$25M",   cat: "Super-Midsize Jet",  loc: "Atlanta, USA",           image: "/images/g650er.jpeg" },
+  { name: "Gulfstream G650ER", price: "$66.5M", cat: "Heavy Jet", loc: "Dubai South, UAE", image: "/images/g650er.jpeg" },
+  { name: "Global 7500", price: "$75M", cat: "Long Range Jet", loc: "Geneva, Switzerland", image: "/images/global7500.jpeg" },
+  { name: "Falcon 8X", price: "$58M", cat: "Long Range Jet", loc: "Le Bourget, France", image: "/images/falcon8x.jpeg" },
+  { name: "Praetor 600", price: "$21M", cat: "Super-Midsize Jet", loc: "Miami, USA", image: "/images/praetor600.jpg" },
+  { name: "Citation Latitude", price: "$18.9M", cat: "Mid-Size Jet", loc: "Teterboro, USA", image: "/images/citationlatitude.jpg" },
+  { name: "Challenger 350", price: "$27M", cat: "Super-Midsize Jet", loc: "London, UK", image: "/images/challenger350.jpg" },
+  { name: "Phenom 300E", price: "$10.9M", cat: "Light Jet", loc: "Zurich, Switzerland", image: "/images/phenom300e.jpeg" },
+  { name: "Legacy 500", price: "$20.5M", cat: "Mid-Size Jet", loc: "São Paulo, Brazil", image: "/images/legacy500.jpg" },
+  { name: "Embraer Lineage 1000E", price: "$53M", cat: "VIP Airliner", loc: "Doha, Qatar", image: "/images/lineage1000e.jpg" },
+  { name: "Gulfstream G700", price: "$78M", cat: "Flagship Heavy Jet", loc: "Dubai South, UAE", image: "/images/g700.jpeg" },
 ];
 
 export const yachts: Yacht[] = [

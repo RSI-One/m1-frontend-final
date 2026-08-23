@@ -1,78 +1,111 @@
 "use client";
+import { useEffect, useState } from "react";
 import AssetCard from "./AssetCard";
 import CarouselRow from "./CarouselRow";
-import {
-  sfAdditional,
-  sfAlternative,
-  sfFeatured,
-  sfSpecsFor,
-} from "../lib/data";
 import { SfItem } from "../lib/types";
-const listingLocations: Record<string, string> = {
-  "Cessna Citation CJ3+": "Teterboro, NJ",
-  "Embraer Phenom 300E": "Naples, CA",
-  "HondaJet Elite II": "Greensboro, NC",
-  "Cessna Citation Latitude": "Chicago, IL",
-  "Bombardier Learjet 75 Liberty": "Miami, FL",
-  "Pilatus PC-24": "Zurich, CH",
-  "Bombardier Challenger 605": "Dubai, UAE",
-  "Dassault Falcon 2000S": "Paris, FR",
-  "Gulfstream G650ER": "New York, NY",
-  "Bombardier Global 7500": "Montreal, CA",
-  "Dassault Falcon 8X": "Los Angeles, CA",
-  "Boeing Business Jet 2": "Washington, DC",
-  "Airbus ACJ319neo": "Abu Dhabi, UAE",
-  "Pilatus PC-12 NGX": "Denver, CO",
-  "AgustaWestland AW139": "Monaco, MC",
-  "Sikorsky S-92 VIP": "Houston, TX",
-  "Embraer Praetor 600": "London, UK",
-  "Cessna Citation Longitude": "Geneva, CH",
-};
+import { getCarousels, toSfItem, trackListingView } from "../lib/api/listings";
+
 interface AllListingsProps {
   onOpenAsset: (item: SfItem) => void;
 }
+
+interface Sections {
+  featured: SfItem[];
+  verified: SfItem[];
+  fresh: SfItem[];
+  general: SfItem[];
+}
+
 export default function AllListings({ onOpenAsset }: AllListingsProps) {
-  const featuredListings = [...sfFeatured, ...sfAlternative.slice(0, 3)];
-  const verifiedAircraft = [
-    ...sfAlternative,
-    ...sfAdditional,
-    ...sfFeatured.slice(0, 3),
-  ];
-  const newArrivals = [...sfAdditional, ...sfFeatured.slice(0, 3)];
-  const allAircraft = [...sfFeatured, ...sfAlternative, ...sfAdditional];
+  const [sections, setSections] = useState<Sections | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getCarousels()
+      .then((data) => {
+        if (cancelled) return;
+        setSections({
+          featured: data.featured.map(toSfItem),
+          verified: data.verified.map(toSfItem),
+          fresh: data.new.map(toSfItem),
+          general: data.general.map(toSfItem),
+        });
+        setError(null);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) setError("Couldn't load listings.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleOpen = (item: SfItem) => {
+    if (item.id) trackListingView(item.id);
+    onOpenAsset(item);
+  };
+
+  if (loading) {
+    return (
+      <main className="all-listings-page">
+        <section className="all-listings-content">
+          <div style={{ padding: "32px 4px", color: "var(--muted, var(--text-dim))" }}>Loading listings…</div>
+        </section>
+      </main>
+    );
+  }
+
+  if (error || !sections) {
+    return (
+      <main className="all-listings-page">
+        <section className="all-listings-content">
+          <div style={{ padding: "32px 4px", color: "#c0392b" }}>{error ?? "Couldn't load listings."}</div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="all-listings-page">
       <section className="all-listings-content">
         <ListingSection
           title="Featured Listings"
-          items={featuredListings}
+          items={sections.featured}
           badge="featured"
-          onOpenAsset={onOpenAsset}
+          onOpenAsset={handleOpen}
         />
         <ListingSection
           title="Verified Aircraft"
-          items={verifiedAircraft}
+          items={sections.verified}
           badge="verified"
           rowSizes={[9, 8]}
-          onOpenAsset={onOpenAsset}
+          onOpenAsset={handleOpen}
         />
         <ListingSection
           title="New"
-          items={newArrivals}
+          items={sections.fresh}
           badge="verified"
-          onOpenAsset={onOpenAsset}
+          onOpenAsset={handleOpen}
         />
         <ListingSection
           title="General Listings"
-          items={allAircraft}
+          items={sections.general}
           badge="verified"
           rowSizes={[7, 7, 7]}
-          onOpenAsset={onOpenAsset}
+          onOpenAsset={handleOpen}
         />
       </section>
     </main>
   );
 }
+
 interface ListingSectionProps {
   title: string;
   items: SfItem[];
@@ -80,15 +113,13 @@ interface ListingSectionProps {
   rowSizes?: number[];
   onOpenAsset: (item: SfItem) => void;
 }
-function ListingSection({
-  title,
-  items,
-  badge,
-  rowSizes,
-  onOpenAsset,
-}: ListingSectionProps) {
+
+function ListingSection({ title, items, badge, rowSizes, onOpenAsset }: ListingSectionProps) {
+  if (items.length === 0) return null;
+
   const sizes = rowSizes ?? [items.length];
   let start = 0;
+
   return (
     <section className="all-listings-section">
       <div className="all-listings-section-header">
@@ -100,6 +131,7 @@ function ListingSection({
       {sizes.map((size, rowIndex) => {
         const rowItems = items.slice(start, start + size);
         start += size;
+        if (rowItems.length === 0) return null;
         return (
           <CarouselRow
             key={`${title}-row-${rowIndex}`}
@@ -107,22 +139,17 @@ function ListingSection({
             small
             headClassName="all-listings-hidden-header"
           >
-            {rowItems.map((item) => {
-              const specs = sfSpecsFor(item);
-              return (
-                <AssetCard
-                  key={`${title}-${rowIndex}-${item.name}`}
-                  name={item.name}
-                  price={specs.price}
-                  cat={item.cat}
-                  year={item.year}
-                  loc={listingLocations[item.name] ?? "Worldwide"}
-                  image={item.image}
-                  ribbon={badge}
-                  onClick={() => onOpenAsset(item)}
-                />
-              );
-            })}
+            {rowItems.map((item) => (
+              <AssetCard
+                key={item.id ?? `${title}-${rowIndex}-${item.name}`}
+                name={item.name}
+                cat={item.cat}
+                year={item.year}
+                image={item.image}
+                ribbon={badge}
+                onClick={() => onOpenAsset(item)}
+              />
+            ))}
           </CarouselRow>
         );
       })}

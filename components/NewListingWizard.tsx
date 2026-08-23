@@ -1,16 +1,104 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../lib/api";
 
-const nlManufacturers: Record<string, string[]> = {
-  Gulfstream: ["G280", "G450", "G550", "G650", "G650ER", "G700", "G800"],
-  Bombardier: ["Challenger 350", "Challenger 650", "Global 5500", "Global 6500", "Global 7500", "Global 8000"],
-  Dassault: ["Falcon 2000LXS", "Falcon 6X", "Falcon 7X", "Falcon 8X"],
-  Embraer: ["Phenom 300E", "Praetor 500", "Praetor 600", "Legacy 500"],
-  Cessna: ["Citation Longitude", "Citation Latitude", "Citation X+"],
-  Airbus: ["ACJ319neo", "ACJ320neo", "ACJ350"],
-  Boeing: ["BBJ MAX 7", "BBJ MAX 8", "BBJ 787"],
+interface AssetSearchResult {
+  id: string;
+  manufacturer: string;
+  model: string;
+  variant: string | null;
+  jet_type: string;
+}
+interface ListingCreatedResponse {
+  id: string;
+  [key: string]: unknown;
+}
+interface DocumentChecklistItem {
+  document_type_id: number;
+  name: string;
+  category_name: string;
+  is_mandatory: boolean;
+  uploaded: boolean;
+  status?: string | null;
+}
+interface DocumentChecklistResponse {
+  verification_choice?: string | null;
+  total_required: number;
+  total_uploaded: number;
+  is_complete: boolean;
+  items: DocumentChecklistItem[];
+}
+interface FeatureTierRead {
+  id: string;
+  name: string;
+  display_name: string;
+  price: number;
+  duration_days: number;
+  max_assets: number | null;
+  description: string | null;
+}
+interface ListingDeclarations {
+  agreed_sop_privacy: boolean;
+  agreed_m1_representative: boolean;
+  agreed_fraud_clause: boolean;
+  agreed_terms_of_use: boolean;
+}
+
+const backend = {
+  searchManufacturers: (q: string) =>
+    api.get<string[]>(`/api/listings/assets/manufacturers?q=${encodeURIComponent(q)}`),
+
+  searchModels: (manufacturer: string, q: string) =>
+    api.get<AssetSearchResult[]>(
+      `/api/listings/assets/models?manufacturer=${encodeURIComponent(manufacturer)}&q=${encodeURIComponent(q)}`
+    ),
+
+  createListing: (assetId: string, variant: string) =>
+    api.post<ListingCreatedResponse>("/api/listings", {
+      asset_id: assetId,
+      variant: variant || undefined,
+    }),
+
+  updateDetails: (
+    listingId: string,
+    patch: { price?: number; total_flight_hours?: number; description?: string; reason_for_selling?: string }
+  ) => api.patch(`/api/listings/${listingId}/details`, patch),
+
+  setMarketType: (listingId: string, marketType: "on_market" | "off_market") =>
+    api.patch(`/api/listings/${listingId}/market-type`, { market_type: marketType }),
+
+  setVerificationChoice: (listingId: string, choice: "verified" | "non_verified") =>
+    api.patch<Record<string, unknown>>(`/api/listings/${listingId}/verification-choice`, {
+      verification_choice: choice,
+    }),
+
+  getChecklist: (listingId: string) =>
+    api.get<DocumentChecklistResponse>(`/api/listings/${listingId}/documents/checklist`),
+
+  uploadMedia: (listingId: string, file: File, mediaType: "photo" | "video") => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("media_type", mediaType);
+    return api.post(`/api/listings/${listingId}/media`, fd);
+  },
+
+  uploadDocument: (listingId: string, documentTypeId: number, file: File) => {
+    const fd = new FormData();
+    fd.append("document_type_id", String(documentTypeId));
+    fd.append("file", file);
+    return api.post(`/api/listings/${listingId}/documents`, fd);
+  },
+
+  submitListing: (listingId: string, declarations: ListingDeclarations) =>
+    api.post(`/api/listings/${listingId}/submit`, declarations),
+
+  getFeatureTiers: () => api.get<FeatureTierRead[]>("/api/listings/tiers/feature"),
+
+  purchaseFeature: (listingId: string, tierName: string) =>
+    api.post(`/api/listings/${listingId}/feature`, { tier_name: tierName }),
 };
+
 const nlPlaneTypes = [
   "Light Jet", "Midsize Jet", "Super-Midsize Jet", "Large Cabin Jet",
   "Ultra Long Range Jet", "Turboprop", "Helicopter", "Airliner (VIP)",
@@ -46,6 +134,8 @@ interface MediaItem {
   kind: MediaKind;
   url?: string;
   name?: string;
+  file?: File;
+  uploaded?: boolean;
 }
 
 interface NlState {
@@ -55,6 +145,7 @@ interface NlState {
   manufacturerQuery: string;
   model: string;
   modelQuery: string;
+  assetId: string | null;
   price: number;
   variant: string;
   hours: string;
@@ -62,10 +153,14 @@ interface NlState {
   reason: string;
   listingType: "" | "verified" | "non-verified";
   sellingMandate: string | null;
+  mandateFile: File | null;
   photos: MediaItem[];
   videos: MediaItem[];
   docs: Record<string, string>;
+  docFiles: Record<string, File>;
+  docTypeMap: Record<string, number>;
   terms: boolean[];
+  listingId: string | null;
 }
 
 function freshState(): NlState {
@@ -76,6 +171,7 @@ function freshState(): NlState {
     manufacturerQuery: "",
     model: "",
     modelQuery: "",
+    assetId: null,
     price: 5,
     variant: "",
     hours: "",
@@ -83,10 +179,14 @@ function freshState(): NlState {
     reason: "",
     listingType: "",
     sellingMandate: null,
+    mandateFile: null,
     photos: [],
     videos: [],
     docs: {},
+    docFiles: {},
+    docTypeMap: {},
     terms: [false, false, false, false],
+    listingId: null,
   };
 }
 
@@ -96,6 +196,7 @@ function isValid(s: NlState) {
       !!s.planeType &&
       !!s.manufacturer &&
       !!s.model &&
+      !!s.assetId &&
       !!s.price &&
       !!s.variant &&
       !!s.hours &&
@@ -132,6 +233,11 @@ export default function NewListingWizard({
   const [screen, setScreen] = useState<Screen>("form");
   const [mfgDropdown, setMfgDropdown] = useState(false);
   const [modelDropdown, setModelDropdown] = useState(false);
+  const [manufacturerResults, setManufacturerResults] = useState<string[]>([]);
+  const [modelResults, setModelResults] = useState<AssetSearchResult[]>([]);
+  const [featureTiers, setFeatureTiers] = useState<FeatureTierRead[]>([]);
+  const [isSubmittingStep, setIsSubmittingStep] = useState(false);
+  const [backendError, setBackendError] = useState<string | null>(null);
   const fileExtRef = useRef<HTMLInputElement>(null);
   const fileIntRef = useRef<HTMLInputElement>(null);
   const mandateRef = useRef<HTMLInputElement>(null);
@@ -143,6 +249,10 @@ export default function NewListingWizard({
     setScreen("form");
     setMfgDropdown(false);
     setModelDropdown(false);
+    setManufacturerResults([]);
+    setModelResults([]);
+    setFeatureTiers([]);
+    setBackendError(null);
   };
 
   const handleClose = () => {
@@ -169,24 +279,137 @@ export default function NewListingWizard({
 
   const update = (patch: Partial<NlState>) => setS((prev) => ({ ...prev, ...patch }));
 
+  // ---- Manufacturer autocomplete (backend) ----
+  useEffect(() => {
+    if (!s.manufacturerQuery.trim()) {
+      setManufacturerResults([]);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      backend
+        .searchManufacturers(s.manufacturerQuery)
+        .then((res) => { if (!cancelled) setManufacturerResults(res); })
+        .catch((err) => console.error("Manufacturer search failed:", err));
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [s.manufacturerQuery]);
+
+  // ---- Model autocomplete (backend) ----
+  useEffect(() => {
+    if (!s.manufacturer) {
+      setModelResults([]);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      backend
+        .searchModels(s.manufacturer, s.modelQuery)
+        .then((res) => { if (!cancelled) setModelResults(res); })
+        .catch((err) => console.error("Model search failed:", err));
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [s.manufacturer, s.modelQuery]);
+
+  // Document checklist
+  useEffect(() => {
+    if (!s.listingId || !s.listingType) return;
+    let cancelled = false;
+    backend
+      .getChecklist(s.listingId)
+      .then((res) => {
+        if (cancelled) return;
+        const map: Record<string, number> = {};
+        (res.items || []).forEach((it) => { map[it.name] = it.document_type_id; });
+        update({ docTypeMap: map });
+      })
+      .catch((err) => console.error("Failed to load document checklist:", err));
+    return () => { cancelled = true; };
+  }, [s.listingId, s.listingType]);
+
+  // Feature tiers (fetched when the featuring screen opens)
+  useEffect(() => {
+    if (screen !== "feature") return;
+    let cancelled = false;
+    backend
+      .getFeatureTiers()
+      .then((tiers) => { if (!cancelled) setFeatureTiers(tiers); })
+      .catch((err) => console.error("Failed to load feature tiers:", err));
+    return () => { cancelled = true; };
+  }, [screen]);
+
   const goBack = () => update({ step: s.step - 1 });
-  const goNext = () => {
-    if (!isValid(s)) return;
-    if (s.step === 4) {
-      setScreen("feature");
-    } else {
-      update({ step: s.step + 1 });
+
+  const goNext = async () => {
+    if (!isValid(s) || isSubmittingStep) return;
+    setIsSubmittingStep(true);
+    setBackendError(null);
+    try {
+      if (s.step === 1) {
+        let listingId = s.listingId;
+        if (!listingId) {
+          const created = await backend.createListing(s.assetId!, s.variant);
+          listingId = created.id;
+          update({ listingId });
+          backend.setMarketType(listingId, "on_market").catch((err) => console.error(err));
+        }
+        await backend.updateDetails(listingId!, {
+          price: s.price * 1_000_000,
+          total_flight_hours: s.hours ? Number(s.hours) : undefined,
+          description: s.description,
+        });
+        update({ step: 2 });
+      } else if (s.step === 2) {
+        const listingId = s.listingId!;
+        await backend.updateDetails(listingId, { reason_for_selling: s.reason });
+
+        const pendingPhotos = s.photos.filter((p) => !p.uploaded && p.file);
+        const pendingVideos = s.videos.filter((v) => !v.uploaded && v.file);
+        for (const p of pendingPhotos) await backend.uploadMedia(listingId, p.file!, "photo");
+        for (const v of pendingVideos) await backend.uploadMedia(listingId, v.file!, "video");
+
+        update({
+          photos: s.photos.map((p) => ({ ...p, uploaded: true })),
+          videos: s.videos.map((v) => ({ ...v, uploaded: true })),
+          step: 3,
+        });
+      } else if (s.step === 3) {
+        const listingId = s.listingId!;
+        const res = await backend.setVerificationChoice(
+          listingId,
+          s.listingType === "verified" ? "verified" : "non_verified"
+        );
+        if (res && typeof res === "object" && "amount" in res) {
+          showToast("Verification fee pending — payment step not yet implemented in this UI.");
+        }
+
+        for (const [docName, file] of Object.entries(s.docFiles)) {
+          const docTypeId = s.docTypeMap[docName];
+          if (docTypeId != null) {
+            await backend.uploadDocument(listingId, docTypeId, file);
+          } else {
+            console.warn(`No document_type_id found for "${docName}" — skipped upload.`);
+          }
+        }
+        update({ step: 4 });
+      } else if (s.step === 4) {
+        const listingId = s.listingId!;
+        await backend.submitListing(listingId, {
+          agreed_sop_privacy: s.terms[0],
+          agreed_m1_representative: s.terms[1],
+          agreed_fraud_clause: s.terms[2],
+          agreed_terms_of_use: s.terms[3],
+        });
+        setScreen("feature");
+      }
+    } catch (err) {
+      console.error("Listing wizard step failed:", err);
+      setBackendError("Something went wrong talking to the server. Please try again.");
+      showToast("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmittingStep(false);
     }
   };
-
-  const mfgMatches = useMemo(
-    () => Object.keys(nlManufacturers).filter((n) => n.toLowerCase().includes(s.manufacturerQuery.toLowerCase())),
-    [s.manufacturerQuery]
-  );
-  const modelMatches = useMemo(
-    () => (nlManufacturers[s.manufacturer] || []).filter((m) => m.toLowerCase().includes(s.modelQuery.toLowerCase())),
-    [s.manufacturer, s.modelQuery]
-  );
 
   const pickFiles = (kind: MediaKind, files: FileList | null) => {
     if (!files) return;
@@ -195,9 +418,11 @@ export default function NewListingWizard({
     Array.from(files).forEach((file) => {
       const uid = Math.random().toString(36).slice(2);
       if (file.type.startsWith("video/")) {
-        if (videos.filter((v) => v.kind === kind).length < 2) videos.push({ uid, kind, name: file.name });
+        if (videos.filter((v) => v.kind === kind).length < 2) {
+          videos.push({ uid, kind, name: file.name, file, uploaded: false });
+        }
       } else if (photos.length < 9) {
-        photos.push({ uid, kind, url: URL.createObjectURL(file) });
+        photos.push({ uid, kind, url: URL.createObjectURL(file), file, uploaded: false });
       }
     });
     update({ photos, videos });
@@ -215,8 +440,25 @@ export default function NewListingWizard({
 
   const onDocFileChosen = (files: FileList | null) => {
     if (!files || !files.length || !pendingDoc.current) return;
-    update({ docs: { ...s.docs, [pendingDoc.current]: files[0].name } });
+    const doc = pendingDoc.current;
+    const file = files[0];
+    update({
+      docs: { ...s.docs, [doc]: file.name },
+      docFiles: { ...s.docFiles, [doc]: file },
+    });
     pendingDoc.current = null;
+  };
+
+  const handleSelectTier = async (tierName: string) => {
+    if (!s.listingId) return;
+    try {
+      await backend.purchaseFeature(s.listingId, tierName);
+      handleClose();
+      showToast("Listing submitted — featured plan active!");
+    } catch (err) {
+      console.error("Feature purchase failed:", err);
+      showToast("Could not purchase featuring. Please try again.");
+    }
   };
 
   if (!open) return null;
@@ -276,16 +518,18 @@ export default function NewListingWizard({
                       placeholder="Start typing manufacturer…"
                       autoComplete="off"
                       value={s.manufacturerQuery}
-                      onChange={(e) => update({ manufacturerQuery: e.target.value, manufacturer: "", model: "", modelQuery: "" })}
+                      onChange={(e) =>
+                        update({ manufacturerQuery: e.target.value, manufacturer: "", model: "", modelQuery: "", assetId: null })
+                      }
                       onFocus={() => setMfgDropdown(true)}
                       onBlur={() => setTimeout(() => setMfgDropdown(false), 150)}
                     />
-                    <div className={`nl-dropdown ${mfgDropdown && mfgMatches.length ? "show" : ""}`}>
-                      {mfgMatches.map((n) => (
+                    <div className={`nl-dropdown ${mfgDropdown && manufacturerResults.length ? "show" : ""}`}>
+                      {manufacturerResults.map((n) => (
                         <div
                           key={n}
                           className="nl-dropdown-item"
-                          onMouseDown={() => update({ manufacturer: n, manufacturerQuery: n, model: "", modelQuery: "" })}
+                          onMouseDown={() => update({ manufacturer: n, manufacturerQuery: n, model: "", modelQuery: "", assetId: null })}
                         >
                           <span className="logo-dot">{n.slice(0, 2).toUpperCase()}</span>{n}
                         </div>
@@ -300,18 +544,18 @@ export default function NewListingWizard({
                       autoComplete="off"
                       value={s.modelQuery}
                       disabled={!s.manufacturer}
-                      onChange={(e) => update({ modelQuery: e.target.value, model: "" })}
+                      onChange={(e) => update({ modelQuery: e.target.value, model: "", assetId: null })}
                       onFocus={() => setModelDropdown(true)}
                       onBlur={() => setTimeout(() => setModelDropdown(false), 150)}
                     />
-                    <div className={`nl-dropdown ${modelDropdown && s.manufacturer && modelMatches.length ? "show" : ""}`}>
-                      {modelMatches.map((m) => (
+                    <div className={`nl-dropdown ${modelDropdown && s.manufacturer && modelResults.length ? "show" : ""}`}>
+                      {modelResults.map((m) => (
                         <div
-                          key={m}
+                          key={m.id}
                           className="nl-dropdown-item"
-                          onMouseDown={() => update({ model: m, modelQuery: m })}
+                          onMouseDown={() => update({ model: m.model, modelQuery: m.model, assetId: m.id })}
                         >
-                          <span className="logo-dot">{s.manufacturer.slice(0, 2).toUpperCase()}</span>{m}
+                          <span className="logo-dot">{s.manufacturer.slice(0, 2).toUpperCase()}</span>{m.model}
                         </div>
                       ))}
                     </div>
@@ -454,7 +698,7 @@ export default function NewListingWizard({
                       type="button"
                       className={`nl-toggle-btn ${s.listingType === "verified" ? "picked" : ""}`}
                       data-listing-type="verified"
-                      onClick={() => update({ listingType: "verified", docs: {} })}
+                      onClick={() => update({ listingType: "verified", docs: {}, docFiles: {} })}
                     >
                       <strong>VERIFIED</strong>
                       <span>Full document review, golden tag</span>
@@ -463,7 +707,7 @@ export default function NewListingWizard({
                       type="button"
                       className={`nl-toggle-btn ${s.listingType === "non-verified" ? "picked" : ""}`}
                       data-listing-type="non-verified"
-                      onClick={() => update({ listingType: "non-verified", docs: {} })}
+                      onClick={() => update({ listingType: "non-verified", docs: {}, docFiles: {} })}
                     >
                       <strong>NON-VERIFIED</strong>
                       <span>Fast, minimal documentation</span>
@@ -480,7 +724,8 @@ export default function NewListingWizard({
                     ref={mandateRef}
                     type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                     onChange={(e) => {
-                      if (e.target.files?.[0]) update({ sellingMandate: e.target.files[0].name });
+                      const file = e.target.files?.[0];
+                      if (file) update({ sellingMandate: file.name, mandateFile: file });
                       e.target.value = "";
                     }}
                   />
@@ -491,6 +736,11 @@ export default function NewListingWizard({
                   >
                     {s.sellingMandate ? `Uploaded: ${s.sellingMandate}` : "Upload Selling Mandate"}
                   </button>
+                  {/* NOTE: no dedicated backend endpoint exists yet for the selling
+                      mandate file — it's captured locally only. If the mandate maps
+                      to one of the checklist documents (e.g. "Broker Authorisation
+                      Agreement"), wire it through backend.uploadDocument the same
+                      way as the other documents below. */}
                 </div>
                 {s.listingType && (
                   <div className="nl-card">
@@ -544,17 +794,21 @@ export default function NewListingWizard({
               </>
             )}
 
+            {backendError && (
+              <p style={{ color: "#e05a4b", fontSize: 12.5, margin: "0 0 12px" }}>{backendError}</p>
+            )}
+
             <div className="nl-next-wrap">
               {s.step > 1 && (
-                <button type="button" className="nl-back-btn" onClick={goBack}>Back</button>
+                <button type="button" className="nl-back-btn" disabled={isSubmittingStep} onClick={goBack}>Back</button>
               )}
               <button
                 type="button"
                 className={`nl-next-btn ${ready ? "ready" : ""} ${isFinal ? "final-step" : ""}`}
-                disabled={!ready}
+                disabled={!ready || isSubmittingStep}
                 onClick={goNext}
               >
-                {isFinal ? "Execute" : "Next Step"}
+                {isSubmittingStep ? "Please wait…" : isFinal ? "Execute" : "Next Step"}
               </button>
             </div>
           </div>
@@ -571,16 +825,33 @@ export default function NewListingWizard({
               Featuring increases the rate of conversion by 10x. We give a very brief and guarantee on every featured listing.
             </p>
             <div className="nl-pkg-row">
-              <div className="nl-pkg-card basic">
-                <h5>Affordable</h5>
-                <div className="price">$150</div>
-                <p>Standard placement boost across search &amp; category pages for 7 days.</p>
-              </div>
-              <div className="nl-pkg-card premium">
-                <h5>Premium</h5>
-                <div className="price">$450</div>
-                <p>Top-of-search priority, homepage carousel spot, and buyer-match alerts for 30 days.</p>
-              </div>
+              {featureTiers.length ? (
+                featureTiers.map((tier, i) => (
+                  <div
+                    className={`nl-pkg-card ${i === 0 ? "basic" : "premium"}`}
+                    key={tier.id}
+                    onClick={() => handleSelectTier(tier.name)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <h5>{tier.display_name}</h5>
+                    <div className="price">${tier.price}</div>
+                    <p>{tier.description ?? `${tier.duration_days}-day featuring placement.`}</p>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="nl-pkg-card basic">
+                    <h5>Affordable</h5>
+                    <div className="price">$150</div>
+                    <p>Standard placement boost across search &amp; category pages for 7 days.</p>
+                  </div>
+                  <div className="nl-pkg-card premium">
+                    <h5>Premium</h5>
+                    <div className="price">$450</div>
+                    <p>Top-of-search priority, homepage carousel spot, and buyer-match alerts for 30 days.</p>
+                  </div>
+                </>
+              )}
             </div>
             <div className="nl-feature-actions">
               <button

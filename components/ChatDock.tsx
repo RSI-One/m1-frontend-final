@@ -1,6 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  listConversations,
+  getMessages as fetchMessages,
+  markConversationRead,
+  ConversationRead,
+  MessageRead,
+} from "../lib/api/messaging";
+
+const avatarColors = ["#5b8def", "#e0a458", "#57b894", "#c15b6c", "#8a7dd9", "#4fb0c6"];
+function colorForId(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return avatarColors[hash % avatarColors.length];
+}
+function fmtTime(iso: string) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
+}
 
 interface LiMessage {
   from: "me" | "them";
@@ -84,6 +107,7 @@ export default function ChatDock({ registerToggle }: { registerToggle: (fn: () =
   const [openWindows, setOpenWindows] = useState<OpenWindow[]>([]);
   const composeRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const bodyRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [usingLiveData, setUsingLiveData] = useState(false);
 
   useEffect(() => {
     registerToggle(() => {
@@ -91,6 +115,43 @@ export default function ChatDock({ registerToggle }: { registerToggle: (fn: () =
       setListCollapsed(false);
     });
   }, [registerToggle]);
+
+  // ---- Backend integration: GET /conversations ----
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const myUserId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+        const rows: ConversationRead[] = await listConversations();
+        if (cancelled || !rows.length) return;
+        const mapped: LiConversation[] = rows.map((c) => {
+          const otherId = myUserId && c.buyer_id === myUserId ? c.seller_id : c.buyer_id;
+          return {
+            id: c.id,
+            name: `User ${otherId.slice(0, 6)}`,
+            role: "M1 Marketplace contact",
+            initials: otherId.slice(0, 2).toUpperCase(),
+            color: colorForId(otherId),
+            online: false,
+            tab: "focused",
+            time: fmtTime(c.updated_at),
+            unread: c.unread_count ?? 0,
+            messages: c.last_message
+              ? [{ from: "them", text: c.last_message.content, time: fmtTime(c.last_message.created_at) }]
+              : [],
+          };
+        });
+        setConversations(mapped);
+        setUsingLiveData(true);
+      } catch (err) {
+        console.error(err);
+        // keep the demo conversations as fallback
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     openWindows.forEach((w) => {
@@ -113,6 +174,27 @@ export default function ChatDock({ registerToggle }: { registerToggle: (fn: () =
       const next = prev.length >= 3 ? prev.slice(1) : prev;
       return [...next, { id, minimized: false }];
     });
+
+    if (!usingLiveData) return;
+
+    // POST /conversations/{id}/read
+    markConversationRead(id).catch((err) => console.error(err));
+
+    // GET /conversations/{id}/messages
+    (async () => {
+      try {
+        const myUserId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+        const rows: MessageRead[] = await fetchMessages(id);
+        const ordered: LiMessage[] = [...rows].reverse().map((m) => ({
+          from: myUserId && m.sender_id === myUserId ? "me" : "them",
+          text: m.content,
+          time: fmtTime(m.created_at),
+        }));
+        setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, messages: ordered } : c)));
+      } catch (err) {
+        console.error(err);
+      }
+    })();
   };
 
   const closeConversation = (id: string) => {
@@ -123,6 +205,8 @@ export default function ChatDock({ registerToggle }: { registerToggle: (fn: () =
     setOpenWindows((prev) => prev.map((w) => (w.id === id ? { ...w, minimized: !w.minimized } : w)));
   };
 
+  // NOTE: no POST send-message endpoint exists in the current backend spec —
+  // appended locally (optimistic) until one is added.
   const sendMessage = (id: string) => {
     const textarea = composeRefs.current[id];
     if (!textarea) return;
