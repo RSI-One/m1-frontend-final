@@ -35,43 +35,15 @@ const handleNewsletterSubmit = async (e: FormEvent<HTMLFormElement>) => {
       <div className="container">
         <div className="footer-top">
           <div className="footer-brand">
-            <div className="nav-brand" style={{ marginBottom: 2 }}>
-              <div className="brand-mark">M1</div>
+            <div className="nav-brand" style={{ marginBottom: 2, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+              <img src="/images/logo.png" alt="M1 Marketplace" className="brand-mark-img footer-logo" />
               <div className="brand-copy">
-                <strong>M1 Marketplace</strong>
-                <span>Aviation &amp; Maritime</span>
+                
               </div>
             </div>
-            <p>
-              A private acquisition engine connecting qualified buyers with verified aircraft and yacht
-              sellers across the world&apos;s most exclusive fleets.
-            </p>
-            <p className="mission">&quot;Access, verified — for the world&apos;s rarest machines.&quot;</p>
           </div>
 
-          <div className="footer-col">
-            <h5>Marketplace</h5>
-            <ul>
-              <li><a href="#workspace">Aircraft</a></li>
-              <li><a href="#workspace">Helicopters</a></li>
-              <li><a href="#workspace">Jets</a></li>
-              <li><a href="#workspace">Yachts</a></li>
-              <li><a href="#featured">Featured Listings</a></li>
-              <li><a href="#verified">New Listings</a></li>
-            </ul>
-          </div>
-
-          <div className="footer-col">
-            <h5>Services</h5>
-            <ul>
-              <li><a href="#" onClick={notify("Acquisition")}>Acquisition</a></li>
-              <li><a href="#" onClick={notify("Brokerage")}>Brokerage</a></li>
-              <li><a href="#" onClick={notify("Financing")}>Financing</a></li>
-              <li><a href="#" onClick={notify("Insurance")}>Insurance</a></li>
-              <li><a href="#" onClick={notify("Inspection")}>Inspection</a></li>
-              <li><a href="#" onClick={notify("Concierge")}>Concierge</a></li>
-            </ul>
-          </div>
+       
 
           <div className="footer-col">
             <h5>Resources</h5>
