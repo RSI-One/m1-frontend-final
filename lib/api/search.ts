@@ -1,4 +1,4 @@
-import api from "@/lib/axios";
+import { apiGet } from "./client";
 
 export interface SearchResultItem {
   listing_id: string;
@@ -34,6 +34,7 @@ export interface SmartSearchResponse {
   suggestions: string[];
 }
 
+/** GET /search — production smart search with filters, sorting, pagination. */
 export async function smartSearch(params: {
   q?: string;
   page?: number;
@@ -44,24 +45,32 @@ export async function smartSearch(params: {
   min_price?: number;
   max_price?: number;
 }): Promise<SmartSearchResponse> {
-  const { data } = await api.get<SmartSearchResponse>("/search", { params });
-  return data;
+  const res = await apiGet<{ success: boolean; data: SmartSearchResponse }>(
+    "/search",
+    params as Record<string, string | number>,
+    { auth: false }
+  );
+  return res.data;
 }
 
-// GET /search/suggestions?q= — autocomplete while typing.
+/** GET /search/suggestions?q= — autocomplete while typing. */
 export async function getSearchSuggestions(q: string): Promise<string[]> {
   if (!q.trim()) return [];
-  const { data } = await api.get<{ query: string; suggestions: string[] }>("/search/suggestions", {
-    params: { q },
-  });
-  return data.suggestions ?? [];
+  const res = await apiGet<{ success: boolean; data: { query: string; suggestions: string[] } }>(
+    "/search/suggestions",
+    { q },
+    { auth: false }
+  );
+  return res.data?.suggestions ?? [];
 }
 
-// GET /search/popular — popular keywords + trending categories for discovery UI.
+/** GET /search/popular — popular keywords + trending categories for discovery UI. */
 export async function getPopularSearches(): Promise<{
   popular_keywords: string[];
   trending_categories: Record<string, unknown>[];
 }> {
-  const { data } = await api.get("/search/popular");
-  return data;
+  return apiGet<{
+    popular_keywords: string[];
+    trending_categories: Record<string, unknown>[];
+  }>("/search/popular", undefined, { auth: false });
 }

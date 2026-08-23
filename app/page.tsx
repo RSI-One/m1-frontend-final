@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState } from "react";
-
+import AuthScreen from "../components/auth/AuthScreen";
 import Header from "../components/Header";
 import Hero from "../components/Hero";
 import Wizard from "../components/Wizard";
@@ -29,6 +30,10 @@ export default function Page() {
 function PageInner() {
   const { showToast, showAllListings } = useSite();
 
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Marketplace state
   const [started, setStarted] = useState(false);
 
   const [selectedAsset, setSelectedAsset] = useState<
@@ -38,6 +43,11 @@ function PageInner() {
   const [compareItems, setCompareItems] = useState<SfItem[]>([]);
   const [sellerModeOpen, setSellerModeOpen] = useState(false);
   const [messagingOpen, setMessagingOpen] = useState(false);
+
+  // Called after successful login/register
+  const handleAuthSuccess = () => {
+    setIsAuthenticated(true);
+  };
 
   const openAssetFromSf = (item: SfItem) => {
     setSelectedAsset(item);
@@ -59,6 +69,12 @@ function PageInner() {
     setCompareItems([]);
   };
 
+  // Show authentication screen first
+  if (!isAuthenticated) {
+    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  // Existing marketplace
   return (
     <>
       <Header
@@ -112,7 +128,11 @@ function PageInner() {
 
       <Toast />
 
-      <MessagingPage open={messagingOpen} onClose={() => setMessagingOpen(false)} />
+      <MessagingPage
+        open={messagingOpen}
+        onClose={() => setMessagingOpen(false)}
+      />
     </>
   );
 }
+
