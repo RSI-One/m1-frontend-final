@@ -8,7 +8,7 @@ import { useSite, parsePriceToM } from "../lib/site-context";
 import { getCarousels, toJet, trackListingView } from "../lib/api/listings";
 
 export default function FeaturedSection({ onOpenAsset }: { onOpenAsset: (jet: Jet) => void }) {
-  const { search, maxBudget, showAllListings } = useSite();
+  const { search, setSearch, didYouMean, maxBudget, showAllListings } = useSite();
 
   const [featured, setFeatured] = useState<Jet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +54,41 @@ export default function FeaturedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
 
   return (
     <section className="below-section" id="featured">
+      {search && didYouMean && didYouMean.toLowerCase() !== q && (
+        <div
+          style={{
+            maxWidth: 1380,
+            margin: "0 auto 16px auto",
+            padding: "10px 18px",
+            background: "rgba(214,173,92,.1)",
+            border: "1px solid rgba(214,173,92,.3)",
+            borderRadius: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            fontSize: 13,
+            color: "#dfe3ea",
+          }}
+        >
+          <span>💡 Did you mean:</span>
+          <button
+            onClick={() => setSearch(didYouMean)}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--gold-2)",
+              fontWeight: 700,
+              cursor: "pointer",
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+              fontSize: 13,
+            }}
+          >
+            {didYouMean}
+          </button>
+        </div>
+      )}
+
       <CarouselRow headClassName="carousel-block-head" headingTag="h2" title="Featured Listings">
         {loading ? (
           <div style={{ padding: "24px 4px", color: "var(--muted, var(--text-dim))", fontSize: 13.5 }}>

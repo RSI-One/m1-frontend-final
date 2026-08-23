@@ -45,32 +45,98 @@ export async function smartSearch(params: {
   min_price?: number;
   max_price?: number;
 }): Promise<SmartSearchResponse> {
-  const res = await apiGet<{ success: boolean; data: SmartSearchResponse }>(
-    "/search",
-    params as Record<string, string | number>,
-    { auth: false }
-  );
-  return res.data;
+  try {
+    const res = await apiGet<any>("/search", params as Record<string, string | number>, { auth: false });
+    const payload = res && typeof res === "object" && "data" in res && res.data ? res.data : res;
+    return (
+      payload || {
+        total: 0,
+        page: 1,
+        page_size: 20,
+        total_pages: 0,
+        query: params.q,
+        processing_time_ms: 0,
+        did_you_mean: null,
+        results: [],
+        suggestions: [],
+      }
+    );
+  } catch (err) {
+    console.error("Smart search API error:", err);
+    return {
+      total: 0,
+      page: 1,
+      page_size: 20,
+      total_pages: 0,
+      query: params.q,
+      processing_time_ms: 0,
+      did_you_mean: null,
+      results: [],
+      suggestions: [],
+    };
+  }
 }
 
-/** GET /search/suggestions?q= — autocomplete while typing. */
-export async function getSearchSuggestions(q: string): Promise<string[]> {
-  if (!q.trim()) return [];
-  const res = await apiGet<{ success: boolean; data: { query: string; suggestions: string[] } }>(
-    "/search/suggestions",
-    { q },
-    { auth: false }
-  );
-  return res.data?.suggestions ?? [];
+/** GET /search/suggestions?q= — autocomplete while typing with did-you-mean support. */
+export async function getSearchSuggestions(q: string): Promise<{
+  suggestions: string[];
+  didYouMean?: string | null;
+}> {
+  if (!q.trim()) return { suggestions: [] };
+  try {
+    const [sugRes, searchRes] = await Promise.allSettled([
+      apiGet<any>("/search/suggestions", { q }, { auth: false }),
+      apiGet<any>("/search", { q, page_size: 5 }, { auth: false }),
+    ]);
+
+    const suggestions: string[] = [];
+    let didYouMean: string | null = null;
+
+    if (sugRes.status === "fulfilled" && sugRes.value) {
+      const rawSug = sugRes.value.data?.suggestions || sugRes.value.suggestions;
+      if (Array.isArray(rawSug)) {
+        suggestions.push(...rawSug);
+      }
+    }
+
+    if (searchRes.status === "fulfilled" && searchRes.value) {
+      const searchData = searchRes.value.data || searchRes.value;
+      if (searchData) {
+        if (searchData.did_you_mean) {
+          didYouMean = searchData.did_you_mean;
+        }
+        if (Array.isArray(searchData.suggestions)) {
+          for (const s of searchData.suggestions) {
+            if (!suggestions.includes(s)) suggestions.push(s);
+          }
+        }
+      }
+    }
+
+    return { suggestions, didYouMean };
+  } catch (err) {
+    console.error("Suggestions API error:", err);
+    return { suggestions: [] };
+  }
 }
 
 /** GET /search/popular — popular keywords + trending categories for discovery UI. */
 export async function getPopularSearches(): Promise<{
   popular_keywords: string[];
-  trending_categories: Record<string, unknown>[];
+  trending_categories: { category: string; count: number }[];
 }> {
-  return apiGet<{
-    popular_keywords: string[];
-    trending_categories: Record<string, unknown>[];
-  }>("/search/popular", undefined, { auth: false });
+  try {
+    const res = await apiGet<any>("/search/popular", undefined, { auth: false });
+    const payload = res && typeof res === "object" && "data" in res && res.data ? res.data : res;
+    return {
+      popular_keywords: payload?.popular_keywords || [],
+      trending_categories: payload?.trending_categories || [],
+    };
+  } catch (err) {
+    console.error("Popular searches API error:", err);
+    return {
+      popular_keywords: [],
+      trending_categories: [],
+    };
+  }
 }
