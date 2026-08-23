@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { sfSpecsFor } from "../lib/data";
 import { SfItem } from "../lib/types";
 
-
 interface ComparisonRow {
   label: string;
   numeric: ((value: ReturnType<typeof sfSpecsFor>) => number) | null;

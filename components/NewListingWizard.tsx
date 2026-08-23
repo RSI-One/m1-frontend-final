@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
+
 interface AssetSearchResult {
   id: string;
   manufacturer: string;
@@ -43,6 +44,7 @@ interface ListingDeclarations {
   agreed_fraud_clause: boolean;
   agreed_terms_of_use: boolean;
 }
+
 const backend = {
   searchManufacturers: (q: string) =>
     api.get<string[]>(`/api/listings/assets/manufacturers?q=${encodeURIComponent(q)}`),
@@ -309,7 +311,7 @@ export default function NewListingWizard({
     return () => { cancelled = true; clearTimeout(t); };
   }, [s.manufacturer, s.modelQuery]);
 
-  // Document checklist 
+  // Document checklist
   useEffect(() => {
     if (!s.listingId || !s.listingType) return;
     let cancelled = false;

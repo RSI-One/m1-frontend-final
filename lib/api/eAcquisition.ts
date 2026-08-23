@@ -1,5 +1,3 @@
-
-
 import { apiGet, apiPatch, apiPost } from "./client";
 
 export type PlaneTypeEnum =
@@ -98,12 +96,13 @@ export interface LeadResponse {
   created_at: string;
 }
 
+
 export function updateEAcquisitionSession(payload: LeadSessionUpdate) {
-  return apiPatch<LeadSessionResponse>("/api/e-acquisition/session", payload);
+  return apiPatch<LeadSessionResponse>("/e-acquisition/session", payload);
 }
 
 export async function getSessionMatches(sessionToken: string): Promise<EAcquisitionMatch[]> {
-  const raw = await apiGet<unknown>(`/api/e-acquisition/session/${sessionToken}/matches`, undefined, {
+  const raw = await apiGet<unknown>(`/e-acquisition/session/${sessionToken}/matches`, undefined, {
     auth: false,
   });
   if (Array.isArray(raw)) return raw as EAcquisitionMatch[];
@@ -116,5 +115,5 @@ export async function getSessionMatches(sessionToken: string): Promise<EAcquisit
 }
 
 export function submitLead(payload: LeadCreate) {
-  return apiPost<LeadResponse>("/api/leads", payload);
+  return apiPost<LeadResponse>("/leads", payload);
 }

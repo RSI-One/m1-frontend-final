@@ -34,7 +34,6 @@ export interface SmartSearchResponse {
   suggestions: string[];
 }
 
-// GET /api/search — typo-tolerant smart search with filters + pagination.
 export async function smartSearch(params: {
   q?: string;
   page?: number;
@@ -45,24 +44,24 @@ export async function smartSearch(params: {
   min_price?: number;
   max_price?: number;
 }): Promise<SmartSearchResponse> {
-  const { data } = await api.get<SmartSearchResponse>("/api/search", { params });
+  const { data } = await api.get<SmartSearchResponse>("/search", { params });
   return data;
 }
 
-// GET /api/search/suggestions?q= — autocomplete while typing.
+// GET /search/suggestions?q= — autocomplete while typing.
 export async function getSearchSuggestions(q: string): Promise<string[]> {
   if (!q.trim()) return [];
-  const { data } = await api.get<{ query: string; suggestions: string[] }>("/api/search/suggestions", {
+  const { data } = await api.get<{ query: string; suggestions: string[] }>("/search/suggestions", {
     params: { q },
   });
   return data.suggestions ?? [];
 }
 
-// GET /api/search/popular — popular keywords + trending categories for discovery UI.
+// GET /search/popular — popular keywords + trending categories for discovery UI.
 export async function getPopularSearches(): Promise<{
   popular_keywords: string[];
   trending_categories: Record<string, unknown>[];
 }> {
-  const { data } = await api.get("/api/search/popular");
+  const { data } = await api.get("/search/popular");
   return data;
 }

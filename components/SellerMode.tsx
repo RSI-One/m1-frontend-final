@@ -8,7 +8,6 @@ import { getMyListings, ListingResponse } from "../lib/api/sellerListings";
 import { getCarousels, toJet } from "../lib/api/listings";
 import { ApiError } from "../lib/api/client";
 
-
 function sellerListingToJet(listing: ListingResponse): Jet {
   return {
     id: listing.id,
@@ -46,7 +45,6 @@ export default function SellerMode({
   const [trendingList, setTrendingList] = useState<Jet[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(false);
 
-  // dropdown panel state (notifications / menu / profile / filter)
   const [openPanel, setOpenPanel] = useState<SellerPanelKey>(null);
   const navRef = useRef<HTMLElement>(null);
 
@@ -58,16 +56,15 @@ export default function SellerMode({
     if (!open) return;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !newListingOpen) onClose();
     };
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, onClose]);
+  }, [open, onClose, newListingOpen]);
 
-  // close dropdown panels on outside
   useEffect(() => {
     if (!openPanel) return;
     const onKey = (e: KeyboardEvent) => {
@@ -86,7 +83,7 @@ export default function SellerMode({
     };
   }, [openPanel]);
 
-  // Seller's own listings 
+  // Seller's own listings
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -266,7 +263,7 @@ export default function SellerMode({
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
               </svg>
             </button>
-            <button className="new-listing-btn" title="New Listing" aria-label="New Listing" onClick={() => setNewListingOpen(true)}>
+            <button id="newListingBtn" className="new-listing-btn" title="New Listing" aria-label="New Listing" onClick={() => setNewListingOpen(true)}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -305,6 +302,13 @@ export default function SellerMode({
           <span>All Listings</span>
         </button>
       </header>
+
+      <button className="seller-back" title="Exit Seller Mode" aria-label="Exit Seller Mode" onClick={onClose}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </button>
 
       <section className="seller-hero" style={{ position: "relative" }}>
         <div className="container">

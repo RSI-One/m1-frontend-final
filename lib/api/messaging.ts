@@ -31,6 +31,14 @@ export interface ConversationStats {
   unread_conversations_count: number;
 }
 
+export type MessageType = "text" | "image" | "file" | "voice";
+
+export interface SendMessagePayload {
+  content: string;
+  message_type?: MessageType;
+  metadata_json?: Record<string, unknown> | null;
+}
+
 // GET /conversations — current user's conversation list.
 export async function listConversations(limit = 50, offset = 0): Promise<ConversationRead[]> {
   const { data } = await api.get<ConversationRead[]>("/conversations", { params: { limit, offset } });
@@ -57,6 +65,22 @@ export async function getMessages(
 ): Promise<MessageRead[]> {
   const { data } = await api.get<MessageRead[]>(`/conversations/${conversationId}/messages`, {
     params: { limit, offset },
+  });
+  return data;
+}
+
+// POST /conversations/{conversation_id}/messages — send a message (REST fallback
+// alongside the websocket send_message event; the backend broadcasts this to
+// connected websocket clients in real-time too, so no extra echo/re-fetch needed
+// on the sender's side beyond appending the returned MessageRead).
+export async function sendMessage(
+  conversationId: string,
+  payload: SendMessagePayload,
+): Promise<MessageRead> {
+  const { data } = await api.post<MessageRead>(`/conversations/${conversationId}/messages`, {
+    content: payload.content,
+    message_type: payload.message_type ?? "text",
+    metadata_json: payload.metadata_json ?? null,
   });
   return data;
 }
@@ -95,9 +119,3 @@ export async function searchMessages(q: string): Promise<MessageRead[]> {
   const { data } = await api.get<MessageRead[]>("/messages/search", { params: { q } });
   return data;
 }
-
-// NOTE: the current OpenAPI spec has no "send message" REST endpoint — only
-// create-conversation, list/get, mark-read, and delete. Real-time sending is
-// presumably handled elsewhere (websocket / not yet built). Until that
-// exists, sendMessage below is a local-only optimistic append; swap this out
-// once a POST /conversations/{id}/messages (or websocket) endpoint exists.

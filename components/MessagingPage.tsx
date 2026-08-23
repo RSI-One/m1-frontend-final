@@ -6,9 +6,15 @@ import {
   listConversations,
   getMessages,
   markConversationRead,
+  sendMessage as sendMessageApi,
   ConversationRead,
   MessageRead,
 } from "../lib/api/messaging";
+import axios from "axios";
+
+function unauthorized(err: unknown): boolean {
+  return axios.isAxiosError(err) && err.response?.status === 401;
+}
 const avatarColors = ["#5b8def", "#e0a458", "#57b894", "#c15b6c", "#8a7dd9", "#4fb0c6"];
 function colorForId(id: string) {
   let hash = 0;
@@ -66,13 +72,16 @@ export default function MessagingPage({
   const [conversations, setConversations] = useState<MpConversation[]>(initialConversations);
   const [usingLiveData, setUsingLiveData] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [tab, setTab] = useState<"focused" | "other">("focused");
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  // Backend integration: GET /conversations 
+  // Backend integration: GET /conversations
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -87,9 +96,19 @@ export default function MessagingPage({
           setConversations(rows.map((c) => mapConversation(c, myUserId)));
           setUsingLiveData(true);
         }
+        setIsGuest(false);
       } catch (err) {
-        console.error(err);
-        if (!cancelled) setLoadError("Doesn't load the conversation from backend.");
+        if (cancelled) return;
+        if (unauthorized(err)) {
+          // Guest / not signed in — this is expected, messaging requires auth.
+          // Stay on local demo data silently, no red error banner.
+          console.info("Guest viewing messaging demo data (not signed in).");
+          setUsingLiveData(false);
+          setIsGuest(true);
+        } else {
+          console.error(err);
+          setLoadError("Doesn't load the conversation from backend.");
+        }
       }
     })();
     return () => {
@@ -112,14 +131,14 @@ export default function MessagingPage({
       document.body.style.overflow = "";
       document.removeEventListener("keydown", onKey);
     };
-    
+
   }, [open, conversations]);
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
   }, [activeId, conversations]);
 
- 
+
   useEffect(() => {
     if (!activeId || !usingLiveData) return;
     let cancelled = false;
@@ -129,7 +148,7 @@ export default function MessagingPage({
           typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
         const rows = await getMessages(activeId);
         if (cancelled) return;
-       
+
         const ordered = [...rows].reverse().map((m) => mapMessage(m, myUserId));
         setConversations((prev) =>
           prev.map((c) => (c.id === activeId ? { ...c, messages: ordered } : c)),
@@ -152,27 +171,72 @@ export default function MessagingPage({
   const selectConversation = (id: string) => {
     setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c)));
     setActiveId(id);
+    setSendError(null);
     // POST /conversations/{id}/read
     if (usingLiveData) {
       markConversationRead(id).catch((err) => console.error(err));
     }
   };
 
-  // NOTE: there's no POST send-message endpoint in the current backend spec
-  // (only create-conversation, list, get, mark-read, delete). This appends
-  // the message locally (optimistic) so the UI stays usable — swap in a
-  // real API call here once that endpoint / websocket exists.
-  const sendMessage = () => {
+  // POST /conversations/{conversation_id}/messages — optimistic append,
+  // then reconciled with the real MessageRead once the backend responds.
+  // Falls back to local-only append when there's no live backend session
+  // (e.g. guest browsing the placeholder/demo conversations).
+  const sendMessage = async () => {
     const textarea = composeRef.current;
-    if (!textarea || !activeId) return;
+    if (!textarea || !activeId || sending) return;
     const value = textarea.value.trim();
     if (!value) return;
+
+    setSendError(null);
     const now = new Date();
-    const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const optimisticTime = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+    // Optimistic append so the UI feels instant.
     setConversations((prev) =>
-      prev.map((c) => (c.id === activeId ? { ...c, messages: [...c.messages, { from: "me", text: value, time }] } : c))
+      prev.map((c) =>
+        c.id === activeId
+          ? { ...c, messages: [...c.messages, { from: "me", text: value, time: optimisticTime }] }
+          : c,
+      ),
     );
     textarea.value = "";
+
+    if (!usingLiveData) {
+      // No real conversation on the backend (demo/guest data) — nothing to sync.
+      return;
+    }
+
+    setSending(true);
+    try {
+      const saved = await sendMessageApi(activeId, { content: value, message_type: "text" });
+      const myUserId =
+        typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+      const confirmed = mapMessage(saved, myUserId);
+
+      // Replace the optimistic last message with the confirmed one from
+      // the backend (correct timestamp / id-backed content).
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== activeId) return c;
+          const withoutOptimistic = c.messages.slice(0, -1);
+          return { ...c, messages: [...withoutOptimistic, confirmed] };
+        }),
+      );
+    } catch (err) {
+      console.error(err);
+      if (unauthorized(err)) {
+        setSendError("Sign in to send messages.");
+      } else {
+        setSendError("Message failed to send. Try again.");
+      }
+      // Roll back the optimistic message since the backend never saved it.
+      setConversations((prev) =>
+        prev.map((c) => (c.id === activeId ? { ...c, messages: c.messages.slice(0, -1) } : c)),
+      );
+    } finally {
+      setSending(false);
+    }
   };
 
   const active = conversations.find((c) => c.id === activeId) || null;
@@ -221,6 +285,11 @@ export default function MessagingPage({
       </div>
       {loadError && (
         <div style={{ padding: "6px 20px", color: "#c0392b", fontSize: 12.5 }}>{loadError}</div>
+      )}
+      {!loadError && isGuest && (
+        <div style={{ padding: "6px 20px", color: "#6b7280", fontSize: 12.5 }}>
+          Sign in to see your real conversations.
+        </div>
       )}
       <div className="mp-body">
         <div className="mp-list-col">
@@ -296,6 +365,9 @@ export default function MessagingPage({
               <div className="mp-thread-body" ref={bodyRef}>
                 {renderMessages(active)}
               </div>
+              {sendError && (
+                <div style={{ padding: "4px 20px", color: "#c0392b", fontSize: 12.5 }}>{sendError}</div>
+              )}
               <div className="mp-compose">
                 <textarea
                   rows={1}
@@ -308,7 +380,9 @@ export default function MessagingPage({
                     }
                   }}
                 />
-                <button className="mp-send-btn" onClick={sendMessage}>Send</button>
+                <button className="mp-send-btn" onClick={sendMessage} disabled={sending}>
+                  {sending ? "Sending..." : "Send"}
+                </button>
               </div>
             </>
           )}

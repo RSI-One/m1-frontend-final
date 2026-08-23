@@ -74,8 +74,6 @@ export default function AssetModal({ asset, onClose }: AssetModalProps) {
     showToast(`Interest registered for ${overview.name}. Our team will reach out shortly.`);
     onClose();
   };
-  
-
 
   const specChips: { label: string; value: string }[] = [
     { label: "Engine", value: overview.engine },

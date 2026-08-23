@@ -3,13 +3,7 @@ import { useEffect, useState } from "react";
 import AssetCard from "./AssetCard";
 import CarouselRow from "./CarouselRow";
 import { SfItem } from "../lib/types";
-import { getCarousels, toSfItem, trackListingView, ApiListingItem } from "../lib/api/listings";
-
-function chunk<T>(arr: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-}
+import { getCarousels, toSfItem, trackListingView } from "../lib/api/listings";
 
 interface AllListingsProps {
   onOpenAsset: (item: SfItem) => void;
@@ -81,10 +75,32 @@ export default function AllListings({ onOpenAsset }: AllListingsProps) {
   return (
     <main className="all-listings-page">
       <section className="all-listings-content">
-        <ListingSection title="Featured Listings" items={sections.featured} badge="featured" onOpenAsset={handleOpen} />
-        <ListingSection title="Verified Aircraft" items={sections.verified} badge="verified" onOpenAsset={handleOpen} />
-        <ListingSection title="New" items={sections.fresh} badge="verified" onOpenAsset={handleOpen} />
-        <ListingSection title="General Listings" items={sections.general} badge="verified" onOpenAsset={handleOpen} />
+        <ListingSection
+          title="Featured Listings"
+          items={sections.featured}
+          badge="featured"
+          onOpenAsset={handleOpen}
+        />
+        <ListingSection
+          title="Verified Aircraft"
+          items={sections.verified}
+          badge="verified"
+          rowSizes={[9, 8]}
+          onOpenAsset={handleOpen}
+        />
+        <ListingSection
+          title="New"
+          items={sections.fresh}
+          badge="verified"
+          onOpenAsset={handleOpen}
+        />
+        <ListingSection
+          title="General Listings"
+          items={sections.general}
+          badge="verified"
+          rowSizes={[7, 7, 7]}
+          onOpenAsset={handleOpen}
+        />
       </section>
     </main>
   );
@@ -94,12 +110,15 @@ interface ListingSectionProps {
   title: string;
   items: SfItem[];
   badge: "featured" | "verified";
+  rowSizes?: number[];
   onOpenAsset: (item: SfItem) => void;
 }
 
-function ListingSection({ title, items, badge, onOpenAsset }: ListingSectionProps) {
+function ListingSection({ title, items, badge, rowSizes, onOpenAsset }: ListingSectionProps) {
   if (items.length === 0) return null;
-  const rows = chunk(items, 8);
+
+  const sizes = rowSizes ?? [items.length];
+  let start = 0;
 
   return (
     <section className="all-listings-section">
@@ -109,26 +128,31 @@ function ListingSection({ title, items, badge, onOpenAsset }: ListingSectionProp
           View All →
         </button>
       </div>
-      {rows.map((rowItems, rowIndex) => (
-        <CarouselRow
-          key={`${title}-row-${rowIndex}`}
-          title=""
-          small
-          headClassName="all-listings-hidden-header"
-        >
-          {rowItems.map((item) => (
-            <AssetCard
-              key={item.id ?? `${title}-${item.name}`}
-              name={item.name}
-              cat={item.cat}
-              year={item.year}
-              image={item.image}
-              ribbon={badge}
-              onClick={() => onOpenAsset(item)}
-            />
-          ))}
-        </CarouselRow>
-      ))}
+      {sizes.map((size, rowIndex) => {
+        const rowItems = items.slice(start, start + size);
+        start += size;
+        if (rowItems.length === 0) return null;
+        return (
+          <CarouselRow
+            key={`${title}-row-${rowIndex}`}
+            title=""
+            small
+            headClassName="all-listings-hidden-header"
+          >
+            {rowItems.map((item) => (
+              <AssetCard
+                key={item.id ?? `${title}-${rowIndex}-${item.name}`}
+                name={item.name}
+                cat={item.cat}
+                year={item.year}
+                image={item.image}
+                ribbon={badge}
+                onClick={() => onOpenAsset(item)}
+              />
+            ))}
+          </CarouselRow>
+        );
+      })}
     </section>
   );
 }

@@ -20,6 +20,7 @@ import {
   PlaneTypeEnum,
   UrgencyEnum,
 } from "../lib/api/eAcquisition";
+import { ApiError } from "../lib/api/client";
 
 const planeCategories = [
   "Light Jets",
@@ -108,6 +109,7 @@ export default function Wizard({
   const [matches, setMatches] = useState<EAcquisitionMatch[] | null>(null);
   const [matchesLoading, setMatchesLoading] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [requiresAuth, setRequiresAuth] = useState(false);
 
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -173,6 +175,7 @@ export default function Wizard({
 
         const token = res.session_token ?? res.id;
         setSessionToken(token);
+        setRequiresAuth(false);
 
         if (token) {
           setMatchesLoading(true);
@@ -181,7 +184,19 @@ export default function Wizard({
         }
       } catch (err) {
         console.error(err);
-        setSessionError("Doesn't connect with backend try again.");
+        if (err instanceof ApiError && err.status === 401) {
+          // Guest visitor — backend requires a bearer token for this
+          // endpoint. Don't scare the user with a generic connection
+          // error; fall back to the static preview list instead and
+          // nudge them to sign in for personalized/live matches.
+          setRequiresAuth(true);
+          setMatches(null);
+          setSessionError(
+            "Sign in to get live matches and save your acquisition session."
+          );
+        } else {
+          setSessionError("Doesn't connect with backend try again.");
+        }
       } finally {
         setMatchesLoading(false);
       }
@@ -273,7 +288,11 @@ export default function Wizard({
       setLeadSubmitted(true);
     } catch (err) {
       console.error(err);
-      setLeadError("Lead not submitted. Try again.");
+      if (err instanceof ApiError && err.status === 401) {
+        setLeadError("Please sign in to submit your acquisition request.");
+      } else {
+        setLeadError("Lead not submitted. Try again.");
+      }
     } finally {
       setLeadSubmitting(false);
     }
@@ -481,7 +500,13 @@ export default function Wizard({
       </AnimatePresence>
 
       {sessionError && (
-        <div className="wiz-error-text" style={{ color: "#c0392b", marginTop: 8 }}>
+        <div
+          className="wiz-error-text"
+          style={{
+            color: requiresAuth ? "var(--muted-2, #666)" : "#c0392b",
+            marginTop: 8,
+          }}
+        >
           {sessionError}
         </div>
       )}
@@ -642,8 +667,9 @@ export default function Wizard({
         </div>
       </div>
 
-      {/* Contact + lead submission — shown once we have a live session */}
-      {sessionToken && !leadSubmitted && (
+      {/* Contact + lead submission — always shown (session token is optional,
+          since guest visitors won't have one until backend allows it). */}
+      {!leadSubmitted && (
         <div className="wiz-lead-form" style={{ marginTop: 24 }}>
           <div className="wiz-divider" />
           <div className="cat-label">Add your credentials:</div>
