@@ -24,7 +24,7 @@ export default function Header({
   onToggleChat: () => void;
   onOpenSellerMode: () => void;
 }) {
-  const { search, setSearch, maxBudget, setMaxBudget, showAllListings, toggleShowAllListings, showToast } = useSite();
+  const { search, setSearch, commitSearch, maxBudget, setMaxBudget, showAllListings, toggleShowAllListings, showToast } = useSite();
 
   const [scrolled, setScrolled] = useState(false);
   const [openPanel, setOpenPanel] = useState<PanelKey>(null);
@@ -32,22 +32,32 @@ export default function Header({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchPlaceholder = useTypewriterPlaceholder(searchInputRef, true, search.length > 0);
 
-  // Backend integration: GET /api/search/suggestions (debounced)
+  // Backend integration: GET /search/suggestions (debounced)
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!search.trim()) {
       setSuggestions([]);
+      setSuggestionsLoading(false);
+      setSuggestionsError(null);
       return;
     }
+    setSuggestionsLoading(true);
+    setSuggestionsError(null);
     const t = setTimeout(async () => {
       try {
         const results = await getSearchSuggestions(search);
         setSuggestions(results);
       } catch (err) {
-        console.error(err);
+        // TEMP DEBUG: surface the real failure instead of silently showing "No matches found"
+        console.error("Search suggestions failed:", err);
         setSuggestions([]);
+        setSuggestionsError(err instanceof Error ? err.message : "Request failed");
+      } finally {
+        setSuggestionsLoading(false);
       }
     }, 250);
     return () => clearTimeout(t);
@@ -98,6 +108,14 @@ export default function Header({
     setOpenPanel(null);
   };
 
+  const runSearch = (value: string) => {
+    setSuggestionsOpen(false);
+    searchInputRef.current?.blur();
+    if (value.trim()) {
+      commitSearch(value);
+    }
+  };
+
   return (
     <header className={`navbar ${scrolled ? "scrolled" : ""}`} ref={headerRef}>
       <div className="nav-brand">
@@ -108,7 +126,7 @@ export default function Header({
         </div>
       </div>
 
-      <div className="nav-search">
+      <div className="nav-search" style={{ position: "relative" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -122,23 +140,39 @@ export default function Header({
           onChange={(e) => setSearch(e.target.value)}
           onFocus={() => setSuggestionsOpen(true)}
           onBlur={() => setTimeout(() => setSuggestionsOpen(false), 150)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              runSearch(search);
+            }
+          }}
         />
-        {suggestionsOpen && suggestions.length > 0 && (
-          <div className="drawer show" style={{ top: "calc(100% + 6px)", left: 0, right: "auto", width: 260 }}>
-            <ul>
-              {suggestions.map((sug) => (
-                <li
-                  key={sug}
-                  className="menu-item"
-                  onMouseDown={() => {
-                    setSearch(sug);
-                    setSuggestionsOpen(false);
-                  }}
-                >
-                  {sug}
-                </li>
-              ))}
-            </ul>
+        {suggestionsOpen && search.trim().length > 0 && (
+          <div className="drawer show search-suggestions-drawer">
+            {suggestionsLoading ? (
+              <p style={{ padding: "6px 4px", margin: 0 }}>Searching…</p>
+            ) : suggestionsError ? (
+              <p style={{ padding: "6px 4px", margin: 0, color: "#d9645a" }}>
+                Error: {suggestionsError}
+              </p>
+            ) : suggestions.length > 0 ? (
+              <ul>
+                {suggestions.map((sug) => (
+                  <li
+                    key={sug}
+                    className="menu-item"
+                    onMouseDown={() => {
+                      setSearch(sug);
+                      runSearch(sug);
+                    }}
+                  >
+                    {sug}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ padding: "6px 4px", margin: 0 }}>No matches found.</p>
+            )}
           </div>
         )}
       </div>

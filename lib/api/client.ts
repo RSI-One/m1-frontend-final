@@ -1,4 +1,3 @@
-
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || "http://localhost:8000";
 
@@ -65,6 +64,7 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
   const res = await fetch(url, {
     ...rest,
     headers: finalHeaders,
+    credentials: "include", // ← ADDED: sends/receives the session cookie
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
@@ -121,7 +121,13 @@ export async function apiUpload<T>(path: string, formData: FormData, options: Om
     if (token) finalHeaders.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, { ...rest, method: options.method ?? "POST", headers: finalHeaders, body: formData });
+  const res = await fetch(url, {
+    ...rest,
+    method: options.method ?? "POST",
+    headers: finalHeaders,
+    credentials: "include", // ← ADDED: sends/receives the session cookie
+    body: formData,
+  });
 
   if (res.status === 204) return undefined as T;
 
@@ -131,6 +137,8 @@ export async function apiUpload<T>(path: string, formData: FormData, options: Om
     : await res.text().catch(() => null);
 
   if (!res.ok) {
+    const rawPayload = await res.text().catch(() => null);
+    console.error("RAW ERROR BODY >>>", JSON.stringify(rawPayload), "status:", res.status);
     const detailMsg =
       payload && typeof payload === "object" && "detail" in (payload as Record<string, unknown>)
         ? (payload as Record<string, unknown>).detail
