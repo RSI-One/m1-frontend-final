@@ -23,16 +23,18 @@ type SellerPanelKey = "notifications" | "menu" | "profile" | "filter" | null;
 export default function SellerMode({
   open,
   onClose,
+  jets,
   onOpenAsset,
   onToggleChat,
   showToast,
 }: {
   open: boolean;
   onClose: () => void;
+  jets: Jet[];
   onOpenAsset: (jet: Jet) => void;
   onToggleChat: () => void;
   showToast: (msg: string) => void;
-}) {
+}){
   const [term, setTerm] = useState("");
   const [newListingOpen, setNewListingOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
