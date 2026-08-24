@@ -34,6 +34,16 @@ export interface SmartSearchResponse {
   suggestions: string[];
 }
 
+/** Helper to extract data from optional StandardResponse envelope */
+function unwrapData<T>(raw: any): T {
+  if (raw && typeof raw === "object") {
+    if ("data" in raw && raw.data !== undefined && raw.data !== null) {
+      return raw.data as T;
+    }
+  }
+  return raw as T;
+}
+
 /** GET /search — production smart search with filters, sorting, pagination. */
 export async function smartSearch(params: {
   q?: string;
@@ -47,7 +57,7 @@ export async function smartSearch(params: {
 }): Promise<SmartSearchResponse> {
   try {
     const res = await apiGet<any>("/search", params as Record<string, string | number>, { auth: false });
-    const payload = res && typeof res === "object" && "data" in res && res.data ? res.data : res;
+    const payload = unwrapData<SmartSearchResponse>(res);
     return (
       payload || {
         total: 0,
@@ -93,14 +103,14 @@ export async function getSearchSuggestions(q: string): Promise<{
     let didYouMean: string | null = null;
 
     if (sugRes.status === "fulfilled" && sugRes.value) {
-      const rawSug = sugRes.value.data?.suggestions || sugRes.value.suggestions;
-      if (Array.isArray(rawSug)) {
-        suggestions.push(...rawSug);
+      const rawSug = unwrapData<{ query?: string; suggestions?: string[] }>(sugRes.value);
+      if (rawSug && Array.isArray(rawSug.suggestions)) {
+        suggestions.push(...rawSug.suggestions);
       }
     }
 
     if (searchRes.status === "fulfilled" && searchRes.value) {
-      const searchData = searchRes.value.data || searchRes.value;
+      const searchData = unwrapData<SmartSearchResponse>(searchRes.value);
       if (searchData) {
         if (searchData.did_you_mean) {
           didYouMean = searchData.did_you_mean;
@@ -127,7 +137,11 @@ export async function getPopularSearches(): Promise<{
 }> {
   try {
     const res = await apiGet<any>("/search/popular", undefined, { auth: false });
-    const payload = res && typeof res === "object" && "data" in res && res.data ? res.data : res;
+    const payload = unwrapData<{
+      popular_keywords?: string[];
+      trending_categories?: { category: string; count: number }[];
+    }>(res);
+
     return {
       popular_keywords: payload?.popular_keywords || [],
       trending_categories: payload?.trending_categories || [],

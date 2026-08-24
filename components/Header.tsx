@@ -42,6 +42,7 @@ export default function Header({
   const [scrolled, setScrolled] = useState(false);
   const [openPanel, setOpenPanel] = useState<PanelKey>(null);
   const headerRef = useRef<HTMLElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchPlaceholder = useTypewriterPlaceholder(searchInputRef, true, search.length > 0);
 
@@ -89,7 +90,7 @@ export default function Header({
       } finally {
         setSuggestionsLoading(false);
       }
-    }, 200);
+    }, 150);
     return () => clearTimeout(t);
   }, [search, setDidYouMean, setActiveSuggestions]);
 
@@ -99,14 +100,26 @@ export default function Header({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Click outside to close panels and suggestions
   useEffect(() => {
-    if (!openPanel) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenPanel(null);
-    };
     const onClickOutside = (e: MouseEvent) => {
-      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(e.target as Node)
+      ) {
+        setSuggestionsOpen(false);
+      }
+      if (
+        headerRef.current &&
+        !headerRef.current.contains(e.target as Node)
+      ) {
         setOpenPanel(null);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpenPanel(null);
+        setSuggestionsOpen(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -115,31 +128,46 @@ export default function Header({
       window.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onClickOutside);
     };
-  }, [openPanel]);
+  }, []);
+
+  const scrollToResults = () => {
+    const el = document.getElementById("featured");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   const handleSelectSuggestion = (sug: string) => {
     setSearch(sug);
     setSuggestionsOpen(false);
     setSelectedIndex(-1);
-    showToast(`Searching for "${sug}"`);
+    searchInputRef.current?.blur();
+    scrollToResults();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!suggestionsOpen) return;
-
     const list = search.trim() ? suggestions : popularKeywords;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelectedIndex((prev) => (prev < list.length - 1 ? prev + 1 : 0));
+      if (!suggestionsOpen) {
+        setSuggestionsOpen(true);
+        setSelectedIndex(0);
+      } else {
+        setSelectedIndex((prev) => (prev < list.length - 1 ? prev + 1 : 0));
+      }
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : list.length - 1));
+      if (suggestionsOpen) {
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : list.length - 1));
+      }
     } else if (e.key === "Enter") {
-      if (selectedIndex >= 0 && selectedIndex < list.length) {
-        e.preventDefault();
+      e.preventDefault();
+      if (suggestionsOpen && selectedIndex >= 0 && selectedIndex < list.length) {
         handleSelectSuggestion(list[selectedIndex]);
       } else {
         setSuggestionsOpen(false);
+        searchInputRef.current?.blur();
+        scrollToResults();
       }
     } else if (e.key === "Escape") {
       setSuggestionsOpen(false);
@@ -187,7 +215,11 @@ export default function Header({
         </div>
       </div>
 
-      <div className="nav-search" style={{ position: "relative" }}>
+      <div
+        className="nav-search"
+        ref={searchContainerRef}
+        style={{ position: "relative" }}
+      >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -219,41 +251,23 @@ export default function Header({
             type="button"
             className="search-clear-btn"
             title="Clear search"
-            onMouseDown={(e) => {
-              e.preventDefault();
+            onClick={() => {
               setSearch("");
               setDidYouMean(null);
               setSuggestions([]);
+              setSuggestionsOpen(false);
             }}
           >
             ✕
           </button>
         )}
 
-        {/* Suggestions & Typo Correction Dropdown */}
+        {/* Suggestions Only Dropdown while typing (Google-style) */}
         {suggestionsOpen && (
-          <div
-            className="nav-search-dropdown"
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            {/* 1. "Did You Mean" Typo Alert */}
-            {didYouMean && didYouMean.toLowerCase() !== search.toLowerCase().trim() && (
-              <div
-                className="search-did-you-mean-banner"
-                onClick={() => handleSelectSuggestion(didYouMean)}
-              >
-                <span className="dym-icon">💡</span>
-                <span className="dym-text">
-                  Did you mean: <strong className="dym-highlight">{didYouMean}</strong>?
-                </span>
-                <span className="dym-badge">Apply</span>
-              </div>
-            )}
-
-            {/* 2. When user is typing and has matching suggestions */}
+          <div className="nav-search-dropdown">
+            {/* 1. Autocomplete Suggestions */}
             {search.trim().length > 0 && suggestions.length > 0 && (
               <div className="search-dropdown-group">
-                <div className="search-dropdown-header">Suggestions</div>
                 <ul className="search-suggestions-list">
                   {suggestions.map((sug, idx) => (
                     <li
@@ -272,7 +286,7 @@ export default function Header({
               </div>
             )}
 
-            {/* 3. When search is empty: show Popular Keywords & Trending Categories */}
+            {/* 2. When search is empty: show Popular Searches */}
             {!search.trim() && popularKeywords.length > 0 && (
               <div className="search-dropdown-group">
                 <div className="search-dropdown-header">Popular Searches</div>
@@ -310,8 +324,8 @@ export default function Header({
               </div>
             )}
 
-            {/* 4. When user typed something but 0 suggestions found */}
-            {search.trim().length > 0 && suggestions.length === 0 && !didYouMean && (
+            {/* 3. When typed something but no autocomplete suggestions */}
+            {search.trim().length > 0 && suggestions.length === 0 && (
               <div className="search-empty-state">
                 Press <strong>Enter</strong> to search for &ldquo;{search}&rdquo;
               </div>

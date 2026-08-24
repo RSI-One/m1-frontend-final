@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "M1 Marketplace — E-Acquisition Engine",
   description: "M1 · Private Acquisition Marketplace",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({
@@ -12,8 +15,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
