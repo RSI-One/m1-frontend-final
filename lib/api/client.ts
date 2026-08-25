@@ -32,6 +32,8 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
   auth?: boolean;
   params?: QueryParams;
   body?: unknown;
+  /** Internal — prevents infinite refresh loops. Do not set this yourself. */
+  _isRetry?: boolean;
 }
 
 function buildUrl(path: string, params?: QueryParams) {
@@ -46,8 +48,39 @@ function buildUrl(path: string, params?: QueryParams) {
   return url.toString();
 }
 
+// Ensures we only ever have ONE /auth/refresh call in flight at a time —
+// if five requests 401 at once, they all await this same promise instead
+// of firing five separate refresh calls.
+let refreshPromise: Promise<boolean> | null = null;
+
+async function trySilentRefresh(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((res) => res.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
+// Paths that should never trigger a silent-refresh retry loop — either
+// because they're the refresh call itself, or because a 401 from them is
+// an expected/legitimate outcome (bad credentials, bad PIN) rather than an
+// expired access token.
+const NO_REFRESH_RETRY_PATHS = [
+  "/auth/refresh",
+  "/auth/login",
+  "/auth/login/verify-pin",
+  "/auth/login/resend-pin",
+];
+
 async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { auth = true, params, headers, body, ...rest } = options;
+  const { auth = true, params, headers, body, _isRetry, ...rest } = options;
   const url = buildUrl(path, params);
 
   const finalHeaders: Record<string, string> = {
@@ -64,9 +97,26 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
   const res = await fetch(url, {
     ...rest,
     headers: finalHeaders,
-    credentials: "include", // ← ADDED: sends/receives the session cookie
+    credentials: "include",
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+
+  // Access token cookie expired (15 min) — try one silent refresh using
+  // the httpOnly refresh_token cookie, then retry this exact request once.
+  // Guarded by _isRetry so a second 401 (refresh itself failed / truly
+  // logged out) falls through to the normal error handling below instead
+  // of looping forever.
+  if (
+    res.status === 401 &&
+    auth &&
+    !_isRetry &&
+    !NO_REFRESH_RETRY_PATHS.includes(path)
+  ) {
+    const refreshed = await trySilentRefresh();
+    if (refreshed) {
+      return apiRequest<T>(path, { ...options, _isRetry: true });
+    }
+  }
 
   if (res.status === 204) {
     return undefined as T;
@@ -108,7 +158,7 @@ export const apiDelete = <T>(path: string, options?: RequestOptions) =>
 
 /** POST a multipart/form-data body (file uploads). Never set Content-Type manually — the browser adds the boundary. */
 export async function apiUpload<T>(path: string, formData: FormData, options: Omit<RequestOptions, "body"> = {}): Promise<T> {
-  const { auth = true, params, headers, ...rest } = options;
+  const { auth = true, params, headers, _isRetry, ...rest } = options;
   const url = buildUrl(path, params);
 
   const finalHeaders: Record<string, string> = {
@@ -125,9 +175,16 @@ export async function apiUpload<T>(path: string, formData: FormData, options: Om
     ...rest,
     method: options.method ?? "POST",
     headers: finalHeaders,
-    credentials: "include", // ← ADDED: sends/receives the session cookie
+    credentials: "include",
     body: formData,
   });
+
+  if (res.status === 401 && auth && !_isRetry) {
+    const refreshed = await trySilentRefresh();
+    if (refreshed) {
+      return apiUpload<T>(path, formData, { ...options, _isRetry: true });
+    }
+  }
 
   if (res.status === 204) return undefined as T;
 

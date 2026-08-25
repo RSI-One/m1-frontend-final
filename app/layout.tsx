@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./admin-globals.css";
 
 export const metadata: Metadata = {
   title: "M1 Marketplace — E-Acquisition Engine",

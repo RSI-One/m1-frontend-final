@@ -123,6 +123,7 @@ function PageInner() {
         onOpenAsset={openAssetFromJet}
         onToggleChat={() => setMessagingOpen(true)}
         showToast={showToast}
+        jets={jets}
       />
 
       <Toast />
@@ -134,4 +135,3 @@ function PageInner() {
     </>
   );
 }
-
