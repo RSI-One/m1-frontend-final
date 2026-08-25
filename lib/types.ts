@@ -8,6 +8,9 @@ export interface Jet {
   image?: string;
   /** Real listing description/blurb from the backend, when available. */
   description?: string;
+  featured?: boolean;
+  verified?: boolean;
+  isNew?: boolean;
 }
 
 export interface Yacht {
@@ -45,6 +48,7 @@ export interface CompareSpec {
   hours: number;
   health: number;
 }
+
 // lib/apiTypes.ts
 export interface ListingResponse {
   id: string;

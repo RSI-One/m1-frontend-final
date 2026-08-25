@@ -8,6 +8,10 @@ interface SiteContextValue {
   committedSearch: string;
   commitSearch: (v: string) => void;
   clearCommittedSearch: () => void;
+  didYouMean: string | null;
+  setDidYouMean: (v: string | null) => void;
+  activeSuggestions: string[];
+  setActiveSuggestions: (v: string[]) => void;
   maxBudget: number;
   setMaxBudget: (v: number) => void;
   showAllListings: boolean;
@@ -25,6 +29,8 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   // Only updated when the user commits a search (Enter). Listings watch this,
   // not `search`, so typing doesn't trigger a new fetch on every keystroke.
   const [committedSearch, setCommittedSearch] = useState("");
+  const [didYouMean, setDidYouMean] = useState<string | null>(null);
+  const [activeSuggestions, setActiveSuggestions] = useState<string[]>([]);
   const [maxBudget, setMaxBudget] = useState(BUDGET_MAX);
   const [showAllListings, setShowAllListings] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -42,6 +48,8 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     setSearchState(v);
     if (!v.trim()) {
       setCommittedSearch("");
+      setDidYouMean(null);
+      setActiveSuggestions([]);
     }
   }, []);
 
@@ -68,6 +76,10 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       committedSearch,
       commitSearch,
       clearCommittedSearch,
+      didYouMean,
+      setDidYouMean,
+      activeSuggestions,
+      setActiveSuggestions,
       maxBudget,
       setMaxBudget,
       showAllListings,
@@ -75,7 +87,22 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       toast,
       showToast,
     }),
-    [search, setSearch, committedSearch, commitSearch, clearCommittedSearch, maxBudget, showAllListings, toggleShowAllListings, toast, showToast]
+    [
+      search,
+      setSearch,
+      committedSearch,
+      commitSearch,
+      clearCommittedSearch,
+      didYouMean,
+      setDidYouMean,
+      activeSuggestions,
+      setActiveSuggestions,
+      maxBudget,
+      showAllListings,
+      toggleShowAllListings,
+      toast,
+      showToast,
+    ]
   );
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>;
