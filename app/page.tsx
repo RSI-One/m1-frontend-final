@@ -120,10 +120,10 @@ function PageInner() {
       <SellerMode
         open={sellerModeOpen}
         onClose={() => setSellerModeOpen(false)}
-        jets={jets}
         onOpenAsset={openAssetFromJet}
         onToggleChat={() => setMessagingOpen(true)}
         showToast={showToast}
+        jets={jets}
       />
 
       <Toast />
@@ -135,4 +135,3 @@ function PageInner() {
     </>
   );
 }
-
