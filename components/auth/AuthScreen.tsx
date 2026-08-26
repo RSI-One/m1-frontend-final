@@ -228,8 +228,24 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     try {
       const res = await authApi.login(loginData.email.trim(), loginData.password);
       console.log("LOGIN RESPONSE >>>", res);
-      setPinSessionId(res.session_id);
-      setPin(Array(res.pin_length || 6).fill(""));
+
+      // Backend wraps the real payload inside `data`:
+      // { success, status_code, message, data: { session_id, pin_length, ... } }
+      // Reading res.session_id directly was always undefined, which left
+      // pinSessionId null and made handlePinSubmit silently no-op.
+      const payload = (res as any)?.data ?? res;
+      const sessionId = payload?.session_id ?? null;
+      const pinLength = payload?.pin_length || 6;
+
+      if (!sessionId) {
+        // Defensive guard: if the backend response shape changes again,
+        // surface an error instead of failing silently like before.
+        setLoginError("Could not start verification. Please try again.");
+        return;
+      }
+
+      setPinSessionId(sessionId);
+      setPin(Array(pinLength).fill(""));
       setPinError(null);
       setResendMessage(null);
       setAccessScreen("verify");
