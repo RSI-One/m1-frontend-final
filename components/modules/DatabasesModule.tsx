@@ -31,7 +31,7 @@ export default function DatabasesModule({ showAdminToast }: DatabasesModuleProps
   const [search, setSearch] = useState<string>('');
   const [modal, setModal] = useState<ModalState>(null);
 
-  // per-section data + loading state
+ 
   const [users, setUsers] = useState<DbUser[]>([]);
   const [userSummary, setUserSummary] = useState<DbUserSummary | null>(null);
   const [partners, setPartners] = useState<DbPartner[]>([]);

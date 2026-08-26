@@ -24,17 +24,13 @@ async function apiFetch(path: string, options: RequestInit = {}): Promise<Respon
   return res;
 }
 
-// ============================================================
-// Shapes — the OpenAPI spec leaves these endpoints untyped
-// ({} response schemas), so these are the fields the UI expects.
-// Confirm/adjust against your actual FastAPI response models.
-// ============================================================
+
 export type AcquisitionListItem = {
   id: string;
   asset?: string; // e.g. "Gulfstream G650"
   buyer?: string;
   seller?: string;
-  stage?: number; // 0-based index into dealStages, current stage
+  stage?: number; 
   status?: string; // 'active' | 'cancelled' | 'completed'
 };
 
@@ -42,9 +38,7 @@ export type AcquisitionDetail = AcquisitionListItem & {
   [key: string]: any; // stage-specific data lives under generic keys
 };
 
-// NOTE: assuming stage_number is 1-indexed on the backend
-// (dealStages UI index 0 -> stage_number 1, etc.) — adjust the +1
-// below if your backend is actually 0-indexed.
+
 const toStageNumber = (stageIdx: number) => stageIdx + 1;
 
 export const acquisitionsApi = {
@@ -52,7 +46,6 @@ export const acquisitionsApi = {
     const qs = status ? `?status=${status}` : '';
     const res = await apiFetch(`/admin/acquisitions${qs}`);
     const data = await res.json();
-    // defensive: handle either a bare array or { results: [...] }
     return Array.isArray(data) ? data : (data?.results ?? []);
   },
 
@@ -68,7 +61,6 @@ export const acquisitionsApi = {
     return res.json();
   },
 
-  /** "Next Step" button — saves progress on the current stage without publishing it. */
   async saveNextStep(acquisitionId: string, stageIdx: number, data: Record<string, any>) {
     const res = await apiFetch(
       `/admin/acquisitions/${acquisitionId}/stage/${toStageNumber(stageIdx)}/next-step`,
@@ -77,7 +69,6 @@ export const acquisitionsApi = {
     return res.json();
   },
 
-  /** "Update" button — publishes the stage update (also advances deal.stage). */
   async publishUpdate(acquisitionId: string, stageIdx: number, data: Record<string, any>) {
     const res = await apiFetch(
       `/admin/acquisitions/${acquisitionId}/stage/${toStageNumber(stageIdx)}/update`,
