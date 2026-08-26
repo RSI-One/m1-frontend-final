@@ -66,9 +66,7 @@ function StageBody({
   onPublishUpdate,
   onCancel,
 }: StageBodyProps) {
-  // Merge whatever the backend returned for this stage into the form.
-  // The stage endpoints store an arbitrary `data` object, so field
-  // names here must match what saveNextStep/publishUpdate send below.
+
   const [form, setForm] = useState<FormState>({ ...emptyForm, ...initialData });
 
   useEffect(() => {

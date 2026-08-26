@@ -1,8 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { listings, approvals, incomplete } from '@/lib/admin-data';
+import { useEffect, useState } from 'react';
 import Modal from '@/components/modals/Modal';
+import {
+  getActiveListings,
+  getApprovals,
+  getIncompleteListings,
+  getListingsAnalytics,
+  getListingDetail,
+  approveListing,
+  delistListing,
+  type AdminListingRow,
+  type ListingsAnalytics,
+} from '@/lib/api/adminlistings';
+import { getVerificationDetail } from '@/lib/api/adminVerifications';
 
 const jetImg = (i: number) =>
   `https://images.unsplash.com/${
@@ -16,42 +27,12 @@ const jetImg = (i: number) =>
 
 function generateAdminDocs(listingId: string, isVerified: boolean) {
   const templates = [
-    {
-      name: 'FAA Form 8050-3 Registration Certificate',
-      category: 'Ownership & Legal',
-      type: 'pdf',
-      size: '2.4 MB',
-    },
-    {
-      name: 'Standard Certificate of Airworthiness',
-      category: 'Ownership & Legal',
-      type: 'pdf',
-      size: '1.8 MB',
-    },
-    {
-      name: 'Lien Release & Title Clearance Guarantee',
-      category: 'Ownership & Legal',
-      type: 'pdf',
-      size: '3.1 MB',
-    },
-    {
-      name: 'Engine Logbook #1 (Left Engine)',
-      category: 'Engine & APU',
-      type: 'pdf',
-      size: '15.2 MB',
-    },
-    {
-      name: 'Engine Logbook #2 (Right Engine)',
-      category: 'Engine & APU',
-      type: 'pdf',
-      size: '14.8 MB',
-    },
-    {
-      name: 'Pre-Purchase Inspection Audit Report 2026',
-      category: 'Inspection & Financial',
-      type: 'pdf',
-      size: '18.6 MB',
-    },
+    { name: 'FAA Form 8050-3 Registration Certificate', category: 'Ownership & Legal', type: 'pdf', size: '2.4 MB' },
+    { name: 'Standard Certificate of Airworthiness', category: 'Ownership & Legal', type: 'pdf', size: '1.8 MB' },
+    { name: 'Lien Release & Title Clearance Guarantee', category: 'Ownership & Legal', type: 'pdf', size: '3.1 MB' },
+    { name: 'Engine Logbook #1 (Left Engine)', category: 'Engine & APU', type: 'pdf', size: '15.2 MB' },
+    { name: 'Engine Logbook #2 (Right Engine)', category: 'Engine & APU', type: 'pdf', size: '14.8 MB' },
+    { name: 'Pre-Purchase Inspection Audit Report 2026', category: 'Inspection & Financial', type: 'pdf', size: '18.6 MB' },
   ];
 
   return templates.map((t, idx) => ({
@@ -61,15 +42,31 @@ function generateAdminDocs(listingId: string, isVerified: boolean) {
     uploadDate: `2026-07-${10 + idx}`,
     fileType: t.type,
     fileSize: t.size,
-    verificationStatus: isVerified
-      ? 'Verified'
-      : idx % 2 === 0
-        ? 'Pending'
-        : 'Verified',
+    verificationStatus: isVerified ? 'Verified' : idx % 2 === 0 ? 'Pending' : 'Verified',
     issuingAuthority: 'Civil Aviation Authority / FAA',
   }));
 }
 
+function mergeRealDocStatuses(
+  placeholders: ReturnType<typeof generateAdminDocs>,
+  real?: { document_type_id: number; status: string; uploaded_at: string }[]
+) {
+  if (!real || real.length === 0) return placeholders;
+  return placeholders.map((doc, idx) => {
+    const match = real[idx];
+    if (!match) return doc;
+    return {
+      ...doc,
+      uploadDate: match.uploaded_at?.slice(0, 10) ?? doc.uploadDate,
+      verificationStatus:
+        match.status === 'approved'
+          ? 'Verified'
+          : match.status === 'rejected'
+            ? 'Rejected'
+            : 'Pending',
+    };
+  });
+}
 const assetSpecsCatalog: Record<
   string,
   {
@@ -168,12 +165,8 @@ const assetSpecsCatalog: Record<
     variance: '±5%',
   },
 };
-
 function getSpecs(name: string) {
-  const key = Object.keys(assetSpecsCatalog).find((k) =>
-    name.includes(k)
-  );
-
+  const key = Object.keys(assetSpecsCatalog).find((k) => name.includes(k));
   return (
     assetSpecsCatalog[key || ''] || {
       engine: 'Rolls-Royce',
@@ -197,19 +190,10 @@ function FlagDot({ flag }: { flag?: string }) {
     yellow: '#f2c46d',
     green: '#3dd598',
   };
-
-  const color =
-    colorMap[flag || ''] || 'rgba(255,255,255,.15)';
-
+  const color = colorMap[flag || ''] || 'rgba(255,255,255,.15)';
   return (
     <span
-      style={{
-        width: 10,
-        height: 10,
-        borderRadius: '50%',
-        background: color,
-        display: 'inline-block',
-      }}
+      style={{ width: 10, height: 10, borderRadius: '50%', background: color, display: 'inline-block' }}
       title={`Flag: ${flag || 'none'}`}
     />
   );
@@ -219,29 +203,44 @@ function ListingDetailModal({
   item,
   onClose,
   showToast,
+  onApprove,
+  onUnpublish,
 }: {
   item: any;
   onClose: () => void;
   showToast?: (message: string) => void;
+  onApprove: (item: any) => void;
+  onUnpublish: (item: any) => void;
 }) {
   const [tab, setTab] = useState('info');
   const [slideIdx, setSlideIdx] = useState(0);
+  const [docs, setDocs] = useState(
+    generateAdminDocs(item.id, item.verificationStatus === 'Verified')
+  );
+  const [busy, setBusy] = useState(false);
 
-  const docs =
-    item.docs ||
-    generateAdminDocs(
-      item.id,
-      item.verificationStatus === 'Verified'
-    );
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDocs() {
+      try {
+        const detail = await getVerificationDetail(item.id);
+        if (!cancelled) {
+          setDocs((current) => mergeRealDocStatuses(current, detail.documents as any));
+        }
+      } catch {
+        // no verification record yet (e.g. draft) — placeholder stays as-is
+      }
+    }
+    loadDocs();
+    return () => {
+      cancelled = true;
+    };
+  }, [item.id]);
 
   const specs = getSpecs(item.name);
 
   const verifyChip =
-    item.verificationStatus === 'Verified'
-      ? 'ok'
-      : item.verificationStatus === 'Unpublished'
-        ? 'danger'
-        : 'warn';
+    item.verificationStatus === 'Verified' ? 'ok' : item.verificationStatus === 'Unpublished' ? 'danger' : 'warn';
 
   const verifyLabel =
     item.verificationStatus === 'Verified'
@@ -250,25 +249,17 @@ function ListingDetailModal({
         ? '🚫 Unpublished'
         : '⏳ Pending Verification';
 
-  const offset =
-    parseInt(String(item.id).replace(/\D/g, ''), 10) % 4 || 0;
-
-  const galleryImgs = [0, 1, 2, 3].map((i) =>
-    jetImg((i + offset) % 4)
-  );
+  const offset = parseInt(String(item.id).replace(/\D/g, ''), 10) % 4 || 0;
+  const galleryImgs = [0, 1, 2, 3].map((i) => jetImg((i + offset) % 4));
 
   return (
     <div className="listing-modal-shell">
       <div className="listing-modal-top">
         <div className="listing-modal-head">
           <div>
-            <span className={`chip ${verifyChip}`}>
-              {verifyLabel}
-            </span>
-
+            <span className={`chip ${verifyChip}`}>{verifyLabel}</span>
             <h3 className="listing-modal-title">
-              {item.name}{' '}
-              <span>({item.id})</span>
+              {item.name} <span>({item.id})</span>
             </h3>
           </div>
 
@@ -276,11 +267,15 @@ function ListingDetailModal({
             {item.verificationStatus !== 'Verified' && (
               <button
                 className="btn-verify"
-                onClick={() => {
-                  onClose();
-                  showToast?.(
-                    `✓ ${item.name} declared verified`
-                  );
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await onApprove(item);
+                    onClose();
+                  } finally {
+                    setBusy(false);
+                  }
                 }}
               >
                 Declare Verified
@@ -290,11 +285,15 @@ function ListingDetailModal({
             {item.status !== 'Unpublished' && (
               <button
                 className="btn-unpublish"
-                onClick={() => {
-                  onClose();
-                  showToast?.(
-                    `${item.id} unpublished`
-                  );
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await onUnpublish(item);
+                    onClose();
+                  } finally {
+                    setBusy(false);
+                  }
                 }}
               >
                 Unpublish Listing
@@ -310,11 +309,7 @@ function ListingDetailModal({
               className={`tab-btn${tab === t ? ' active' : ''}`}
               onClick={() => setTab(t)}
             >
-              {t === 'info'
-                ? 'Listing Details'
-                : t === 'lister'
-                  ? 'Lister / User Info'
-                  : `Documents (${docs.length})`}
+              {t === 'info' ? 'Listing Details' : t === 'lister' ? 'Lister / User Info' : `Documents (${docs.length})`}
             </button>
           ))}
         </div>
@@ -324,17 +319,9 @@ function ListingDetailModal({
         {tab === 'info' && (
           <div className="listing-modal-split">
             <div className="listing-spec-panel">
-              <div className="listing-spec-label">
-                Asset Overview
-              </div>
-
-              <h4 className="listing-spec-title">
-                {item.name}
-              </h4>
-
-              <div className="listing-spec-category">
-                {item.category}
-              </div>
+              <div className="listing-spec-label">Asset Overview</div>
+              <h4 className="listing-spec-title">{item.name}</h4>
+              <div className="listing-spec-category">{item.category}</div>
 
               <div className="listing-spec-rows">
                 {[
@@ -348,19 +335,14 @@ function ListingDetailModal({
                   ['Avg Market Price', specs.avgPrice],
                   ['Variance', specs.variance],
                 ].map(([k, v]) => (
-                  <div
-                    key={k}
-                    className="listing-spec-row"
-                  >
+                  <div key={k} className="listing-spec-row">
                     <span>{k}</span>
                     <strong>{v}</strong>
                   </div>
                 ))}
               </div>
 
-              <div className="listing-spec-label">
-                Listing Overview
-              </div>
+              <div className="listing-spec-label">Listing Overview</div>
 
               <div className="listing-overview-grid">
                 {[
@@ -368,22 +350,10 @@ function ListingDetailModal({
                   ['Category', item.category],
                   ['Asking Price', item.ask],
                   ['Status', item.status],
-                  [
-                    'Verification',
-                    item.verificationStatus,
-                  ],
-                  [
-                    'Featured',
-                    item.featuredStatus || 'Standard',
-                  ],
-                  [
-                    'Submitted',
-                    item.submissionDate || 'N/A',
-                  ],
-                  [
-                    'Verified Date',
-                    item.verifiedDate || 'N/A',
-                  ],
+                  ['Verification', item.verificationStatus],
+                  ['Featured', item.featuredStatus || 'Standard'],
+                  ['Submitted', item.submissionDate || 'N/A'],
+                  ['Verified Date', item.verifiedDate || 'N/A'],
                 ].map(([k, v]) => (
                   <div key={k} className="item">
                     <span>{k}</span>
@@ -394,54 +364,23 @@ function ListingDetailModal({
             </div>
 
             <div className="listing-gallery-panel">
-              <div
-                className="listing-gallery-viewport"
-                style={{ minHeight: 400 }}
-              >
-                <img
-                  src={galleryImgs[slideIdx]}
-                  alt="Aircraft"
-                />
+              <div className="listing-gallery-viewport" style={{ minHeight: 400 }}>
+                <img src={galleryImgs[slideIdx]} alt="Aircraft" />
 
                 <button
                   className="listing-gallery-nav prev"
-                  onClick={() =>
-                    setSlideIdx(
-                      (i) =>
-                        (i - 1 + galleryImgs.length) %
-                        galleryImgs.length
-                    )
-                  }
+                  onClick={() => setSlideIdx((i) => (i - 1 + galleryImgs.length) % galleryImgs.length)}
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                  >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                     <polyline points="15 18 9 12 15 6" />
                   </svg>
                 </button>
 
                 <button
                   className="listing-gallery-nav next"
-                  onClick={() =>
-                    setSlideIdx(
-                      (i) =>
-                        (i + 1) % galleryImgs.length
-                    )
-                  }
+                  onClick={() => setSlideIdx((i) => (i + 1) % galleryImgs.length)}
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                  >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
                 </button>
@@ -450,9 +389,7 @@ function ListingDetailModal({
                   {galleryImgs.map((_, i) => (
                     <button
                       key={i}
-                      className={`listing-gallery-dot${
-                        slideIdx === i ? ' active' : ''
-                      }`}
+                      className={`listing-gallery-dot${slideIdx === i ? ' active' : ''}`}
                       onClick={() => setSlideIdx(i)}
                     />
                   ))}
@@ -464,39 +401,18 @@ function ListingDetailModal({
 
         {tab === 'lister' && (
           <div className="listing-tab-full">
-            <div className="listing-spec-label">
-              Lister / Account Owner Profile
-            </div>
+            <div className="listing-spec-label">Lister / Account Owner Profile</div>
 
             <div className="listing-lister-grid">
               {[
                 ['User Name', item.owner],
-                [
-                  'Email',
-                  item.email ||
-                    `${item.owner
-                      .toLowerCase()
-                      .replace(/\s+/g, '')}@marketplace.com`,
-                ],
-                [
-                  'Phone',
-                  item.phone || '+1 305 892 4401',
-                ],
-                [
-                  'Company',
-                  item.company ||
-                    'Private Aviation Group',
-                ],
-                [
-                  'Account Role',
-                  'Registered Aircraft Lister',
-                ],
+                ['Email', item.email || `${item.owner.toLowerCase().replace(/\s+/g, '')}@marketplace.com`],
+                ['Phone', item.phone || '+1 305 892 4401'],
+                ['Company', item.company || 'Private Aviation Group'],
+                ['Account Role', 'Registered Aircraft Lister'],
                 ['Verification', 'Verified Account'],
                 ['Portfolio', '3 Active Listings'],
-                [
-                  'Security',
-                  'KYC Verified • Identity Cleared',
-                ],
+                ['Security', 'KYC Verified • Identity Cleared'],
               ].map(([k, v]) => (
                 <div key={k} className="item">
                   <span>{k}</span>
@@ -504,108 +420,67 @@ function ListingDetailModal({
                 </div>
               ))}
             </div>
+
+            {/* TODO: swap placeholder fields above for a real call to
+                GET /admin/databases/users/{seller_id}/summary once the
+                listing detail response confirms the seller_id field name. */}
           </div>
         )}
 
         {tab === 'docs' && (
           <div className="listing-tab-full">
-            <div
-              className="sheet-wrap"
-              style={{
-                maxHeight: 420,
-                overflowY: 'auto',
-              }}
-            >
+            <div className="sheet-wrap" style={{ maxHeight: 420, overflowY: 'auto' }}>
               <table className="sheet">
                 <thead>
                   <tr>
-                    <th>
-                      Document Name &amp; Category
-                    </th>
+                    <th>Document Name &amp; Category</th>
                     <th>Upload Date</th>
                     <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>
-                      Action
-                    </th>
+                    <th style={{ textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {docs.map((d: any) => (
+                  {docs.map((d) => (
                     <tr key={d.id}>
                       <td>
                         <strong>{d.name}</strong>
                         <br />
-                        <span
-                          style={{
-                            fontSize: '10.5px',
-                            color: 'var(--muted-2)',
-                          }}
-                        >
+                        <span style={{ fontSize: '10.5px', color: 'var(--muted-2)' }}>
                           {d.category} • {d.fileSize}
                         </span>
                       </td>
 
-                      <td
-                        style={{
-                          fontSize: '11.5px',
-                          color: 'var(--muted)',
-                        }}
-                      >
-                        {d.uploadDate}
-                      </td>
+                      <td style={{ fontSize: '11.5px', color: 'var(--muted)' }}>{d.uploadDate}</td>
 
                       <td>
-                        <span
-                          className={`chip ${
-                            d.verificationStatus ===
-                            'Verified'
-                              ? 'ok'
-                              : 'warn'
-                          }`}
-                        >
-                          {d.verificationStatus ===
-                          'Verified'
-                            ? '✓ Verified'
-                            : 'Pending Audit'}
+                        <span className={`chip ${d.verificationStatus === 'Verified' ? 'ok' : 'warn'}`}>
+                          {d.verificationStatus === 'Verified' ? '✓ Verified' : 'Pending Audit'}
                         </span>
                       </td>
 
                       <td style={{ textAlign: 'right' }}>
                         <button
                           className="btn btn-ghost"
-                          style={{
-                            padding: '4px 10px',
-                            fontSize: 11,
-                          }}
-                          onClick={() =>
-                            showToast?.(
-                              `Viewing ${d.name}`
-                            )
-                          }
+                          style={{ padding: '4px 10px', fontSize: 11 }}
+                          onClick={() => showToast?.(`Viewing ${d.name}`)}
                         >
                           View
                         </button>
 
-                        {d.verificationStatus !==
-                          'Verified' && (
+                        {d.verificationStatus !== 'Verified' && (
                           <button
                             className="btn btn-primary"
-                            style={{
-                              padding: '4px 10px',
-                              fontSize: 11,
-                              marginLeft: 4,
-                              background:
-                                'var(--success)',
-                              color: '#000',
-                              border: 'none',
-                            }}
+                            style={{ padding: '4px 10px', fontSize: 11, marginLeft: 4, background: 'var(--success)', color: '#000', border: 'none' }}
                             onClick={() => {
-                              d.verificationStatus =
-                                'Verified';
-                              showToast?.(
-                                'Document verified ✓'
+                              // No backend endpoint yet for per-document approval —
+                              // local-only until one exists.
+                              setDocs((current) =>
+                                current.map((doc) =>
+                                  doc.id === d.id ? { ...doc, verificationStatus: 'Verified' } : doc
+                                )
                               );
+                              showToast?.('Document verified ✓ (local only — backend endpoint needed)');
                             }}
                           >
                             Verify
@@ -633,59 +508,82 @@ export default function ListingsModule({
 }) {
   const [view, setView] = useState(initialTab);
   const [search, setSearch] = useState('');
-  const [selectedItem, setSelectedItem] =
-    useState<any>(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
-  const term = search.toLowerCase().trim();
+  const [verifiedRows, setVerifiedRows] = useState<AdminListingRow[]>([]);
+  const [approvalRows, setApprovalRows] = useState<AdminListingRow[]>([]);
+  const [incompleteRows, setIncompleteRows] = useState<AdminListingRow[]>([]);
+  const [analytics, setAnalytics] = useState<ListingsAnalytics | null>(null);
 
-  const verifiedRows = listings.filter(
-    (l: any) =>
-      l.verificationStatus === 'Verified' &&
-      l.status !== 'Unpublished' &&
-      (!term ||
-        l.name.toLowerCase().includes(term) ||
-        l.owner.toLowerCase().includes(term) ||
-        l.id.toLowerCase().includes(term))
-  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const approvalRows = approvals.filter(
-    (a: any) =>
-      !term ||
-      a.name.toLowerCase().includes(term) ||
-      a.owner.toLowerCase().includes(term) ||
-      a.id.toLowerCase().includes(term)
-  );
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        if (view === 'verified') {
+          const res = await getActiveListings(search);
+          if (!cancelled) setVerifiedRows(res.results ?? []);
+        } else if (view === 'approvals') {
+          const res = await getApprovals();
+          if (!cancelled) setApprovalRows(res.results ?? []);
+        } else if (view === 'incomplete') {
+          const res = await getIncompleteListings();
+          if (!cancelled) setIncompleteRows(res.results ?? []);
+        } else if (view === 'analytics') {
+          const res = await getListingsAnalytics();
+          if (!cancelled) setAnalytics(res);
+        }
+      } catch {
+        if (!cancelled) {
+          setError('Failed to load listings.');
+          showToast?.('Failed to load listings.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 250); // debounce search typing
 
-  const incompleteRows = incomplete.filter(
-    (i: any) =>
-      !term ||
-      i.name.toLowerCase().includes(term) ||
-      i.owner.toLowerCase().includes(term)
-  );
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [view, search, showToast]);
+
+  async function refreshCurrentView() {
+    if (view === 'verified') setVerifiedRows((await getActiveListings(search)).results ?? []);
+    if (view === 'approvals') setApprovalRows((await getApprovals()).results ?? []);
+    if (view === 'incomplete') setIncompleteRows((await getIncompleteListings()).results ?? []);
+  }
+
+  async function handleApprove(item: any) {
+    try {
+      await approveListing(item.id);
+      showToast?.(`✓ ${item.name} declared verified`);
+      await refreshCurrentView();
+    } catch {
+      showToast?.('Failed to approve listing.');
+    }
+  }
+
+  async function handleUnpublish(item: any) {
+    try {
+      await delistListing(item.id);
+      showToast?.(`${item.id} unpublished`);
+      await refreshCurrentView();
+    } catch {
+      showToast?.('Failed to unpublish listing.');
+    }
+  }
 
   const views = [
-    {
-      id: 'verified',
-      label: `All Verified (${
-        listings.filter(
-          (l: any) =>
-            l.verificationStatus === 'Verified' &&
-            l.status !== 'Unpublished'
-        ).length
-      })`,
-    },
-    {
-      id: 'approvals',
-      label: `Approvals Queue (${approvals.length})`,
-    },
-    {
-      id: 'incomplete',
-      label: `Incomplete (${incomplete.length})`,
-    },
-    {
-      id: 'analytics',
-      label: 'Analytics',
-    },
+    { id: 'verified', label: `All Verified (${verifiedRows.length})` },
+    { id: 'approvals', label: `Approvals Queue (${approvalRows.length})` },
+    { id: 'incomplete', label: `Incomplete (${incompleteRows.length})` },
+    { id: 'analytics', label: 'Analytics' },
   ];
 
   return (
@@ -702,24 +600,14 @@ export default function ListingsModule({
       >
         <div
           className="period-toggle"
-          style={{
-            background: 'rgba(255,255,255,.05)',
-            padding: 4,
-            borderRadius: 12,
-            border: '1px solid var(--line-2)',
-          }}
+          style={{ background: 'rgba(255,255,255,.05)', padding: 4, borderRadius: 12, border: '1px solid var(--line-2)' }}
         >
           {views.map((v) => (
             <button
               key={v.id}
               data-view={v.id}
-              className={
-                view === v.id ? 'active' : ''
-              }
-              style={{
-                padding: '9px 16px',
-                fontSize: 12,
-              }}
+              className={view === v.id ? 'active' : ''}
+              style={{ padding: '9px 16px', fontSize: 12 }}
               onClick={() => setView(v.id)}
             >
               {v.label}
@@ -728,48 +616,28 @@ export default function ListingsModule({
         </div>
 
         {view !== 'analytics' && (
-          <div
-            className="search-bar"
-            style={{
-              marginBottom: 0,
-              maxWidth: 340,
-            }}
-          >
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-            >
+          <div className="search-bar" style={{ marginBottom: 0, maxWidth: 340 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <circle cx="11" cy="11" r="8" />
-              <line
-                x1="21"
-                y1="21"
-                x2="16.65"
-                y2="16.65"
-              />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-
             <input
               placeholder="Search by ID, plane, lister..."
               value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
         )}
       </div>
 
+      {loading && <div className="meta">Loading…</div>}
+      {error && <div className="chip warn">{error}</div>}
+
       {view === 'verified' && (
         <>
           <div className="panel-head">
             <h3>All Verified Listings</h3>
-            <span className="meta">
-              {verifiedRows.length} verified listings
-            </span>
+            <span className="meta">{verifiedRows.length} verified listings</span>
           </div>
 
           <div className="sheet-wrap">
@@ -792,109 +660,53 @@ export default function ListingsModule({
               <tbody>
                 {verifiedRows.length === 0 ? (
                   <tr className="row-empty">
-                    <td colSpan={10}>
-                      No verified listings match your
-                      search.
-                    </td>
+                    <td colSpan={10}>No verified listings match your search.</td>
                   </tr>
                 ) : (
-                  verifiedRows.map((r: any) => (
-                    <tr
-                      key={r.id}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() =>
-                        setSelectedItem(r)
-                      }
-                    >
+                  verifiedRows.map((r) => (
+                    <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedItem(r)}>
                       <td>
                         <FlagDot flag={r.flag} />
                       </td>
-
                       <td>
                         <strong>{r.id}</strong>
                       </td>
-
                       <td>
                         <div>
                           <strong>{r.name}</strong>
                           <br />
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color:
-                                'var(--muted-2)',
-                            }}
-                          >
-                            {r.category}
-                          </span>
+                          <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>{r.category}</span>
                         </div>
                       </td>
-
                       <td>
                         <div>
                           <strong>{r.owner}</strong>
                           <br />
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color:
-                                'var(--muted-2)',
-                            }}
-                          >
-                            {r.company}
-                          </span>
+                          <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>{r.company}</span>
                         </div>
                       </td>
-
                       <td>
                         <strong>{r.ask}</strong>
                       </td>
-
-                      <td className="muted-cell">
-                        {r.verifiedDate ||
-                          r.submissionDate}
-                      </td>
-
+                      <td className="muted-cell">{r.verifiedDate || r.submissionDate}</td>
                       <td>
-                        <span className="chip">
-                          📁 {r.docs?.length || 25}{' '}
-                          Docs
-                        </span>
+                        <span className="chip">📁 {r.docs?.length || 0} Docs</span>
                       </td>
-
                       <td>
-                        <span className="chip ok">
-                          ✓ Verified
-                        </span>
+                        <span className="chip ok">✓ Verified</span>
                       </td>
-
                       <td>
-                        {r.featuredStatus ===
-                        'Featured' ? (
-                          <span className="chip warn">
-                            ★ Featured
-                          </span>
+                        {r.featuredStatus === 'Featured' ? (
+                          <span className="chip warn">★ Featured</span>
                         ) : (
-                          <span className="muted-cell">
-                            Standard
-                          </span>
+                          <span className="muted-cell">Standard</span>
                         )}
                       </td>
-
-                      <td
-                        onClick={(e) =>
-                          e.stopPropagation()
-                        }
-                      >
+                      <td onClick={(e) => e.stopPropagation()}>
                         <button
                           className="btn btn-ghost"
-                          style={{
-                            fontSize: 11,
-                            padding: '5px 10px',
-                          }}
-                          onClick={() =>
-                            setSelectedItem(r)
-                          }
+                          style={{ fontSize: 11, padding: '5px 10px' }}
+                          onClick={() => setSelectedItem(r)}
                         >
                           Review
                         </button>
@@ -912,10 +724,7 @@ export default function ListingsModule({
         <>
           <div className="panel-head">
             <h3>Approvals Queue</h3>
-            <span className="meta">
-              {approvalRows.length} pending
-              verification
-            </span>
+            <span className="meta">{approvalRows.length} pending verification</span>
           </div>
 
           <div className="sheet-wrap">
@@ -936,97 +745,43 @@ export default function ListingsModule({
               <tbody>
                 {approvalRows.length === 0 ? (
                   <tr className="row-empty">
-                    <td colSpan={8}>
-                      No pending approval requests.
-                    </td>
+                    <td colSpan={8}>No pending approval requests.</td>
                   </tr>
                 ) : (
-                  approvalRows.map((r: any) => (
-                    <tr
-                      key={r.id}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() =>
-                        setSelectedItem(r)
-                      }
-                    >
+                  approvalRows.map((r) => (
+                    <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedItem(r)}>
                       <td>
                         <strong>{r.id}</strong>
                       </td>
-
                       <td>
                         <div>
                           <strong>{r.name}</strong>
                           <br />
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color:
-                                'var(--muted-2)',
-                            }}
-                          >
-                            {r.category}
-                          </span>
+                          <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>{r.category}</span>
                         </div>
                       </td>
-
                       <td>
                         <div>
                           <strong>{r.owner}</strong>
                           <br />
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color:
-                                'var(--muted-2)',
-                            }}
-                          >
-                            {r.company}
-                          </span>
+                          <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>{r.company}</span>
                         </div>
                       </td>
-
                       <td>
                         <strong>{r.ask}</strong>
                       </td>
-
-                      <td className="muted-cell">
-                        {r.submissionDate ||
-                          r.submitted}
-                      </td>
-
+                      <td className="muted-cell">{r.submissionDate}</td>
                       <td>
-                        <span className="chip">
-                          📁 {r.docs?.length || 25}{' '}
-                          Docs
-                        </span>
+                        <span className="chip">📁 {r.docs?.length || 0} Docs</span>
                       </td>
-
                       <td>
-                        <span className="chip warn">
-                          ⏳ Pending
-                        </span>
+                        <span className="chip warn">⏳ Pending</span>
                       </td>
-
-                      <td
-                        onClick={(e) =>
-                          e.stopPropagation()
-                        }
-                      >
+                      <td onClick={(e) => e.stopPropagation()}>
                         <button
                           className="btn btn-primary"
-                          style={{
-                            fontSize: 11,
-                            padding: '5px 10px',
-                            background:
-                              'var(--success)',
-                            color: '#000',
-                            border: 'none',
-                          }}
-                          onClick={() =>
-                            showToast?.(
-                              `✓ ${r.name} declared verified`
-                            )
-                          }
+                          style={{ fontSize: 11, padding: '5px 10px', background: 'var(--success)', color: '#000', border: 'none' }}
+                          onClick={() => handleApprove(r)}
                         >
                           Declare Verified
                         </button>
@@ -1044,9 +799,7 @@ export default function ListingsModule({
         <>
           <div className="panel-head">
             <h3>Incomplete Listings</h3>
-            <span className="meta">
-              {incompleteRows.length} stalled drafts
-            </span>
+            <span className="meta">{incompleteRows.length} stalled drafts</span>
           </div>
 
           <div className="sheet-wrap">
@@ -1065,9 +818,7 @@ export default function ListingsModule({
               <tbody>
                 {incompleteRows.length === 0 ? (
                   <tr className="row-empty">
-                    <td colSpan={6}>
-                      No incomplete draft listings.
-                    </td>
+                    <td colSpan={6}>No incomplete draft listings.</td>
                   </tr>
                 ) : (
                   incompleteRows.map((r: any) => (
@@ -1075,35 +826,19 @@ export default function ListingsModule({
                       <td>
                         <strong>{r.id}</strong>
                       </td>
-
                       <td>
                         <strong>{r.name}</strong>
                       </td>
-
                       <td>
                         <strong>{r.owner}</strong>
                       </td>
-
-                      <td className="muted-cell">
-                        {r.contact}
-                      </td>
-
-                      <td className="muted-cell">
-                        {r.stalled}
-                      </td>
-
+                      <td className="muted-cell">{r.contact}</td>
+                      <td className="muted-cell">{r.stalled}</td>
                       <td>
                         <button
                           className="btn btn-ghost"
-                          style={{
-                            padding: '4px 10px',
-                            fontSize: 11,
-                          }}
-                          onClick={() =>
-                            showToast?.(
-                              `Email sent to ${r.contact}`
-                            )
-                          }
+                          style={{ padding: '4px 10px', fontSize: 11 }}
+                          onClick={() => showToast?.(`Email sent to ${r.contact}`)}
                         >
                           Contact Owner
                         </button>
@@ -1121,172 +856,69 @@ export default function ListingsModule({
         <>
           <div className="panel-head">
             <h3>Listing Analytics</h3>
-            <span className="meta">
-              Traffic, views, clicks, and performance
-              metrics
-            </span>
+            <span className="meta">Traffic, views, clicks, and performance metrics</span>
           </div>
 
-          <div
-            className="grid-cards"
-            style={{ marginBottom: 20 }}
-          >
+          <div className="grid-cards" style={{ marginBottom: 20 }}>
             <div className="mini-card">
-              <div className="num">14,280</div>
-              <div className="lbl">
-                Monthly listing views
-              </div>
+              <div className="num">{analytics?.monthly_views?.toLocaleString() ?? '—'}</div>
+              <div className="lbl">Monthly listing views</div>
             </div>
-
             <div className="mini-card">
-              <div className="num">3,140</div>
-              <div className="lbl">
-                Avg. clicks per listing
-              </div>
+              <div className="num">{analytics?.avg_clicks_per_listing?.toLocaleString() ?? '—'}</div>
+              <div className="lbl">Avg. clicks per listing</div>
             </div>
-
             <div className="mini-card">
-              <div className="num">4.8%</div>
-              <div className="lbl">
-                Acquisition conversion rate
-              </div>
+              <div className="num">{analytics?.conversion_rate != null ? `${analytics.conversion_rate}%` : '—'}</div>
+              <div className="lbl">Acquisition conversion rate</div>
             </div>
-
             <div className="mini-card">
-              <div className="num">1.2k</div>
-              <div className="lbl">
-                Unique buyer inquiries
-              </div>
+              <div className="num">{analytics?.unique_inquiries?.toLocaleString() ?? '—'}</div>
+              <div className="lbl">Unique buyer inquiries</div>
             </div>
           </div>
 
           <div className="modal-grid">
             <div className="modal-card">
               <h4>🏆 Top 3 Best-Performing</h4>
-
-              <div className="deep-link-row">
-                <span>
-                  1. Gulfstream G700 (LST-9482)
-                </span>
-                <strong
-                  style={{
-                    color: 'var(--success)',
-                  }}
-                >
-                  2,410 views • 14 LOIs
-                </strong>
-              </div>
-
-              <div className="deep-link-row">
-                <span>
-                  2. Falcon 10X (LST-9483)
-                </span>
-                <strong
-                  style={{
-                    color: 'var(--success)',
-                  }}
-                >
-                  1,890 views • 9 LOIs
-                </strong>
-              </div>
-
-              <div className="deep-link-row">
-                <span>
-                  3. Lineage 1000E (LST-9485)
-                </span>
-                <strong
-                  style={{
-                    color: 'var(--success)',
-                  }}
-                >
-                  1,540 views • 7 LOIs
-                </strong>
-              </div>
+              {(analytics?.top_performers ?? []).map((p, idx) => (
+                <div className="deep-link-row" key={p.id}>
+                  <span>
+                    {idx + 1}. {p.name} ({p.id})
+                  </span>
+                  <strong style={{ color: 'var(--success)' }}>
+                    {p.views.toLocaleString()} views • {p.lois} LOIs
+                  </strong>
+                </div>
+              ))}
             </div>
 
             <div className="modal-card">
               <h4>📉 Worst-Performing</h4>
-
-              <div className="deep-link-row">
-                <span>
-                  1. Citation X+ (LST-9486)
-                </span>
-                <strong
-                  style={{
-                    color: 'var(--danger)',
-                  }}
-                >
-                  120 views • 0 LOIs
-                </strong>
-              </div>
-
-              <div className="deep-link-row">
-                <span>
-                  2. Challenger 650 (LST-9488)
-                </span>
-                <strong
-                  style={{
-                    color: 'var(--danger)',
-                  }}
-                >
-                  140 views • 1 LOI
-                </strong>
-              </div>
-
-              <div className="deep-link-row">
-                <span>
-                  3. Global 7500 (LST-9484)
-                </span>
-                <strong
-                  style={{
-                    color: 'var(--muted)',
-                  }}
-                >
-                  410 views • 2 LOIs
-                </strong>
-              </div>
+              {(analytics?.worst_performers ?? []).map((p, idx) => (
+                <div className="deep-link-row" key={p.id}>
+                  <span>
+                    {idx + 1}. {p.name} ({p.id})
+                  </span>
+                  <strong style={{ color: 'var(--danger)' }}>
+                    {p.views.toLocaleString()} views • {p.lois} LOIs
+                  </strong>
+                </div>
+              ))}
             </div>
           </div>
         </>
       )}
 
-      {/* Listing Detail Modal */}
       {selectedItem && (
         <>
-          <div
-            className="overlay show"
-            onClick={() => setSelectedItem(null)}
-          />
+          <div className="overlay show" onClick={() => setSelectedItem(null)} />
 
-          <div
-            className="modal modal-listing show"
-            style={{ display: 'block' }}
-          >
-            <button
-              className="modal-close"
-              onClick={() => setSelectedItem(null)}
-              aria-label="Close"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <line
-                  x1="18"
-                  y1="6"
-                  x2="6"
-                  y2="18"
-                />
-                <line
-                  x1="6"
-                  y1="6"
-                  x2="18"
-                  y2="18"
-                />
+          <div className="modal modal-listing show" style={{ display: 'block' }}>
+            <button className="modal-close" onClick={() => setSelectedItem(null)} aria-label="Close">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
 
@@ -1294,6 +926,8 @@ export default function ListingsModule({
               item={selectedItem}
               onClose={() => setSelectedItem(null)}
               showToast={showToast}
+              onApprove={handleApprove}
+              onUnpublish={handleUnpublish}
             />
           </div>
         </>
