@@ -228,8 +228,20 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     try {
       const res = await authApi.login(loginData.email.trim(), loginData.password);
       console.log("LOGIN RESPONSE >>>", res);
-      setPinSessionId(res.session_id);
-      setPin(Array(res.pin_length || 6).fill(""));
+
+      
+      const payload = (res as any)?.data ?? res;
+      const sessionId = payload?.session_id ?? null;
+      const pinLength = payload?.pin_length || 6;
+
+      if (!sessionId) {
+        
+        setLoginError("Could not start verification. Please try again.");
+        return;
+      }
+
+      setPinSessionId(sessionId);
+      setPin(Array(pinLength).fill(""));
       setPinError(null);
       setResendMessage(null);
       setAccessScreen("verify");
