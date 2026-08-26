@@ -940,7 +940,7 @@ body { overflow-x: hidden; }
   font-weight: 800;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--gold-2);
+  color: var(--muted);
   margin-bottom: 8px;
   padding: 0 4px;
 }
@@ -997,7 +997,7 @@ body { overflow-x: hidden; }
   cursor: pointer;
   transition: all .15s ease;
 }
-.search-suggestion-item svg { color: var(--gold-2); opacity: 0.7; flex-shrink: 0; }
+.search-suggestion-item svg { color: var(--muted); opacity: 0.7; flex-shrink: 0; }
 .search-suggestion-item:hover,
 .search-suggestion-item.active {
   background: rgba(255,255,255,.08);

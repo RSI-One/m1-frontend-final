@@ -1,4 +1,5 @@
 import { apiGet } from "./client";
+import { Jet } from "../types";
 
 export interface SearchResultItem {
   listing_id: string;
@@ -153,4 +154,17 @@ export async function getPopularSearches(): Promise<{
       trending_categories: [],
     };
   }
+}
+
+/** Maps a /search result row into the Jet shape used across Featured/AllListings/Verified sections. */
+export function searchResultToJet(item: SearchResultItem): Jet {
+  return {
+    id: item.listing_id,
+    name: item.aircraft_name || `${item.manufacturer || ""} ${item.model || ""}`.trim() || "Aircraft",
+    price: item.price != null ? `$${(item.price / 1_000_000).toFixed(1)}M` : "Inquire",
+    cat: item.jet_type ? item.jet_type.replace(/_/g, " ") : item.manufacturer || "Private Jet",
+    loc: item.location_country || "Worldwide",
+    image: item.thumbnail || "/images/hero.png",
+    description: item.short_description || undefined,
+  };
 }

@@ -57,10 +57,15 @@ export default function Header({
 
   // Fetch popular searches once on mount
   useEffect(() => {
+    let cancelled = false;
     getPopularSearches().then((res) => {
+      if (cancelled) return;
       setPopularKeywords(res.popular_keywords || []);
       setTrendingCategories(res.trending_categories || []);
     });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Debounced search suggestions and typo correction
@@ -73,25 +78,31 @@ export default function Header({
       setActiveSuggestions([]);
       return;
     }
+    let cancelled = false;
     setSuggestionsLoading(true);
     setSuggestionsError(null);
     const t = setTimeout(async () => {
       try {
         const results = await getSearchSuggestions(search);
+        if (cancelled) return;
         setSuggestions(results.suggestions);
         setDidYouMean(results.didYouMean ?? null);
         setActiveSuggestions(results.suggestions);
       } catch (err) {
+        if (cancelled) return;
         console.error("Search suggestions failed:", err);
         setSuggestions([]);
         setSuggestionsError(err instanceof Error ? err.message : "Request failed");
         setDidYouMean(null);
         setActiveSuggestions([]);
       } finally {
-        setSuggestionsLoading(false);
+        if (!cancelled) setSuggestionsLoading(false);
       }
     }, 150);
-    return () => clearTimeout(t);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [search, setDidYouMean, setActiveSuggestions]);
 
   useEffect(() => {
@@ -142,6 +153,7 @@ export default function Header({
     setSuggestionsOpen(false);
     setSelectedIndex(-1);
     searchInputRef.current?.blur();
+    commitSearch(sug);
     scrollToResults();
   };
 
@@ -251,6 +263,7 @@ export default function Header({
             type="button"
             className="search-clear-btn"
             title="Clear search"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               setSearch("");
               setDidYouMean(null);
@@ -273,6 +286,7 @@ export default function Header({
                     <li
                       key={sug}
                       className={`search-suggestion-item ${selectedIndex === idx ? "active" : ""}`}
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleSelectSuggestion(sug)}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -296,6 +310,7 @@ export default function Header({
                       key={kw}
                       type="button"
                       className="search-chip"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleSelectSuggestion(kw)}
                     >
                       {kw}
@@ -313,6 +328,7 @@ export default function Header({
                     <li
                       key={cat.category}
                       className="search-suggestion-item"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleSelectSuggestion(cat.category)}
                     >
                       <span style={{ fontSize: 12, opacity: 0.6 }}>✈</span>

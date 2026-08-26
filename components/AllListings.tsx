@@ -4,7 +4,7 @@ import AssetCard from "./AssetCard";
 import CarouselRow from "./CarouselRow";
 import { SfItem } from "../lib/types";
 import { getCarousels, toSfItem, trackListingView } from "../lib/api/listings";
-import { smartSearch, SearchResultItem } from "../lib/api/search";
+import { smartSearch, searchResultToJet, SearchResultItem } from "../lib/api/search";
 import { useSite } from "../lib/site-context";
 
 interface AllListingsProps {
@@ -18,16 +18,13 @@ interface Sections {
   general: SfItem[];
 }
 
-// Maps a /search result row onto the same shape the cards already render.
+// Maps a /search result row onto the SfItem shape (extends the shared Jet mapping with year).
 function searchResultToSfItem(r: SearchResultItem): SfItem {
-  return toSfItem({
-    id: r.listing_id,
-    name: r.aircraft_name ?? ([r.manufacturer, r.model, r.variant].filter(Boolean).join(" ") || "Listing"),
-    cat: r.jet_type ?? r.manufacturer ?? "",
-    year: r.year_of_manufacture ?? undefined,
-    image: r.thumbnail ?? undefined,
-    price: r.price ?? undefined,
-  } as any);
+  const jet = searchResultToJet(r);
+  return {
+    ...jet,
+    year: r.year_of_manufacture ?? 0,
+  };
 }
 
 export default function AllListings({ onOpenAsset }: AllListingsProps) {
