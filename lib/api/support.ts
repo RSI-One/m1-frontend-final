@@ -107,7 +107,9 @@ export function listTickets(
   return apiFetch<TicketListResponse>(
     '/admin/support/tickets',
     {
-      query: params,
+      query: {
+        ...params,
+      },
     }
   );
 }

@@ -36,10 +36,9 @@ export class ApiError extends Error {
   }
 }
 
-type QueryParams = Record<
-  string,
-  string | number | boolean | undefined | null
->;
+type QueryParams = {
+  [key: string]: string | number | boolean | undefined | null;
+};
 
 interface RequestOptions
   extends Omit<RequestInit, 'body'> {
