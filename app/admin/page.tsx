@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { authService, authorizationService } from '@/lib/admin-auth';
 import { moduleDefs, ROLE_ROUTE_MAP } from '@/lib/admin-data';
 
@@ -12,23 +13,36 @@ import ModulePage from '@/components/ModulePage';
 import Toast from '@/components/ui/AdminToast';
 
 export default function AdminPage() {
+  const router = useRouter();
+
   const [currentAdmin, setCurrentAdmin] = useState<any>(null);
+  // NEW: distinguishes "still checking session" from "checked, not logged in"
+  const [checkingSession, setCheckingSession] = useState<boolean>(true);
   const [currentModule, setCurrentModule] = useState<string | null>(null);
   const [path, setPath] = useState<string>('/admin/dashboard');
   const [toastMsg, setToastMsg] = useState<string>('');
   const [showToast, setShowToast] = useState<boolean>(false);
 
   useEffect(() => {
-    const admin = authService.loadCurrentAdmin();
+    // NEW: async, hits the real backend (silent refresh -> /auth/me ->
+    // /admin-portal/admins) instead of reading a hardcoded local list.
+    (async () => {
+      const admin = await authService.loadCurrentAdmin();
 
-    if (admin) {
-      setCurrentAdmin(admin);
-      setPath(
-  ROLE_ROUTE_MAP[admin.role as keyof typeof ROLE_ROUTE_MAP] ||
-    '/admin/dashboard'
-);
-    }
-  }, []);
+      if (admin) {
+        setCurrentAdmin(admin);
+        setPath(
+          ROLE_ROUTE_MAP[admin.role as keyof typeof ROLE_ROUTE_MAP] ||
+            '/admin/dashboard'
+        );
+      } else {
+        // no valid session — send them to the admin login screen
+        router.replace('/admin/login');
+      }
+
+      setCheckingSession(false);
+    })();
+  }, [router]);
 
   const showToastMsg = (msg: string): void => {
     setToastMsg(msg);
@@ -65,12 +79,20 @@ export default function AdminPage() {
     setCurrentModule(null);
   };
 
-  if (!currentAdmin) {
+  // NEW: while we're checking for a session, show a loading state
+  // instead of nothing / instead of assuming logged-out.
+  if (checkingSession) {
     return (
       <div style={{ color: '#fff' }}>
         Loading admin session...
       </div>
     );
+  }
+
+  // If checking finished and there's still no admin, we've already
+  // redirected to /admin/login — render nothing while that happens.
+  if (!currentAdmin) {
+    return null;
   }
 
   return (

@@ -181,9 +181,9 @@ export interface SellerListingsResponse {
   results: ListingResponse[];
 }
 
-/** GET /api/listings — the current seller's own listings (auth required). */
+/** GET /seller/listings — the current seller's own listings (auth required). */
 export async function fetchMyListings(limit = 50, offset = 0): Promise<SellerListingsResponse> {
-  return apiGet<SellerListingsResponse>("/api/listings", { limit, offset }, { auth: true });
+  return apiGet<SellerListingsResponse>("/seller/listings", { limit, offset }, { auth: true });
 }
 
 function sellerListingDisplayPrice(price?: number | null): string {

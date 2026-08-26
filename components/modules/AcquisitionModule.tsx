@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, type ChangeEvent } from 'react';
-import { deals } from '@/lib/admin-data';
+import { useState, useEffect, type ChangeEvent } from 'react';
+import { acquisitionsApi, type AcquisitionListItem } from '@/lib/admin-acquisitions-api';
 
 const dealStages = [
   'Coordinated Meeting',
@@ -12,8 +12,6 @@ const dealStages = [
   'Final Decision',
   'Transfer of Assets',
 ] as const;
-
-type Deal = (typeof deals)[number];
 
 type FormState = {
   meetTime: string;
@@ -32,37 +30,50 @@ type FormState = {
   transfer: string;
 };
 
+const emptyForm: FormState = {
+  meetTime: '',
+  meetAgent: '',
+  meetNotes: '',
+  verNotes: '',
+  verFile: '',
+  loi: '',
+  escrowReceipt: '',
+  escrowStatus: '',
+  escrowAmount: '',
+  escrowRequest: '',
+  inspReports: '',
+  inspSummary: '',
+  decision: 'Processing',
+  transfer: '',
+};
+
 type StageBodyProps = {
-  deal: Deal;
   stageIdx: number;
+  initialData: Record<string, any>;
+  loading: boolean;
   showToast?: (message: string) => void;
-  onNext?: () => void;
-  onUpdate?: () => void;
+  onSaveNextStep: (data: FormState) => void;
+  onPublishUpdate: (data: FormState) => void;
+  onCancel: (reason: string) => void;
 };
 
 function StageBody({
-  deal,
   stageIdx,
+  initialData,
+  loading,
   showToast,
-  onNext,
-  onUpdate,
+  onSaveNextStep,
+  onPublishUpdate,
+  onCancel,
 }: StageBodyProps) {
-  const [form, setForm] = useState<FormState>({
-    meetTime: deal.meeting.time,
-    meetAgent: deal.meeting.agent,
-    meetNotes: deal.meeting.notes,
-    verNotes: deal.verification.notes,
-    verFile: '',
-    loi: deal.loi.file,
-    escrowReceipt: deal.escrow.receipt,
-    escrowStatus: deal.escrow.status,
-    escrowAmount: deal.escrow.amount,
-    escrowRequest: deal.escrow.request,
-    inspReports: deal.inspection.reports,
-    inspSummary: deal.inspection.summary,
-    decision: deal.decision.status,
-    transfer: deal.transfer.status,
-  });
+  // Merge whatever the backend returned for this stage into the form.
+  // The stage endpoints store an arbitrary `data` object, so field
+  // names here must match what saveNextStep/publishUpdate send below.
+  const [form, setForm] = useState<FormState>({ ...emptyForm, ...initialData });
+
+  useEffect(() => {
+    setForm({ ...emptyForm, ...initialData });
+  }, [initialData]);
 
   const update =
     (key: keyof FormState) =>
@@ -72,52 +83,6 @@ function StageBody({
         [key]: e.target.value,
       }));
     };
-
-  const collect = (): void => {
-    if (stageIdx === 0) {
-      deal.meeting = {
-        time: form.meetTime,
-        agent: form.meetAgent,
-        notes: form.meetNotes,
-      };
-    }
-
-    if (stageIdx === 1) {
-      deal.verification.notes = form.verNotes;
-
-      if (form.verFile) {
-        deal.verification.reports.push(form.verFile);
-      }
-    }
-
-    if (stageIdx === 2) {
-      deal.loi.file = form.loi;
-    }
-
-    if (stageIdx === 3) {
-      deal.escrow = {
-  receipt: form.escrowReceipt,
-  status: form.escrowStatus,
-  amount: String(form.escrowAmount),
-  request: form.escrowRequest,
-};
-    }
-
-    if (stageIdx === 4) {
-      deal.inspection = {
-        reports: String(form.inspReports),
-        summary: form.inspSummary,
-      };
-    }
-
-    if (stageIdx === 5) {
-      deal.decision.status = form.decision;
-    }
-
-    if (stageIdx === 6) {
-      deal.transfer.status = form.transfer;
-    }
-  };
 
   const fields: Record<number, Array<[string, keyof FormState]>> = {
     0: [
@@ -165,11 +130,7 @@ function StageBody({
         </div>
       ) : (
         (fields[stageIdx] || []).map(([label, key]) => (
-          <div
-            key={key}
-            className="field-row"
-            style={{ marginBottom: 10 }}
-          >
+          <div key={key} className="field-row" style={{ marginBottom: 10 }}>
             <label>{label}</label>
 
             {label.toLowerCase().includes('notes') ||
@@ -192,38 +153,21 @@ function StageBody({
       )}
 
       <div className="stage-actions">
-        <button
-          className="btn btn-ghost"
-          onClick={() => {
-            collect();
-            showToast?.('Progress saved.');
-            onNext?.();
-          }}
-        >
+        <button className="btn btn-ghost" disabled={loading} onClick={() => onSaveNextStep(form)}>
           Next Step
         </button>
 
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            collect();
-            deal.stage = Math.max(deal.stage, stageIdx);
-            showToast?.('Process updated.');
-            onUpdate?.();
-          }}
-        >
+        <button className="btn btn-primary" disabled={loading} onClick={() => onPublishUpdate(form)}>
           Update
         </button>
 
         {stageIdx === 5 && (
           <button
             className="btn btn-danger"
+            disabled={loading}
             onClick={() => {
               const reason = prompt('Reason for cancelling:');
-
-              if (reason) {
-                showToast?.(`Process cancelled: ${reason}`);
-              }
+              if (reason) onCancel(reason);
             }}
           >
             Cancel Process
@@ -238,22 +182,114 @@ type AcquisitionModuleProps = {
   showToast?: (message: string) => void;
 };
 
-export default function AcquisitionModule({
-  showToast,
-}: AcquisitionModuleProps) {
+export default function AcquisitionModule({ showToast }: AcquisitionModuleProps) {
+  const [deals, setDeals] = useState<AcquisitionListItem[]>([]);
+  const [listLoading, setListLoading] = useState<boolean>(true);
+
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
-
-  const [activeStageMap, setActiveStageMap] = useState<
-    Record<string, number>
-  >({});
-
-  const [, forceUpdate] = useState<number>(0);
+  const [activeStageMap, setActiveStageMap] = useState<Record<string, number>>({});
+  const [stageData, setStageData] = useState<Record<string, any>>({});
+  const [stageLoading, setStageLoading] = useState<boolean>(false);
 
   const deal = deals.find((d) => d.id === activeDealId);
+  const activeStage = deal ? (activeStageMap[deal.id] ?? deal.stage ?? 0) : 0;
 
-  const activeStage = deal
-    ? (activeStageMap[deal.id] ?? deal.stage)
-    : 0;
+  // Load the deal list from the backend on mount.
+  useEffect(() => {
+    (async () => {
+      try {
+        setListLoading(true);
+        const results = await acquisitionsApi.list();
+        setDeals(results);
+      } catch (err: any) {
+        showToast?.(err.message ?? 'Failed to load acquisitions.');
+      } finally {
+        setListLoading(false);
+      }
+    })();
+  }, [showToast]);
+
+  // When a deal is opened (or the active stage changes), fetch that
+  // stage's saved data so the form isn't empty.
+  useEffect(() => {
+    if (!activeDealId) return;
+
+    (async () => {
+      try {
+        setStageLoading(true);
+        const data =
+          activeStage === 0
+            ? await acquisitionsApi.getMeetings(activeDealId).catch(() => ({}))
+            : await acquisitionsApi.getStage(activeDealId, activeStage).catch(() => ({}));
+        setStageData(data ?? {});
+      } catch (err: any) {
+        showToast?.(err.message ?? 'Failed to load stage data.');
+        setStageData({});
+      } finally {
+        setStageLoading(false);
+      }
+    })();
+  }, [activeDealId, activeStage, showToast]);
+
+  const handleSaveNextStep = async (form: FormState) => {
+    if (!deal) return;
+    try {
+      setStageLoading(true);
+      if (activeStage === 0) {
+        await acquisitionsApi.addMeeting(deal.id, {
+          meeting_time: form.meetTime,
+          m1_agent_name: form.meetAgent,
+          notes: form.meetNotes,
+        });
+      } else {
+        await acquisitionsApi.saveNextStep(deal.id, activeStage, form);
+      }
+      showToast?.('Progress saved.');
+      setActiveStageMap((current) => ({
+        ...current,
+        [deal.id]: Math.min(6, activeStage + 1),
+      }));
+    } catch (err: any) {
+      showToast?.(err.message ?? 'Failed to save progress.');
+    } finally {
+      setStageLoading(false);
+    }
+  };
+
+  const handlePublishUpdate = async (form: FormState) => {
+    if (!deal) return;
+    try {
+      setStageLoading(true);
+      await acquisitionsApi.publishUpdate(deal.id, activeStage, form);
+      showToast?.('Process updated.');
+      // reflect the advanced stage locally without a full refetch
+      setDeals((current) =>
+        current.map((d) =>
+          d.id === deal.id ? { ...d, stage: Math.max(d.stage ?? 0, activeStage) } : d
+        )
+      );
+    } catch (err: any) {
+      showToast?.(err.message ?? 'Failed to update process.');
+    } finally {
+      setStageLoading(false);
+    }
+  };
+
+  const handleCancel = async (reason: string) => {
+    if (!deal) return;
+    try {
+      setStageLoading(true);
+      await acquisitionsApi.cancel(deal.id, reason);
+      showToast?.(`Process cancelled: ${reason}`);
+      setDeals((current) =>
+        current.map((d) => (d.id === deal.id ? { ...d, status: 'cancelled' } : d))
+      );
+    } catch (err: any) {
+      showToast?.(err.message ?? 'Failed to cancel process.');
+    } finally {
+      setStageLoading(false);
+    }
+  };
 
   if (!activeDealId) {
     return (
@@ -261,7 +297,7 @@ export default function AcquisitionModule({
         <div className="panel-head">
           <h3>Acquisition / Deal Flow</h3>
           <span className="meta">
-            {deals.length} active deals
+            {listLoading ? 'Loading…' : `${deals.length} active deals`}
           </span>
         </div>
 
@@ -278,22 +314,15 @@ export default function AcquisitionModule({
 
             <tbody>
               {deals.map((d) => (
-                <tr
-                  key={d.id}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => setActiveDealId(d.id)}
-                >
+                <tr key={d.id} style={{ cursor: 'pointer' }} onClick={() => setActiveDealId(d.id)}>
                   <td>
-                    <strong>{d.asset}</strong>
+                    <strong>{d.asset ?? '—'}</strong>
                   </td>
-
-                  <td className="muted-cell">{d.buyer}</td>
-
-                  <td className="muted-cell">{d.seller}</td>
-
+                  <td className="muted-cell">{d.buyer ?? '—'}</td>
+                  <td className="muted-cell">{d.seller ?? '—'}</td>
                   <td>
                     <span className="chip">
-                      {d.stage + 1}/7 · {dealStages[d.stage]}
+                      {(d.stage ?? 0) + 1}/7 · {dealStages[d.stage ?? 0]}
                     </span>
                   </td>
                 </tr>
@@ -311,19 +340,14 @@ export default function AcquisitionModule({
 
   return (
     <div>
-      <button
-        className="btn btn-ghost"
-        style={{ marginBottom: 16 }}
-        onClick={() => setActiveDealId(null)}
-      >
+      <button className="btn btn-ghost" style={{ marginBottom: 16 }} onClick={() => setActiveDealId(null)}>
         ← All Deals
       </button>
 
       <div className="panel-head">
-        <h3>{deal.asset}</h3>
-
+        <h3>{deal.asset ?? 'Untitled asset'}</h3>
         <span className="meta">
-          Buyer: {deal.buyer} · Seller: {deal.seller}
+          Buyer: {deal.buyer ?? '—'} · Seller: {deal.seller ?? '—'}
         </span>
       </div>
 
@@ -331,9 +355,9 @@ export default function AcquisitionModule({
         {dealStages.map((stage, index) => (
           <div
             key={index}
-            className={`pipe-step${
-              index < deal.stage ? ' done' : ''
-            }${index === activeStage ? ' active' : ''}`}
+            className={`pipe-step${index < (deal.stage ?? 0) ? ' done' : ''}${
+              index === activeStage ? ' active' : ''
+            }`}
             onClick={() =>
               setActiveStageMap((current) => ({
                 ...current,
@@ -342,26 +366,20 @@ export default function AcquisitionModule({
             }
             style={{ cursor: 'pointer' }}
           >
-            <div className="pipe-dot">
-              {index < deal.stage ? '✓' : index + 1}
-            </div>
-
+            <div className="pipe-dot">{index < (deal.stage ?? 0) ? '✓' : index + 1}</div>
             <span>{stage}</span>
           </div>
         ))}
       </div>
 
       <StageBody
-        deal={deal}
         stageIdx={activeStage}
+        initialData={stageData}
+        loading={stageLoading}
         showToast={showToast}
-        onNext={() =>
-          setActiveStageMap((current) => ({
-            ...current,
-            [deal.id]: Math.min(6, activeStage + 1),
-          }))
-        }
-        onUpdate={() => forceUpdate((n) => n + 1)}
+        onSaveNextStep={handleSaveNextStep}
+        onPublishUpdate={handlePublishUpdate}
+        onCancel={handleCancel}
       />
     </div>
   );

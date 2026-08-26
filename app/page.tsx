@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AuthScreen from "../components/auth/AuthScreen";
 import Header from "../components/Header";
 import Hero from "../components/Hero";
@@ -32,6 +31,40 @@ function PageInner() {
 
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // NEW: while we're checking for an existing session (silent refresh),
+  // we don't want to flash the login screen before we know the answer.
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // NEW: on first mount, silently ask the backend if we already have a
+  // valid session (httpOnly refresh-token cookie). This is what replaces
+  // "log in every 7 days" with "log in once, stay logged in".
+  useEffect(() => {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_URL /* e.g. https://api.yourapp.com */ ?? "";
+
+    fetch(`${backendUrl}/auth/refresh`, {
+      method: "POST",
+      credentials: "include", // <-- required so the browser sends the httpOnly cookie
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("no valid session");
+        return res.json();
+      })
+      .then((data) => {
+        // store the access token in memory (React state / a small auth
+        // context), NOT in localStorage. A plain module-level variable or
+        // a context provider both work — just don't persist it to disk.
+        // e.g. setAccessToken(data.access_token);
+        setIsAuthenticated(true);
+      })
+      .catch(() => {
+        setIsAuthenticated(false);
+      })
+      .finally(() => {
+        setCheckingSession(false);
+      });
+  }, []);
 
   // Marketplace state
   const [started, setStarted] = useState(false);
@@ -69,7 +102,17 @@ function PageInner() {
     setCompareItems([]);
   };
 
-  // Show authentication screen first
+  // NEW: while we're still checking for a valid session, show a lightweight
+  // loading state instead of flashing the login screen.
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0b0d]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+      </div>
+    );
+  }
+
+  // Show authentication screen only if the silent refresh failed
   if (!isAuthenticated) {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
@@ -120,10 +163,10 @@ function PageInner() {
       <SellerMode
         open={sellerModeOpen}
         onClose={() => setSellerModeOpen(false)}
+        jets={jets}
         onOpenAsset={openAssetFromJet}
         onToggleChat={() => setMessagingOpen(true)}
         showToast={showToast}
-        jets={jets}
       />
 
       <Toast />

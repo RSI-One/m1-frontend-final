@@ -6,18 +6,7 @@ import AssetCard from "./AssetCard";
 import CarouselRow from "./CarouselRow";
 import { useSite, parsePriceToM } from "../lib/site-context";
 import { getCarousels, toJet, trackListingView } from "../lib/api/listings";
-import { smartSearch, SearchResultItem } from "../lib/api/search";
-
-function searchResultToJet(item: SearchResultItem): Jet {
-  return {
-    id: item.listing_id,
-    name: item.aircraft_name || `${item.manufacturer || ""} ${item.model || ""}`.trim() || "Aircraft",
-    price: item.price ? `$${(item.price / 1_000_000).toFixed(1)}M` : "Inquire",
-    cat: item.jet_type ? item.jet_type.replace(/_/g, " ") : "Private Jet",
-    loc: item.location_country || "Worldwide",
-    image: item.thumbnail || "/images/hero.png",
-  };
-}
+import { smartSearch, searchResultToJet } from "../lib/api/search";
 
 export default function FeaturedSection({ onOpenAsset }: { onOpenAsset: (jet: Jet) => void }) {
   const { search, setSearch, didYouMean, setDidYouMean, maxBudget, showAllListings } = useSite();
@@ -106,15 +95,15 @@ export default function FeaturedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
 
   return (
     <section className="below-section" id="featured">
-      {/* Google-Style "Did you mean" Banner only shown if spelling is misspelled */}
+      {/* "Did you mean" Banner only shown if spelling is misspelled */}
       {search && didYouMean && didYouMean.toLowerCase() !== search.trim().toLowerCase() && (
         <div
           style={{
             maxWidth: 1380,
             margin: "0 auto 20px auto",
             padding: "12px 20px",
-            background: "rgba(214,173,92,.08)",
-            border: "1px solid rgba(214,173,92,.25)",
+            background: "rgba(255,255,255,.04)",
+            border: "1px solid rgba(255,255,255,.12)",
             borderRadius: 14,
             display: "flex",
             alignItems: "center",
@@ -130,7 +119,7 @@ export default function FeaturedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
             style={{
               background: "transparent",
               border: "none",
-              color: "var(--gold-2)",
+              color: "#e6e9ee",
               fontWeight: 700,
               cursor: "pointer",
               textDecoration: "underline",
