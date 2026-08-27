@@ -1,5 +1,4 @@
-
-import { apiFetch } from './client';
+import { apiFetch, apiUpload } from './client';
 
 export type ComplaintType = 'technical' | 'customer_support';
 
@@ -100,6 +99,10 @@ export interface ListTicketsParams {
   limit?: number;
   offset?: number;
 }
+
+// ============================================================
+// ADMIN — Support dashboard (unchanged from original file)
+// ============================================================
 
 export function listTickets(
   params: ListTicketsParams = {}
@@ -214,8 +217,6 @@ export interface TicketAnalytics {
 export function getSupportAnalytics() {
   return apiFetch<TicketAnalytics>('/admin/support/analytics');
 }
-
-// ---- status groupings used by the Problems module tabs 
 export const ACTIVE_STATUSES: TicketStatus[] = [
   'open',
   'pending',
@@ -226,3 +227,51 @@ export const ACTIVE_STATUSES: TicketStatus[] = [
 ];
 
 export const SOLVED_STATUSES: TicketStatus[] = ['resolved', 'closed', 'rejected'];
+
+
+export interface TicketCreatePayload {
+  complaint_type: ComplaintType;
+  category: string;
+  subject: string; 
+  description: string; 
+  priority?: TicketPriority;
+}
+
+export function createTicket(payload: TicketCreatePayload) {
+  return apiFetch<TicketDetail>('/support/tickets', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+
+export function uploadTicketAttachment(ticketId: string, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return apiUpload<TicketAttachment>(
+    `/support/tickets/${ticketId}/attachments`,
+    formData
+  );
+}
+
+
+export function listMyTickets(
+  params: Omit<ListTicketsParams, 'assigned_admin_id' | 'user_id' | 'q'> = {}
+) {
+  return apiFetch<TicketListResponse>('/support/tickets', {
+    query: { ...params },
+  });
+}
+
+
+export function getMyTicket(ticketId: string) {
+  return apiFetch<TicketDetail>(`/support/tickets/${ticketId}`);
+}
+
+export function replyToMyTicket(ticketId: string, message: string) {
+  return apiFetch<TicketMessage>(`/support/tickets/${ticketId}/messages`, {
+    method: 'POST',
+    body: { message },
+  });
+}

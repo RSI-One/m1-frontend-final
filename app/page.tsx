@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
 import AuthScreen from "../components/auth/AuthScreen";
 import Header from "../components/Header";
 import Hero from "../components/Hero";
@@ -12,8 +13,10 @@ import Footer from "../components/Footer";
 import AssetModal from "../components/AssetModal";
 import CompareModal from "../components/CompareModal";
 import Toast from "../components/Toast";
+import SupportModals from "../components/SupportModals";
 import MessagingPage from "../components/MessagingPage";
 import SellerMode from "../components/SellerMode";
+
 import { SiteProvider, useSite } from "../lib/site-context";
 import { Jet, SfItem } from "../lib/types";
 import { jets } from "../lib/data";
@@ -32,15 +35,23 @@ function PageInner() {
 
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // While we're checking for an existing session, we don't want to flash
-  // the login screen before we know the answer.
   const [checkingSession, setCheckingSession] = useState(true);
 
-  // On first mount, silently ask the backend if we already have a valid
-  // session. getMe() goes through client.ts's apiRequest, which already
-  // handles 401 -> silent /auth/refresh -> retry automatically. This is
-  // what replaces "log in every time" with "log in once, stay logged in".
+  // Support / Report a Problem state (single source of truth)
+  const [supportModalType, setSupportModalType] = useState<
+    "report" | "support" | null
+  >(null);
+
+  // Marketplace state
+  const [started, setStarted] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<Jet | SfItem | null>(
+    null
+  );
+  const [compareItems, setCompareItems] = useState<SfItem[]>([]);
+  const [sellerModeOpen, setSellerModeOpen] = useState(false);
+  const [messagingOpen, setMessagingOpen] = useState(false);
+
+  // Check authentication session
   useEffect(() => {
     authApi
       .getMe()
@@ -54,15 +65,6 @@ function PageInner() {
         setCheckingSession(false);
       });
   }, []);
-
-  // Marketplace state
-  const [started, setStarted] = useState(false);
-
-  const [selectedAsset, setSelectedAsset] = useState<Jet | SfItem | null>(null);
-
-  const [compareItems, setCompareItems] = useState<SfItem[]>([]);
-  const [sellerModeOpen, setSellerModeOpen] = useState(false);
-  const [messagingOpen, setMessagingOpen] = useState(false);
 
   // Called after successful login/register
   const handleAuthSuccess = () => {
@@ -89,8 +91,7 @@ function PageInner() {
     setCompareItems([]);
   };
 
-  // While we're still checking for a valid session, show a lightweight
-  // loading state instead of flashing the login screen.
+  // Loading screen
   if (checkingSession) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0b0d]">
@@ -99,19 +100,22 @@ function PageInner() {
     );
   }
 
-  // Show authentication screen only if the silent session check failed
+  // Authentication screen
   if (!isAuthenticated) {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
 
-  // Existing marketplace
   return (
     <>
+      {/* HEADER */}
       <Header
         onToggleChat={() => setMessagingOpen(true)}
         onOpenSellerMode={() => setSellerModeOpen(true)}
+        onOpenReportProblem={() => setSupportModalType("report")}
+        onOpenGetSupport={() => setSupportModalType("support")}
       />
 
+      {/* MAIN ENGINE */}
       <section className="engine-section" id="workspace">
         <div className="engine-shell">
           {!started ? (
@@ -126,6 +130,7 @@ function PageInner() {
         </div>
       </section>
 
+      {/* LISTINGS */}
       {showAllListings ? (
         <AllListings onOpenAsset={openAssetFromSf} />
       ) : (
@@ -135,18 +140,16 @@ function PageInner() {
         </>
       )}
 
+      {/* FOOTER */}
       <Footer />
 
-      <AssetModal
-        asset={selectedAsset}
-        onClose={closeAssetModal}
-      />
+      {/* ASSET MODAL */}
+      <AssetModal asset={selectedAsset} onClose={closeAssetModal} />
 
-      <CompareModal
-        items={compareItems}
-        onClose={closeCompareModal}
-      />
+      {/* COMPARE MODAL */}
+      <CompareModal items={compareItems} onClose={closeCompareModal} />
 
+      {/* SELLER MODE */}
       <SellerMode
         open={sellerModeOpen}
         onClose={() => setSellerModeOpen(false)}
@@ -156,11 +159,19 @@ function PageInner() {
         showToast={showToast}
       />
 
+      {/* TOAST */}
       <Toast />
 
+      {/* MESSAGING */}
       <MessagingPage
         open={messagingOpen}
         onClose={() => setMessagingOpen(false)}
+      />
+
+      {/* SUPPORT / REPORT PROBLEM MODALS */}
+      <SupportModals
+        modalType={supportModalType}
+        onClose={() => setSupportModalType(null)}
       />
     </>
   );
