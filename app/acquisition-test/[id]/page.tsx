@@ -49,6 +49,10 @@ export default function AcquisitionDetailPage() {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [meetings, setMeetings] = useState<any[]>([]);
+  const [meetingForm, setMeetingForm] = useState({ meeting_time: '', m1_agent_name: '', notes: '' });
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [documentForm, setDocumentForm] = useState({ document_type: '', file_url: '' });
 
   const loadAcquisition = () => {
     setLoading(true);
@@ -67,6 +71,49 @@ export default function AcquisitionDetailPage() {
   useEffect(() => {
     loadAcquisition();
   }, [id]);
+
+  const loadMeetings = () => {
+    fetch('http://localhost:8000/admin/acquisitions/' + id + '/meetings', { headers: ADMIN_HEADERS })
+      .then((res) => res.json())
+      .then((data) => setMeetings(data.results || []));
+  };
+
+  const loadDocuments = () => {
+    fetch('http://localhost:8000/admin/acquisitions/' + id + '/documents', { headers: ADMIN_HEADERS })
+      .then((res) => res.json())
+      .then((data) => setDocuments(data.results || []));
+  };
+
+  useEffect(() => {
+    loadMeetings();
+    loadDocuments();
+  }, [id]);
+
+  const addMeeting = () => {
+    fetch('http://localhost:8000/admin/acquisitions/' + id + '/meetings', {
+      method: 'POST',
+      headers: { ...ADMIN_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify(meetingForm),
+    })
+      .then((res) => res.json())
+      .then(() => {
+        setMeetingForm({ meeting_time: '', m1_agent_name: '', notes: '' });
+        loadMeetings();
+      });
+  };
+
+  const addDocument = () => {
+    fetch('http://localhost:8000/admin/acquisitions/' + id + '/documents', {
+      method: 'POST',
+      headers: { ...ADMIN_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...documentForm, stage_number: currentStageNumber }),
+    })
+      .then((res) => res.json())
+      .then(() => {
+        setDocumentForm({ document_type: '', file_url: '' });
+        loadDocuments();
+      });
+  };
 
   const currentStageNumber = acq ? acq.current_stage : 1;
   const fields = STAGE_FIELDS[currentStageNumber] || [];
@@ -138,26 +185,49 @@ export default function AcquisitionDetailPage() {
             Stage {currentStageNumber}: {STAGE_NAMES[currentStageNumber]}
           </h2>
 
-          {fields.map((field) => (
-                          <div key={field} style={{ marginBottom: '14px' }}>
+                    {fields.map((field) => (
+            <div key={field} style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '11px', color: 'rgba(245,245,220,0.5)', marginBottom: '4px', textTransform: 'uppercase' }}>
                 {field.replace(/_/g, ' ')}
               </label>
-              <input
-                type="text"
-                value={formData[field] || ''}
-                onChange={(e) => handleFieldChange(field, e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  background: '#111',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: '6px',
-                  color: '#F5F5DC',
-                  fontSize: '13px',
-                  outline: 'none',
-                }}
-              />
+              {field === 'decision' ? (
+                <select
+                  value={formData[field] || ''}
+                  onChange={(e) => handleFieldChange(field, e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    background: '#111',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '6px',
+                    color: '#F5F5DC',
+                    fontSize: '13px',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="">Select...</option>
+                  <option value="sold">Sold</option>
+                  <option value="processing">Processing</option>
+                  <option value="issue">Issue</option>
+                  <option value="on_hold">On Hold</option>
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={formData[field] || ''}
+                  onChange={(e) => handleFieldChange(field, e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    background: '#111',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '6px',
+                    color: '#F5F5DC',
+                    fontSize: '13px',
+                    outline: 'none',
+                  }}
+                />
+              )}
             </div>
           ))}
 
@@ -175,12 +245,81 @@ export default function AcquisitionDetailPage() {
             >
               Next Step
             </button>
-            <button
+                       <button
               onClick={() => submitAction('update')}
               disabled={saving}
               style={{ padding: '8px 16px', background: '#F5F5DC', border: 'none', borderRadius: '6px', color: '#000', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
             >
               Update
+            </button>
+          </div>
+        </div>
+
+        <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '24px', marginTop: '20px' }}>
+          <h2 style={{ fontSize: '14px', color: '#F5F5DC', marginBottom: '16px' }}>Meetings</h2>
+          {meetings.map((m) => (
+            <div key={m.id} style={{ fontSize: '12px', color: 'rgba(245,245,220,0.7)', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              {m.meeting_time} — {m.m1_agent_name} — {m.notes}
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              placeholder="meeting time (YYYY-MM-DDTHH:MM:SS)"
+              value={meetingForm.meeting_time}
+              onChange={(e) => setMeetingForm({ ...meetingForm, meeting_time: e.target.value })}
+              style={{ padding: '6px 10px', background: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: '#F5F5DC', fontSize: '12px' }}
+            />
+            <input
+              type="text"
+              placeholder="agent name"
+              value={meetingForm.m1_agent_name}
+              onChange={(e) => setMeetingForm({ ...meetingForm, m1_agent_name: e.target.value })}
+              style={{ padding: '6px 10px', background: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: '#F5F5DC', fontSize: '12px' }}
+            />
+            <input
+              type="text"
+              placeholder="notes"
+              value={meetingForm.notes}
+              onChange={(e) => setMeetingForm({ ...meetingForm, notes: e.target.value })}
+              style={{ padding: '6px 10px', background: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: '#F5F5DC', fontSize: '12px' }}
+            />
+            <button
+              onClick={addMeeting}
+              style={{ padding: '6px 14px', background: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: '#F5F5DC', fontSize: '12px', cursor: 'pointer' }}
+            >
+              Add Meeting
+            </button>
+          </div>
+        </div>
+
+        <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '24px', marginTop: '20px' }}>
+          <h2 style={{ fontSize: '14px', color: '#F5F5DC', marginBottom: '16px' }}>Documents</h2>
+          {documents.map((d) => (
+            <div key={d.id} style={{ fontSize: '12px', color: 'rgba(245,245,220,0.7)', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              {d.document_type} — {d.file_url}
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              placeholder="document type"
+              value={documentForm.document_type}
+              onChange={(e) => setDocumentForm({ ...documentForm, document_type: e.target.value })}
+              style={{ padding: '6px 10px', background: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: '#F5F5DC', fontSize: '12px' }}
+            />
+            <input
+              type="text"
+              placeholder="file url"
+              value={documentForm.file_url}
+              onChange={(e) => setDocumentForm({ ...documentForm, file_url: e.target.value })}
+              style={{ padding: '6px 10px', background: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: '#F5F5DC', fontSize: '12px' }}
+            />
+            <button
+              onClick={addDocument}
+              style={{ padding: '6px 14px', background: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: '#F5F5DC', fontSize: '12px', cursor: 'pointer' }}
+            >
+              Add Document
             </button>
           </div>
         </div>
