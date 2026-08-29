@@ -1,6 +1,32 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { api } from "./api";
+
+// ---- Minimal backend types (trimmed to the fields the UI actually uses) ----
+
+export interface UserRead {
+  id: string;
+  username: string;
+  email: string;
+  role: "general" | "seller" | "partner_member" | "admin";
+  status: "pending" | "active" | "suspended";
+  email_verified_at: string | null;
+  seller_mode_active: boolean;
+  organization_id: string | null;
+  is_flagged: boolean;
+  created_at: string;
+}
+
+export interface UserProfileRead {
+  user_id: string;
+  full_name: string | null;
+  company_name: string | null;
+  location: string | null;
+  profile_picture_url: string | null;
+  bio: string | null;
+  phone_number: string | null;
+}
 
 interface SiteContextValue {
   search: string;
@@ -18,16 +44,29 @@ interface SiteContextValue {
   toggleShowAllListings: () => void;
   toast: string | null;
   showToast: (msg: string) => void;
+
+  // --- backend-connected state ---
+  user: UserRead | null;
+  profile: UserProfileRead | null;
+  isAuthLoading: boolean;
+  unreadCount: number;
+  refreshUser: () => Promise<void>;
+  refreshUnreadCount: () => Promise<void>;
+  setUser: (u: UserRead | null) => void;
+  setProfile: (p: UserProfileRead | null) => void;
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null);
 export const BUDGET_MIN = 5;
 export const BUDGET_MAX = 80;
 
+function hasToken(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(localStorage.getItem("access_token"));
+}
+
 export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [search, setSearchState] = useState("");
-  // Only updated when the user commits a search (Enter). Listings watch this,
-  // not `search`, so typing doesn't trigger a new fetch on every keystroke.
   const [committedSearch, setCommittedSearch] = useState("");
   const [didYouMean, setDidYouMean] = useState<string | null>(null);
   const [activeSuggestions, setActiveSuggestions] = useState<string[]>([]);
@@ -36,14 +75,17 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [user, setUser] = useState<UserRead | null>(null);
+  const [profile, setProfile] = useState<UserProfileRead | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 2200);
   }, []);
 
-  // Clearing the search box (e.g. via "Clear filters") should also drop any
-  // committed/active search results, so listings go back to the normal view.
   const setSearch = useCallback((v: string) => {
     setSearchState(v);
     if (!v.trim()) {
@@ -69,6 +111,46 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     });
   }, [showToast]);
 
+  // GET /auth/me + GET /profile/me
+  const refreshUser = useCallback(async () => {
+    if (!hasToken()) {
+      setUser(null);
+      setProfile(null);
+      setIsAuthLoading(false);
+      return;
+    }
+    setIsAuthLoading(true);
+    try {
+      const [meRes, profileRes] = await Promise.allSettled([
+        api.get<UserRead>("/auth/me"),
+        api.get<UserProfileRead>("/profile/me"),
+      ]);
+      setUser(meRes.status === "fulfilled" ? meRes.value : null);
+      setProfile(profileRes.status === "fulfilled" ? profileRes.value : null);
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }, []);
+
+  // GET /unread/count
+  const refreshUnreadCount = useCallback(async () => {
+    if (!hasToken()) {
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      const res = await api.get<{ unread_count: number }>("/unread/count");
+      setUnreadCount(res.unread_count ?? 0);
+    } catch {
+      // Non-fatal — leave last known count in place.
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshUser();
+    refreshUnreadCount();
+  }, [refreshUser, refreshUnreadCount]);
+
   const value = useMemo(
     () => ({
       search,
@@ -86,6 +168,14 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       toggleShowAllListings,
       toast,
       showToast,
+      user,
+      profile,
+      isAuthLoading,
+      unreadCount,
+      refreshUser,
+      refreshUnreadCount,
+      setUser,
+      setProfile,
     }),
     [
       search,
@@ -94,14 +184,18 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       commitSearch,
       clearCommittedSearch,
       didYouMean,
-      setDidYouMean,
       activeSuggestions,
-      setActiveSuggestions,
       maxBudget,
       showAllListings,
       toggleShowAllListings,
       toast,
       showToast,
+      user,
+      profile,
+      isAuthLoading,
+      unreadCount,
+      refreshUser,
+      refreshUnreadCount,
     ]
   );
 
