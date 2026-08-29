@@ -9,7 +9,7 @@ interface AssetCardProps {
   loc?: string;
   year?: number;
   image?: string;
-  ribbon?: "featured" | "verified";
+  ribbon?: "featured" | "verified" | "off-market";
   suggestion?: boolean;
   small?: boolean;
   selected?: boolean;
@@ -17,6 +17,7 @@ interface AssetCardProps {
   minimal?: boolean;
   /** Force the corner ribbon to show even in minimal mode. */
   showRibbon?: boolean;
+  colorTheme?: "coral" | "pink" | "purple" | "teal" | "caramel";
   onClick?: () => void;
 }
 

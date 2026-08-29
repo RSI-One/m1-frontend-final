@@ -11,6 +11,7 @@ export interface Jet {
   featured?: boolean;
   verified?: boolean;
   isNew?: boolean;
+  isOffMarket?: boolean;
 }
 
 export interface Yacht {
