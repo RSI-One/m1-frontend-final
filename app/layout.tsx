@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "M1 Marketplace — E-Acquisition Engine",
-  description: "M1 · Private Acquisition Marketplace",
+export const metadata = {
+  title: "M1",
+  description: "...",
+  icons: {
+    icon: '/m1-favicon.png',
+  },
 };
 
 export default function RootLayout({
