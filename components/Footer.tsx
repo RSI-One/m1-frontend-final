@@ -1,7 +1,8 @@
 "use client";
 
-import type { MouseEvent } from "react";
+import { useState, type FormEvent, type MouseEvent } from "react";
 import { useSite } from "../lib/site-context";
+import { subscribeToNewsletter } from "@/lib/api/newsletter";
 
 export default function Footer() {
   const { showToast } = useSite();
@@ -10,49 +11,39 @@ export default function Footer() {
     e.preventDefault();
     showToast(`${label} — coming soon.`);
   };
+  const [email, setEmail] = useState("");
+const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
+const handleNewsletterSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  if (!email || status === "loading") return;
+
+  setStatus("loading");
+  try {
+    await subscribeToNewsletter(email, "footer");
+    setStatus("success");
+    showToast(`Subscribed — ${email}.`);
+    setEmail("");
+  } catch (err) {
+    setStatus("error");
+    const message = err instanceof Error ? err.message : "Something went wrong.";
+    showToast(`Subscription failed — ${message}`);
+  }
+};
   return (
     <footer className="site-footer">
       <div className="container">
         <div className="footer-top">
           <div className="footer-brand">
-            <div className="nav-brand" style={{ marginBottom: 2 }}>
-              <div className="brand-mark">M1</div>
+            <div className="nav-brand" style={{ marginBottom: 2, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+              <img src="/images/logo.png" alt="M1 Marketplace" className="brand-mark-img footer-logo" />
               <div className="brand-copy">
-                <strong>M1 Marketplace</strong>
-                <span>Aviation &amp; Maritime</span>
+                
               </div>
             </div>
-            <p>
-              A private acquisition engine connecting qualified buyers with verified aircraft and yacht
-              sellers across the world&apos;s most exclusive fleets.
-            </p>
-            <p className="mission">&quot;Access, verified — for the world&apos;s rarest machines.&quot;</p>
           </div>
 
-          <div className="footer-col">
-            <h5>Marketplace</h5>
-            <ul>
-              <li><a href="#workspace">Aircraft</a></li>
-              <li><a href="#workspace">Helicopters</a></li>
-              <li><a href="#workspace">Jets</a></li>
-              <li><a href="#workspace">Yachts</a></li>
-              <li><a href="#featured">Featured Listings</a></li>
-              <li><a href="#verified">New Listings</a></li>
-            </ul>
-          </div>
-
-          <div className="footer-col">
-            <h5>Services</h5>
-            <ul>
-              <li><a href="#" onClick={notify("Acquisition")}>Acquisition</a></li>
-              <li><a href="#" onClick={notify("Brokerage")}>Brokerage</a></li>
-              <li><a href="#" onClick={notify("Financing")}>Financing</a></li>
-              <li><a href="#" onClick={notify("Insurance")}>Insurance</a></li>
-              <li><a href="#" onClick={notify("Inspection")}>Inspection</a></li>
-              <li><a href="#" onClick={notify("Concierge")}>Concierge</a></li>
-            </ul>
-          </div>
+       
 
           <div className="footer-col">
             <h5>Resources</h5>
@@ -85,28 +76,25 @@ export default function Footer() {
             </ul>
           </div>
         </div>
-
         <div className="footer-newsletter">
-          <div>
-            <h4>Join the exclusive circle</h4>
-            <p>Curated listings, market intelligence, and off-market opportunities — delivered privately.</p>
-          </div>
-          <form
-            className="newsletter-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const form = e.currentTarget as HTMLFormElement;
-              const btn = form.querySelector("button");
-              const input = form.querySelector("input") as HTMLInputElement | null;
-              if (btn) btn.textContent = "Subscribed";
-              showToast(`Subscribed${input?.value ? ` — ${input.value}` : ""}.`);
-            }}
-          >
-            <input type="email" placeholder="Enter your email address" required />
-            <button type="submit">Subscribe</button>
-          </form>
-        </div>
-
+  <div>
+    <h4>Join the exclusive circle</h4>
+    <p>Curated listings, market intelligence, and off-market opportunities — delivered privately.</p>
+  </div>
+  <form className="newsletter-form" onSubmit={handleNewsletterSubmit}>
+    <input
+      type="email"
+      placeholder="Enter your email address"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      required
+      disabled={status === "loading"}
+    />
+    <button type="submit" disabled={status === "loading"}>
+      {status === "loading" ? "Subscribing..." : status === "success" ? "Subscribed" : "Subscribe"}
+    </button>
+  </form>
+</div>
         <div className="footer-social">
           <a href="#" aria-label="LinkedIn" onClick={notify("LinkedIn")}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
