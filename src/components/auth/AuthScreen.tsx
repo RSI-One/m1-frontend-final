@@ -149,6 +149,8 @@ export default function AuthScreen() {
   const [countryOpen, setCountryOpen] = useState(false);
   const [dialQuery, setDialQuery] = useState("");
   const [dialOpen, setDialOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const canAuthenticate = loginData.email.trim().length > 0 && loginData.password.trim().length > 0;
   const currentStep = steps[step];
@@ -200,15 +202,24 @@ export default function AuthScreen() {
 
       <div className="relative z-10 flex w-[92%] max-w-4xl overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
         <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#0a1f4d] to-[#1b3f7a] md:flex">
-          <video
-            className="absolute inset-0 h-full w-full object-cover"
-            src="/videos/auth-preview.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
-        </div>
+        <video
+  
+  ref={videoRef}
+  className="absolute inset-0 h-full w-full object-cover"
+  src="/videos/auth-preview.mp4"
+  autoPlay
+  muted={isMuted}
+  loop
+  playsInline
+/>
+<button
+  onClick={() => setIsMuted((prev) => !prev)}
+  className="absolute bottom-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70"
+  aria-label={isMuted ? "Unmute video" : "Mute video"}
+>
+  {isMuted ? "🔇" : "🔊"}
+</button> 
+</div>      
 
         <div className="flex max-h-[85vh] w-full flex-col overflow-y-auto bg-[#3a3d42] px-8 py-7 md:w-1/2">
           <div className="mb-4 flex justify-end text-[10px] uppercase tracking-widest text-gray-400">
@@ -667,7 +678,7 @@ export default function AuthScreen() {
       </div>
     </div>
   );
-}
+  }
 
 function GoogleIcon() {
   return (
