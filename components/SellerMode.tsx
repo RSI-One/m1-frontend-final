@@ -183,95 +183,95 @@ export default function SellerMode({
           </svg>
         </div>
 
-        {/* NAV UTILITY — single row, matching the home page header,
-            with the + (New Listing) icon added into the same row */}
-        <div className="nav-utility">
-          <button className="icon-btn" title="Messages" aria-label="Messages" onClick={onToggleChat}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-          </button>
+        <div className="nav-utility-stack">
+          <div className="nav-utility-row">
+            <button
+              className="icon-btn"
+              title="Notifications"
+              aria-label="Notifications"
+              aria-expanded={openPanel === "notifications"}
+              onClick={() => togglePanel("notifications")}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span className="dot"></span>
+            </button>
+            {openPanel === "notifications" && (
+              <div className="drawer show">
+                <h3>Notifications</h3>
+                <p>Buyer inquiries, listing status changes, and platform updates will appear here.</p>
+              </div>
+            )}
 
-          <button
-            className="icon-btn"
-            title="Notifications"
-            aria-label="Notifications"
-            aria-expanded={openPanel === "notifications"}
-            onClick={() => togglePanel("notifications")}
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-            <span className="dot"></span>
-          </button>
-          {openPanel === "notifications" && (
-            <div className="drawer show">
-              <h3>Notifications</h3>
-              <p>Buyer inquiries, listing status changes, and platform updates will appear here.</p>
-            </div>
-          )}
+            <button
+              className="icon-btn"
+              title="Menu"
+              aria-label="Menu"
+              aria-expanded={openPanel === "menu"}
+              onClick={() => togglePanel("menu")}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            {openPanel === "menu" && (
+              <div className="drawer show">
+                <h3>Menu</h3>
+                <ul>
+                  <li className="menu-item" onClick={() => handleMenuItem("Saved Assets")}>Saved Assets</li>
+                  <li className="menu-item" onClick={() => handleMenuItem("Acquisition history")}>Acquisition history</li>
+                  <li className="menu-item" onClick={() => { setOpenPanel(null); onClose(); }}>Switch to buying mode</li>
+                  <li className="menu-item" onClick={() => handleMenuItem("M1 Ecosystem")}>M1 Ecosystem</li>
+                  <li className="menu-item" onClick={() => handleMenuItem("Report a problem")}>Report a problem</li>
+                  <li className="menu-item" onClick={() => handleMenuItem("Contact support")}>Contact support</li>
+                  <li className="menu-item" onClick={() => handleMenuItem("Join the exclusive circle")}>Join the exclusive circle</li>
+                </ul>
+              </div>
+            )}
 
-          <button
-            className="avatar-btn"
-            title="Profile"
-            aria-label="Profile menu"
-            aria-expanded={openPanel === "profile"}
-            onClick={() => togglePanel("profile")}
-          >
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-          </button>
-          {openPanel === "profile" && (
-            <div className="drawer show">
-              <h3>Profile</h3>
-              <p>Full name, username, company, and location. Edit profile, credentials, and account actions live here.</p>
-              <div className="mini">
-                <div>
-                  <div className="badge">Account</div>
-                  <div className="tight">Full name<br />Username<br />Company name<br />Location</div>
+            <button
+              className="avatar-btn"
+              title="Profile"
+              aria-label="Profile menu"
+              aria-expanded={openPanel === "profile"}
+              onClick={() => togglePanel("profile")}
+            >
+              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+            </button>
+            {openPanel === "profile" && (
+              <div className="drawer show">
+                <h3>Profile</h3>
+                <p>Full name, username, company, and location. Edit profile, credentials, and account actions live here.</p>
+                <div className="mini">
+                  <div>
+                    <div className="badge">Account</div>
+                    <div className="tight">Full name<br />Username<br />Company name<br />Location</div>
+                  </div>
+                </div>
+                <div className="btn-row">
+                  <button className="ghost-btn" onClick={() => handleMenuItem("Edit profile")}>Edit profile</button>
+                  <button className="ghost-btn" onClick={() => handleMenuItem("Delete account")}>Delete account</button>
                 </div>
               </div>
-              <div className="btn-row">
-                <button className="ghost-btn" onClick={() => handleMenuItem("Edit profile")}>Edit profile</button>
-                <button className="ghost-btn" onClick={() => handleMenuItem("Delete account")}>Delete account</button>
-              </div>
-            </div>
-          )}
-
-          <button id="newListingBtn" className="new-listing-btn" title="New Listing" aria-label="New Listing" onClick={() => setNewListingOpen(true)}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </button>
-
-          <button
-            className="icon-btn"
-            title="Menu"
-            aria-label="Menu"
-            aria-expanded={openPanel === "menu"}
-            onClick={() => togglePanel("menu")}
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>
-          {openPanel === "menu" && (
-            <div className="drawer show">
-              <h3>Menu</h3>
-              <ul>
-                <li className="menu-item" onClick={() => handleMenuItem("Saved Assets")}>Saved Assets</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Acquisition history")}>Acquisition history</li>
-                <li className="menu-item" onClick={() => { setOpenPanel(null); onClose(); }}>Switch to buying mode</li>
-                <li className="menu-item" onClick={() => handleMenuItem("M1 Ecosystem")}>M1 Ecosystem</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Report a problem")}>Report a problem</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Contact support")}>Contact support</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Join the exclusive circle")}>Join the exclusive circle</li>
-              </ul>
-            </div>
-          )}
+            )}
+          </div>
+          <div className="nav-utility-row">
+            <button className="icon-btn" title="Messages" aria-label="Messages" onClick={onToggleChat}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </button>
+            <button id="newListingBtn" className="new-listing-btn" title="New Listing" aria-label="New Listing" onClick={() => setNewListingOpen(true)}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <button

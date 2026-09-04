@@ -1132,14 +1132,23 @@ body { overflow-x: hidden; }
 .seller-page.open { display: flex; }
 .seller-navbar { position: sticky; top: 0; }
 .seller-navbar .nav-utility { display: none; }
-.nav-utility-stack { grid-column: 3; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; justify-self: end; }
-.nav-utility-row { display: flex; align-items: center; gap: 10px; }
-.new-listing-btn {
-  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
-  border: 1px solid rgba(0,0,0,.12); background: linear-gradient(165deg,#e2e4e8,#b9bcc4); color: #111318;
-  transition: all .2s ease; box-shadow: 0 6px 16px rgba(0,0,0,.28); flex: 0 0 auto;
+/* single row instead of stacked rows */
+.nav-utility-stack {
+  grid-column: 3; grid-row: 1 / span 2; display: flex; flex-direction: row;
+  gap: 10px; align-items: center; justify-self: end;
 }
-.new-listing-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0,0,0,.36); background: linear-gradient(165deg,#eef0f3,#c6c9d1); }
+.nav-utility-row { display: flex; align-items: center; gap: 10px; }
+
+/* make New Listing match the dark circular icon style */
+.new-listing-btn {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--line); background: rgba(255,255,255,.04); color: #cdd3dc;
+  transition: all .2s var(--ease); flex: 0 0 auto; box-shadow: none;
+}
+.new-listing-btn:hover {
+  transform: translateY(-2px); border-color: rgba(255,255,255,.55); color: #fff;
+  background: rgba(255,255,255,.08); box-shadow: 0 10px 22px rgba(0,0,0,.35);
+}
 .seller-back {
   position: fixed; top: 18px; left: 18px; z-index: 60; width: 38px; height: 38px; border-radius: 50%;
   border: 1px solid var(--line-2); background: rgba(7,8,12,.7); backdrop-filter: blur(14px);
