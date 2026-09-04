@@ -664,46 +664,46 @@ export default function Header({
         </button>
       </div>
 
-      {/* ACTIONS */}
-      <div className="nav-actions-row">
-        <button
-          className={`filters-btn ${
-            openPanel === "filter"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            togglePanel("filter")
-          }
-        >
-          <span>Filters</span>
+      {/* ACTIONS — direct grid children of .navbar (no wrapper),
+          so the .filters-btn / .all-listings-btn grid-column /
+          grid-row / justify-self rules in the CSS actually apply */}
+      <button
+        className={`filters-btn ${
+          openPanel === "filter"
+            ? "active"
+            : ""
+        }`}
+        onClick={() =>
+          togglePanel("filter")
+        }
+      >
+        <span>Filters</span>
 
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            style={{ marginLeft: 6 }}
-          >
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-          </svg>
-        </button>
-
-        <button
-          className={`all-listings-btn ${
-            showAllListings ? "active" : ""
-          }`}
-          onClick={toggleShowAllListings}
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          style={{ marginLeft: 6 }}
         >
-          <span>
-            {showAllListings
-              ? "Showing All"
-              : "All Listings"}
-          </span>
-        </button>
-      </div>
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+        </svg>
+      </button>
+
+      <button
+        className={`all-listings-btn ${
+          showAllListings ? "active" : ""
+        }`}
+        onClick={toggleShowAllListings}
+      >
+        <span>
+          {showAllListings
+            ? "Showing All"
+            : "All Listings"}
+        </span>
+      </button>
 
       {/* OVERLAY */}
       {openPanel && (
