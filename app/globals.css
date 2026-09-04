@@ -1159,6 +1159,65 @@ body { overflow-x: hidden; }
 .seller-hero { padding: 36px 0 6px; text-align: center; }
 .seller-hero h1 { font-family: var(--display); font-weight: 600; font-size: clamp(24px,3vw,34px); letter-spacing: -.01em; }
 .seller-hero p { color: var(--muted); font-size: 13.5px; margin-top: 8px; }
+/* =========================================================
+   SELLER HEADER - EXPAND DOWN FOR FILTERS + ALL LISTINGS
+   ========================================================= */
+
+.seller-navbar {
+  position: sticky;
+  top: 0;
+  height: 157px;
+  min-height: 157px;
+}
+
+/* Keep logo/search/icons in the original top row */
+.seller-navbar .nav-brand,
+.seller-navbar .nav-search,
+.seller-navbar .nav-utility-stack {
+  position: absolute;
+  top: 0;
+}
+
+/* Logo */
+.seller-navbar .nav-brand {
+  left: 24px;
+}
+
+/* Search bar */
+.seller-navbar .nav-search {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Right icons */
+.seller-navbar .nav-utility-stack {
+  right: 24px;
+}
+
+/* Filters - inside the SAME navbar boundary */
+.seller-navbar .filters-btn {
+  position: absolute;
+  left: 24px;
+  bottom: 18px;
+  z-index: 5;
+}
+
+/* All Listings - inside the SAME navbar boundary */
+.seller-navbar .all-listings-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+.seller-navbar {
+  display: block;
+  position: sticky;
+  top: 0;
+  height: 157px;
+  min-height: 157px;
+  box-sizing: border-box;
+}
 
 .carousel-section { padding: 26px 0 8px; }
 .carousel-section h2 { font-family: var(--display); font-size: 16px; font-weight: 700; margin-bottom: 14px; padding: 0 4px; }
