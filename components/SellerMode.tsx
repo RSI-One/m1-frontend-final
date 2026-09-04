@@ -182,7 +182,7 @@ export default function SellerMode({
 
         {/* All utility icons grouped together, right of the search bar:
             notifications -> new listing -> messages -> profile -> menu */}
-        <div className="nav-utility-row">
+                <div className="nav-utility-stack nav-utility-row">
           <button
             className="icon-btn"
             title="Notifications"

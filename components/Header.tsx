@@ -334,7 +334,7 @@ export default function Header({
 
         <div className="brand-copy">
           <strong>Marketplace</strong>
-          <span>Aviation &amp; Maritime</span>
+          <span>Aviation </span>
         </div>
       </div>
 
