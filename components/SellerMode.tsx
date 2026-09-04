@@ -217,15 +217,31 @@ export default function SellerMode({
             <span className="dot"></span>
           </button>
 
-          <button
-            className="avatar-btn"
-            title="Profile"
-            aria-label="Profile menu"
-            aria-expanded={openPanel === "profile"}
-            onClick={() => togglePanel("profile")}
+           <button
+          className="icon-btn"
+          title="Profile"
+          aria-label="Profile"
+          onClick={() =>
+            togglePanel("profile")
+          }
+        >
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
           >
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-          </button>
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+
+            <circle
+              cx="12"
+              cy="7"
+              r="4"
+            />
+          </svg>
+        </button>
           {openPanel === "profile" && (
             <div className="drawer compact show">
               <ul>
