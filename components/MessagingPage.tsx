@@ -92,10 +92,15 @@ export default function MessagingPage({
           typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
         const rows = await listConversations();
         if (cancelled) return;
-        if (rows.length) {
-          setConversations(rows.map((c) => mapConversation(c, myUserId)));
-          setUsingLiveData(true);
-        }
+        // Backend call succeeded — always switch to live mode, even when
+        // the user has zero conversations yet. Previously this only ran
+        // when rows.length was truthy, so an authenticated user with no
+        // conversations (rows === []) silently kept showing the hardcoded
+        // demo conversations (Sarah Whitfield, etc.) forever, with no
+        // indication anything was wrong and no way to tell it apart from
+        // a real conversation list.
+        setConversations(rows.length ? rows.map((c) => mapConversation(c, myUserId)) : []);
+        setUsingLiveData(true);
         setIsGuest(false);
       } catch (err) {
         if (cancelled) return;
