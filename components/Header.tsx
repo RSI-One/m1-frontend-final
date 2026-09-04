@@ -808,59 +808,15 @@ export default function Header({
       )}
 
       {/* PROFILE DRAWER */}
-      {openPanel === "profile" && (
-        <div className="drawer show">
-          <h3>Private Client</h3>
-
-          <p>
-            Verified Buyer · North America
-            Region
-          </p>
-
-          <div style={{ marginTop: 20 }}>
-            <div className="mini">
-              <div>
-                <div className="badge">
-                  Tier Status
-                </div>
-
-                <div className="tight">
-                  M1 Black Elite
-                </div>
-              </div>
+          {openPanel === "profile" && (
+            <div className="drawer compact show">
+              <ul>
+                <li className="menu-item" onClick={() => handleMenuItem("Edit profile")}>Edit profile</li>
+                <li className="menu-item" onClick={() => handleMenuItem("Account settings")}>Account settings</li>
+                <li className="menu-item" onClick={() => handleMenuItem("Delete account")}>Delete account</li>
+              </ul>
             </div>
-
-            <div className="mini">
-              <div>
-                <div className="badge">
-                  Escrow Account
-                </div>
-
-                <div className="tight">
-                  Active · Ready to Deploy
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="btn-row"
-            style={{ marginTop: 24 }}
-          >
-            <button
-              className="btn-sharp btn-gold"
-              onClick={() =>
-                handleMenuItem(
-                  "Manage Account"
-                )
-              }
-            >
-              Manage Account
-            </button>
-          </div>
-        </div>
-      )}
-
+          )}
       {/* MENU DRAWER */}
       {openPanel === "menu" && (
         <div className="drawer show">
