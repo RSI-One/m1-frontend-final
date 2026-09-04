@@ -127,7 +127,18 @@ export default function ChatDock({ registerToggle }: { registerToggle: (fn: () =
       try {
         const myUserId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
         const rows: ConversationRead[] = await listConversations();
-        if (cancelled || !rows.length) return;
+        if (cancelled) return;
+
+        // Backend call succeeded — switch to live mode even if the user
+        // has zero conversations yet, so we show a real "no messages"
+        // empty state instead of leaving the hardcoded demo conversations
+        // (Sarah Whitfield, etc.) on screen looking like real data.
+        if (!rows.length) {
+          setConversations([]);
+          setUsingLiveData(true);
+          return;
+        }
+
         const mapped: LiConversation[] = rows.map((c) => {
           const otherId = myUserId && c.buyer_id === myUserId ? c.seller_id : c.buyer_id;
           return {
