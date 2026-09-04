@@ -1130,8 +1130,106 @@ body { overflow-x: hidden; }
 ============================================================ */
 .seller-page { position: fixed; inset: 0; z-index: 700; display: none; flex-direction: column; overflow-y: auto; background: var(--bg); }
 .seller-page.open { display: flex; }
-.seller-navbar { position: sticky; top: 0; }
-.seller-navbar .nav-utility { display: none; }
+/* =========================================================
+   SELLER NAVBAR - EXACT SECOND SCREENSHOT LAYOUT
+   ========================================================= */
+
+.seller-navbar {
+  position: sticky !important;
+  top: 0 !important;
+
+  /* IMPORTANT: prevent existing padding from increasing height */
+  height: 157px !important;
+  min-height: 157px !important;
+
+  box-sizing: border-box !important;
+  padding: 0 !important;
+
+  display: block !important;
+}
+
+/* =========================
+   LOGO
+   ========================= */
+
+.seller-navbar .nav-brand {
+  position: absolute !important;
+
+  left: 30px !important;
+  top: 28px !important;
+
+  margin: 0 !important;
+}
+
+
+/* =========================
+   SEARCH BAR
+   ========================= */
+
+.seller-navbar .nav-search {
+  position: absolute !important;
+
+  left: 50% !important;
+  top: 23px !important;
+
+  transform: translateX(-50%) !important;
+
+  margin: 0 !important;
+}
+
+
+/* =========================
+   RIGHT ICONS
+   ========================= */
+
+.seller-navbar .nav-utility-stack {
+  position: absolute !important;
+
+  right: 30px !important;
+  top: 54px !important;
+
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+
+  gap: 10px !important;
+
+  margin: 0 !important;
+}
+
+
+/* =========================
+   FILTERS
+   ========================= */
+
+.seller-navbar .filters-btn {
+  position: absolute !important;
+
+  left: 24px !important;
+  bottom: 18px !important;
+
+  margin: 0 !important;
+
+  z-index: 10;
+}
+
+
+/* =========================
+   ALL LISTINGS
+   ========================= */
+
+.seller-navbar .all-listings-btn {
+  position: absolute !important;
+
+  left: 50% !important;
+  bottom: 18px !important;
+
+  transform: translateX(-50%) !important;
+
+  margin: 0 !important;
+
+  z-index: 10;
+}
 /* single row instead of stacked rows */
 .nav-utility-stack {
   grid-column: 3; grid-row: 1 / span 2; display: flex; flex-direction: row;
@@ -1159,65 +1257,7 @@ body { overflow-x: hidden; }
 .seller-hero { padding: 36px 0 6px; text-align: center; }
 .seller-hero h1 { font-family: var(--display); font-weight: 600; font-size: clamp(24px,3vw,34px); letter-spacing: -.01em; }
 .seller-hero p { color: var(--muted); font-size: 13.5px; margin-top: 8px; }
-/* =========================================================
-   SELLER HEADER - EXPAND DOWN FOR FILTERS + ALL LISTINGS
-   ========================================================= */
 
-.seller-navbar {
-  position: sticky;
-  top: 0;
-  height: 157px;
-  min-height: 157px;
-}
-
-/* Keep logo/search/icons in the original top row */
-.seller-navbar .nav-brand,
-.seller-navbar .nav-search,
-.seller-navbar .nav-utility-stack {
-  position: absolute;
-  top: 0;
-}
-
-/* Logo */
-.seller-navbar .nav-brand {
-  left: 24px;
-}
-
-/* Search bar */
-.seller-navbar .nav-search {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-/* Right icons */
-.seller-navbar .nav-utility-stack {
-  right: 24px;
-}
-
-/* Filters - inside the SAME navbar boundary */
-.seller-navbar .filters-btn {
-  position: absolute;
-  left: 24px;
-  bottom: 18px;
-  z-index: 5;
-}
-
-/* All Listings - inside the SAME navbar boundary */
-.seller-navbar .all-listings-btn {
-  position: absolute;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-  z-index: 5;
-}
-.seller-navbar {
-  display: block;
-  position: sticky;
-  top: 0;
-  height: 157px;
-  min-height: 157px;
-  box-sizing: border-box;
-}
 
 .carousel-section { padding: 26px 0 8px; }
 .carousel-section h2 { font-family: var(--display); font-size: 16px; font-weight: 700; margin-bottom: 14px; padding: 0 4px; }
