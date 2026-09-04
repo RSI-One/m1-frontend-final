@@ -5,6 +5,7 @@ import {
   listConversations,
   getMessages as fetchMessages,
   markConversationRead,
+  sendMessage as sendMessageApi,
   ConversationRead,
   MessageRead,
 } from "../lib/api/messaging";
@@ -26,9 +27,12 @@ function fmtTime(iso: string) {
 }
 
 interface LiMessage {
+  id?: string;
   from: "me" | "them";
   text: string;
   time: string;
+  pending?: boolean;
+  failed?: boolean;
 }
 
 interface LiConversation {
@@ -137,7 +141,7 @@ export default function ChatDock({ registerToggle }: { registerToggle: (fn: () =
             time: fmtTime(c.updated_at),
             unread: c.unread_count ?? 0,
             messages: c.last_message
-              ? [{ from: "them", text: c.last_message.content, time: fmtTime(c.last_message.created_at) }]
+              ? [{ id: c.last_message.id, from: "them", text: c.last_message.content, time: fmtTime(c.last_message.created_at) }]
               : [],
           };
         });
@@ -186,6 +190,7 @@ export default function ChatDock({ registerToggle }: { registerToggle: (fn: () =
         const myUserId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
         const rows: MessageRead[] = await fetchMessages(id);
         const ordered: LiMessage[] = [...rows].reverse().map((m) => ({
+          id: m.id,
           from: myUserId && m.sender_id === myUserId ? "me" : "them",
           text: m.content,
           time: fmtTime(m.created_at),
@@ -205,20 +210,66 @@ export default function ChatDock({ registerToggle }: { registerToggle: (fn: () =
     setOpenWindows((prev) => prev.map((w) => (w.id === id ? { ...w, minimized: !w.minimized } : w)));
   };
 
-  // NOTE: no POST send-message endpoint exists in the current backend spec —
-  // appended locally (optimistic) until one is added.
-  const sendMessage = (id: string) => {
+  // ---- Backend integration: POST /conversations/{id}/messages ----
+  // Optimistically appends the message locally, then calls the REST send
+  // endpoint. On success the temp message is reconciled with the real
+  // MessageRead (id/time) returned by the backend. On failure it is
+  // flagged so the UI can show a "failed to send" state.
+  const sendMessage = async (id: string) => {
     const textarea = composeRefs.current[id];
     if (!textarea) return;
     const value = textarea.value.trim();
     if (!value) return;
-    const now = new Date();
-    const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, messages: [...c.messages, { from: "me", text: value, time }] } : c))
-    );
+
     textarea.value = "";
     textarea.style.height = "auto";
+
+    const tempId = `temp-${Date.now()}`;
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+    // Optimistic UI update
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? { ...c, messages: [...c.messages, { id: tempId, from: "me", text: value, time, pending: true }] }
+          : c
+      )
+    );
+
+    if (!usingLiveData) return; // demo mode — no backend to call
+
+    try {
+      const saved: MessageRead = await sendMessageApi(id, { content: value, message_type: "text" });
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                messages: c.messages.map((m) =>
+                  m.id === tempId
+                    ? { id: saved.id, from: "me", text: saved.content, time: fmtTime(saved.created_at) }
+                    : m
+                ),
+              }
+            : c
+        )
+      );
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                messages: c.messages.map((m) =>
+                  m.id === tempId ? { ...m, pending: false, failed: true } : m
+                ),
+              }
+            : c
+        )
+      );
+    }
   };
 
   const windowRight = (index: number) => 24 + 300 + 8 + index * (300 + 8);
@@ -246,9 +297,21 @@ export default function ChatDock({ registerToggle }: { registerToggle: (fn: () =
             )}
             <div className="li-msg-bubbles">
               {g.items.map((m, mi) => (
-                <div key={mi} className="li-bubble">{m.text}</div>
+                <div
+                  key={m.id ?? mi}
+                  className={`li-bubble ${m.pending ? "pending" : ""} ${m.failed ? "failed" : ""}`}
+                  title={m.failed ? "Failed to send — tap to retry" : undefined}
+                >
+                  {m.text}
+                </div>
               ))}
-              <div className="li-msg-time">{g.items[g.items.length - 1].time}</div>
+              <div className="li-msg-time">
+                {g.items[g.items.length - 1].failed
+                  ? "Failed to send"
+                  : g.items[g.items.length - 1].pending
+                  ? "Sending…"
+                  : g.items[g.items.length - 1].time}
+              </div>
             </div>
           </div>
         ))}
@@ -334,7 +397,7 @@ export default function ChatDock({ registerToggle }: { registerToggle: (fn: () =
                         <span className="li-convo-name">{c.name}</span>
                         <span className="li-convo-time">{c.time}</span>
                       </div>
-                      <div className="li-convo-preview">{last.text}</div>
+                      <div className="li-convo-preview">{last?.text ?? ""}</div>
                     </div>
                     {unread && <span className="li-unread-dot"></span>}
                   </div>
