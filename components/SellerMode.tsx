@@ -7,7 +7,6 @@ import NewListingWizard from "./NewListingWizard";
 import { getMyListings, ListingResponse } from "../lib/api/sellerListings";
 import { getCarousels, toJet } from "../lib/api/listings";
 import { ApiError } from "../lib/api/client";
-import { subscribeToNewsletter } from "@/lib/api/newsletter";
 
 function sellerListingToJet(listing: ListingResponse): Jet {
   return {
@@ -158,21 +157,11 @@ export default function SellerMode({
     setOpenPanel(null);
   };
 
-  const handleNewsletterSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleNewsletterSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!newsletterEmail || newsletterStatus === "loading") return;
-
-    setNewsletterStatus("loading");
-    try {
-      await subscribeToNewsletter(newsletterEmail, "seller_footer");
-      setNewsletterStatus("success");
-      showToast(`Subscribed — ${newsletterEmail}.`);
-      setNewsletterEmail("");
-    } catch (err) {
-      setNewsletterStatus("error");
-      const message = err instanceof Error ? err.message : "Something went wrong.";
-      showToast(`Subscription failed — ${message}`);
-    }
+    if (!newsletterEmail) return;
+    showToast(`Subscribed — ${newsletterEmail}.`);
+    setNewsletterEmail("");
   };
 
   return (
@@ -276,7 +265,6 @@ export default function SellerMode({
           <button
             className="icon-btn"
             title="Menu"
-            aria-label="Menu"
             aria-expanded={openPanel === "menu"}
             onClick={() => togglePanel("menu")}
           >
@@ -379,7 +367,7 @@ export default function SellerMode({
           <div className="footer-top">
             <div className="footer-brand">
               <div className="nav-brand" style={{ marginBottom: 2, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-                <img src="/images/logo.png" alt="M1 Marketplace" className="brand-mark-img" />
+                <img src="/images/logo.png" alt="M1 Marketplace" className="brand-mark-img seller-footer-logo" />
                 <div className="brand-copy"></div>
               </div>
             </div>
