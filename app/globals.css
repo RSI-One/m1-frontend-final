@@ -1119,7 +1119,7 @@ body { overflow-x: hidden; }
   width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-2); display: grid; place-items: center;
   color: var(--muted); transition: all .2s ease;
 }
-.footer-social a:hover { color: #151107; background: var(--gold-2); border-color: transparent; transform: translateY(-3px); }
+.footer-social a:hover { color: #151107; background: var(--silver); border-color: transparent; transform: translateY(-3px); }
 
 .footer-bottom { display: flex; align-items: center; justify-content: space-between; padding: 22px 0 26px; font-size: 11.5px; color: var(--muted-2); flex-wrap: wrap; gap: 10px; }
 .footer-bottom .links { display: flex; gap: 20px; }
