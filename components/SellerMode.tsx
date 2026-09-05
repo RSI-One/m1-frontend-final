@@ -379,7 +379,7 @@ export default function SellerMode({
           <div className="footer-top">
             <div className="footer-brand">
               <div className="nav-brand" style={{ marginBottom: 2, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-                <img src="/images/logo.png" alt="M1 Marketplace" className="brand-mark-img footer-logo" />
+                <img src="/images/logo.png" alt="M1 Marketplace" className="brand-mark-img" />
                 <div className="brand-copy"></div>
               </div>
             </div>
