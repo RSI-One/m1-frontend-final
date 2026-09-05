@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Jet } from "../lib/types";
 import { useTypewriterPlaceholder } from "../lib/useTypewriterPlaceholder";
 import NewListingWizard from "./NewListingWizard";
 import { getMyListings, ListingResponse } from "../lib/api/sellerListings";
 import { getCarousels, toJet } from "../lib/api/listings";
 import { ApiError } from "../lib/api/client";
+import { subscribeToNewsletter } from "@/lib/api/newsletter";
 
 function sellerListingToJet(listing: ListingResponse): Jet {
   return {
@@ -49,6 +50,9 @@ export default function SellerMode({
 
   const [openPanel, setOpenPanel] = useState<SellerPanelKey>(null);
   const navRef = useRef<HTMLElement>(null);
+
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   const togglePanel = (key: SellerPanelKey) => {
     setOpenPanel((cur) => (cur === key ? null : key));
@@ -152,6 +156,23 @@ export default function SellerMode({
   const handleMenuItem = (label: string) => {
     showToast(label + " — opening…");
     setOpenPanel(null);
+  };
+
+  const handleNewsletterSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!newsletterEmail || newsletterStatus === "loading") return;
+
+    setNewsletterStatus("loading");
+    try {
+      await subscribeToNewsletter(newsletterEmail, "seller_footer");
+      setNewsletterStatus("success");
+      showToast(`Subscribed — ${newsletterEmail}.`);
+      setNewsletterEmail("");
+    } catch (err) {
+      setNewsletterStatus("error");
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      showToast(`Subscription failed — ${message}`);
+    }
   };
 
   return (
@@ -357,18 +378,10 @@ export default function SellerMode({
         <div className="container">
           <div className="footer-top">
             <div className="footer-brand">
-              <div className="nav-brand" style={{ marginBottom: 2 }}>
-                <img src="/images/logo.png" alt="M1" className="brand-mark-img" />
-                <div className="brand-copy">
-                  <strong>M1 Marketplace</strong>
-                  <span>Aviation &amp; Maritime</span>
-                </div>
+              <div className="nav-brand" style={{ marginBottom: 2, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+                <img src="/images/logo.png" alt="M1 Marketplace" className="brand-mark-img footer-logo" />
+                <div className="brand-copy"></div>
               </div>
-              <p>
-                A private acquisition engine connecting qualified buyers with verified aircraft and yacht
-                sellers across the world&apos;s most exclusive fleets.
-              </p>
-              <p className="mission">&quot;Access, verified — for the world&apos;s rarest machines.&quot;</p>
             </div>
 
             <div className="footer-col">
@@ -411,6 +424,57 @@ export default function SellerMode({
                 <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Compliance — coming soon."); }}>Compliance</a></li>
               </ul>
             </div>
+          </div>
+
+          <div className="footer-newsletter">
+            <div>
+              <h4>Join the exclusive circle</h4>
+              <p>Curated listings, market intelligence, and off-market opportunities — delivered privately.</p>
+            </div>
+            <form className="newsletter-form" onSubmit={handleNewsletterSubmit}>
+              <input
+                type="email"
+                placeholder="Enter your email address"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                required
+                disabled={newsletterStatus === "loading"}
+              />
+              <button type="submit" disabled={newsletterStatus === "loading"}>
+                {newsletterStatus === "loading" ? "Subscribing..." : newsletterStatus === "success" ? "Subscribed" : "Subscribe"}
+              </button>
+            </form>
+          </div>
+
+          <div className="footer-social">
+            <a href="#" aria-label="LinkedIn" onClick={(e) => { e.preventDefault(); showToast("LinkedIn — coming soon."); }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5zM.5 8h4V23h-4V8zM8.5 8h3.8v2.05h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1V23h-4v-6.8c0-1.62-.03-3.7-2.25-3.7-2.26 0-2.6 1.77-2.6 3.6V23h-4V8z" />
+              </svg>
+            </a>
+            <a href="#" aria-label="X (Twitter)" onClick={(e) => { e.preventDefault(); showToast("X — coming soon."); }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.9 2H22l-7.2 8.2L23 22h-6.6l-5.2-6.8L5.2 22H2l7.7-8.8L1.5 2h6.8l4.7 6.2L18.9 2z" />
+              </svg>
+            </a>
+            <a href="#" aria-label="Facebook" onClick={(e) => { e.preventDefault(); showToast("Facebook — coming soon."); }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M13.5 22v-8.5H16l.4-3.3h-2.9V8.2c0-1 .3-1.6 1.7-1.6H16V3.6c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.5-4 4.2v2.4H7v3.3h2.6V22h3.9z" />
+              </svg>
+            </a>
+            <a href="#" aria-label="Instagram" onClick={(e) => { e.preventDefault(); showToast("Instagram — coming soon."); }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <rect x="3" y="3" width="18" height="18" rx="5" />
+                <circle cx="12" cy="12" r="4" />
+                <circle cx="17.5" cy="6.5" r="1" />
+              </svg>
+            </a>
+            <a href="#" aria-label="YouTube" onClick={(e) => { e.preventDefault(); showToast("YouTube — coming soon."); }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <rect x="2" y="5" width="20" height="14" rx="4" />
+                <path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none" />
+              </svg>
+            </a>
           </div>
 
           <div className="footer-bottom">
