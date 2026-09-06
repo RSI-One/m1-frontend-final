@@ -8,6 +8,7 @@ import {
   getSearchSuggestions,
   getPopularSearches,
 } from "../lib/api/search";
+import { api } from "../lib/api";
 
 type PanelKey = "menu" | "profile" | "filter" | null;
 
@@ -47,6 +48,7 @@ export default function Header({
     showAllListings,
     toggleShowAllListings,
     showToast,
+    refreshUser,
   } = useSite();
 
   const [scrolled, setScrolled] = useState(false);
@@ -278,6 +280,7 @@ export default function Header({
   const handleMenuItem = (label: string) => {
     if (label === "Switch to selling mode") {
       setOpenPanel(null);
+      api.post("/auth/switch-mode").then(() => refreshUser?.()).catch(() => {});
       onOpenSellerMode?.();
       return;
     }
@@ -334,7 +337,7 @@ export default function Header({
 
         <div className="brand-copy">
           <strong>Marketplace</strong>
-          <span>Aviation &amp; Maritime</span>
+          <span>Aviation </span>
         </div>
       </div>
 
@@ -664,46 +667,46 @@ export default function Header({
         </button>
       </div>
 
-      {/* ACTIONS */}
-      <div className="nav-actions-row">
-        <button
-          className={`filters-btn ${
-            openPanel === "filter"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            togglePanel("filter")
-          }
-        >
-          <span>Filters</span>
+      {/* ACTIONS — direct grid children of .navbar (no wrapper),
+          so the .filters-btn / .all-listings-btn grid-column /
+          grid-row / justify-self rules in the CSS actually apply */}
+      <button
+        className={`filters-btn ${
+          openPanel === "filter"
+            ? "active"
+            : ""
+        }`}
+        onClick={() =>
+          togglePanel("filter")
+        }
+      >
+        <span>Filters</span>
 
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            style={{ marginLeft: 6 }}
-          >
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-          </svg>
-        </button>
-
-        <button
-          className={`all-listings-btn ${
-            showAllListings ? "active" : ""
-          }`}
-          onClick={toggleShowAllListings}
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          style={{ marginLeft: 6 }}
         >
-          <span>
-            {showAllListings
-              ? "Showing All"
-              : "All Listings"}
-          </span>
-        </button>
-      </div>
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+        </svg>
+      </button>
+
+      <button
+        className={`all-listings-btn ${
+          showAllListings ? "active" : ""
+        }`}
+        onClick={toggleShowAllListings}
+      >
+        <span>
+          {showAllListings
+            ? "Showing All"
+            : "All Listings"}
+        </span>
+      </button>
 
       {/* OVERLAY */}
       {openPanel && (
@@ -808,59 +811,15 @@ export default function Header({
       )}
 
       {/* PROFILE DRAWER */}
-      {openPanel === "profile" && (
-        <div className="drawer show">
-          <h3>Private Client</h3>
-
-          <p>
-            Verified Buyer · North America
-            Region
-          </p>
-
-          <div style={{ marginTop: 20 }}>
-            <div className="mini">
-              <div>
-                <div className="badge">
-                  Tier Status
-                </div>
-
-                <div className="tight">
-                  M1 Black Elite
-                </div>
-              </div>
+          {openPanel === "profile" && (
+            <div className="drawer compact show">
+              <ul>
+                <li className="menu-item" onClick={() => handleMenuItem("Edit profile")}>Edit profile</li>
+                <li className="menu-item" onClick={() => handleMenuItem("Account settings")}>Account settings</li>
+                <li className="menu-item" onClick={() => handleMenuItem("Delete account")}>Delete account</li>
+              </ul>
             </div>
-
-            <div className="mini">
-              <div>
-                <div className="badge">
-                  Escrow Account
-                </div>
-
-                <div className="tight">
-                  Active · Ready to Deploy
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="btn-row"
-            style={{ marginTop: 24 }}
-          >
-            <button
-              className="btn-sharp btn-gold"
-              onClick={() =>
-                handleMenuItem(
-                  "Manage Account"
-                )
-              }
-            >
-              Manage Account
-            </button>
-          </div>
-        </div>
-      )}
-
+          )}
       {/* MENU DRAWER */}
       {openPanel === "menu" && (
         <div className="drawer show">

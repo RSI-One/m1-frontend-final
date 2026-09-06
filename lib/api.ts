@@ -1,9 +1,25 @@
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+      if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+        return envUrl.replace(/\/$/, "");
+      }
+      return "/backend";
+    }
+  }
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, "");
+  }
+  return "http://127.0.0.1:8000";
+}
 
 function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("access_token");
+  return localStorage.getItem("m1_access_token") || localStorage.getItem("access_token");
 }
 
 async function apiFetch<T>(
@@ -11,11 +27,20 @@ async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = getAccessToken();
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const baseUrl = getApiBaseUrl();
+  let url = path;
+  if (!url.startsWith("http")) {
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    url = baseUrl && cleanPath.startsWith(baseUrl) ? cleanPath : `${baseUrl}${cleanPath}`;
+  }
+
+  const res = await fetch(url, {
+    credentials: "include",
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -23,9 +48,8 @@ async function apiFetch<T>(
 
   if (!res.ok) {
     const errBody = await res.json().catch(() => null);
-    throw new Error(errBody?.detail?.[0]?.msg || `API error: ${res.status}`);
+    throw new Error(errBody?.message || errBody?.detail?.[0]?.msg || errBody?.detail || `API error: ${res.status}`);
   }
-
 
   if (res.status === 204) return undefined as T;
 
@@ -35,8 +59,14 @@ async function apiFetch<T>(
 export const api = {
   get: <T>(path: string) => apiFetch<T>(path, { method: "GET" }),
   post: <T>(path: string, body?: unknown) =>
-    apiFetch<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+    apiFetch<T>(path, {
+      method: "POST",
+      body: typeof FormData !== "undefined" && body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+    }),
   patch: <T>(path: string, body?: unknown) =>
-    apiFetch<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
+    apiFetch<T>(path, {
+      method: "PATCH",
+      body: typeof FormData !== "undefined" && body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+    }),
   delete: <T>(path: string) => apiFetch<T>(path, { method: "DELETE" }),
 };

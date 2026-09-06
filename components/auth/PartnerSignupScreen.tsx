@@ -1,7 +1,15 @@
 "use client";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+function getApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl) return envUrl.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1") return "/backend";
+  }
+  return "";
+}
 
 class ApiError extends Error {
   status: number;
@@ -18,7 +26,12 @@ async function apiFetch<T>(
   options: RequestInit & { query?: Record<string, string | undefined> } = {}
 ): Promise<T> {
   const { query, ...init } = options;
-  let url = `${API_BASE_URL}${path}`;
+  const baseUrl = getApiBaseUrl();
+  let url = path;
+  if (!url.startsWith("http")) {
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    url = baseUrl && cleanPath.startsWith(baseUrl) ? cleanPath : `${baseUrl}${cleanPath}`;
+  }
   if (query) {
     const qs = new URLSearchParams(
       Object.entries(query).filter(([, v]) => v !== undefined) as [string, string][]
