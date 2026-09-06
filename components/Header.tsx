@@ -8,6 +8,7 @@ import {
   getSearchSuggestions,
   getPopularSearches,
 } from "../lib/api/search";
+import { api } from "../lib/api";
 
 type PanelKey = "menu" | "profile" | "filter" | null;
 
@@ -47,6 +48,7 @@ export default function Header({
     showAllListings,
     toggleShowAllListings,
     showToast,
+    refreshUser,
   } = useSite();
 
   const [scrolled, setScrolled] = useState(false);
@@ -278,6 +280,7 @@ export default function Header({
   const handleMenuItem = (label: string) => {
     if (label === "Switch to selling mode") {
       setOpenPanel(null);
+      api.post("/auth/switch-mode").then(() => refreshUser?.()).catch(() => {});
       onOpenSellerMode?.();
       return;
     }
