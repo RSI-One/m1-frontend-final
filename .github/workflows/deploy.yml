@@ -40,6 +40,10 @@ jobs:
             # Install dependencies
             npm install --prefer-offline --no-audit
 
+            # Set production API environment variables
+            echo "NEXT_PUBLIC_API_BASE_URL=/backend" > .env.local
+            echo "NEXT_PUBLIC_API_URL=/backend" >> .env.local
+
             # Clean any stale build artifacts and build Next.js application
             rm -rf .next
             NODE_OPTIONS="--max-old-space-size=2048" npm run build

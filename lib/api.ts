@@ -1,5 +1,17 @@
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+function getApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      return "/backend";
+    }
+  }
+  return "http://127.0.0.1:8000";
+}
 
 function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -13,11 +25,15 @@ async function apiFetch<T>(
   const token = getAccessToken();
   const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
 
-  const url = path.startsWith("http")
-    ? path
-    : `${API_BASE_URL.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+  const baseUrl = getApiBaseUrl();
+  let url = path;
+  if (!url.startsWith("http")) {
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    url = baseUrl && cleanPath.startsWith(baseUrl) ? cleanPath : `${baseUrl}${cleanPath}`;
+  }
 
   const res = await fetch(url, {
+    credentials: "include",
     ...options,
     headers: {
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
