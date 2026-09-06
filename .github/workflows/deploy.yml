@@ -1,0 +1,49 @@
+name: Deploy Frontend to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST || '187.7.19.5' }}
+          username: ${{ secrets.SSH_USER || 'root' }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            echo "==> Deploying M1 Frontend to VPS..."
+            cd /var/www/m1-frontend-final
+
+            # Mark directory safe for Git
+            git config --global --add safe.directory /var/www/m1-frontend-final
+
+            # Pull latest changes from main
+            git fetch origin main
+            git checkout main
+            git pull origin main
+
+            # Install dependencies and build Next.js application
+            npm install
+            npm run build
+
+            # Restart Next.js frontend service
+            systemctl restart m1-frontend
+
+            # Verify service is running
+            sleep 3
+            if systemctl is-active --quiet m1-frontend; then
+              echo "✅ m1-frontend service is running successfully!"
+            else
+              echo "❌ m1-frontend service failed to start!"
+              systemctl status m1-frontend --no-pager
+              exit 1
+            fi
