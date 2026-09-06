@@ -1128,7 +1128,19 @@ body { overflow-x: hidden; }
 /* ============================================================
    SELLER MODE — dedicated page (header + carousels + footer)
 ============================================================ */
-.seller-page { position: fixed; inset: 0; z-index: 700; display: none; flex-direction: column; overflow-y: auto; background: var(--bg); }
+.seller-page {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 700;
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  background: var(--bg);
+}
 .seller-page.open { display: flex; }
 .seller-navbar { position: sticky; top: 0; }
 .seller-navbar .nav-utility { display: none; }
