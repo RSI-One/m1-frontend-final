@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: frontend-vps-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Deploy Frontend
@@ -18,6 +22,8 @@ jobs:
           username: ${{ secrets.SSH_USER || 'root' }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
+          timeout: 120s
+          command_timeout: 15m
           script_stop: true
           script: |
             echo "==> Deploying M1 Frontend to VPS..."
@@ -31,9 +37,12 @@ jobs:
             git checkout main
             git reset --hard origin/main
 
-            # Install dependencies and build Next.js application
-            npm install
-            npm run build
+            # Install dependencies
+            npm install --prefer-offline --no-audit
+
+            # Clean any stale build artifacts and build Next.js application
+            rm -rf .next
+            NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
             # Restart Next.js frontend service
             systemctl restart m1-frontend
