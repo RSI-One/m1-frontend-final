@@ -131,6 +131,7 @@ function BackPill({ onClick }: { onClick: () => void }) {
 export default function AuthScreen() {
   const [tab, setTab] = useState<"access" | "register">("access");
 
+
   // Access flow
   const [accessScreen, setAccessScreen] = useState<AccessScreen>("login");
   const [loginData, setLoginData] = useState({ email: "", password: "" });
@@ -151,7 +152,46 @@ export default function AuthScreen() {
   const [dialOpen, setDialOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
+useEffect(() => {
+  const script = document.createElement("script");
+  script.src = "https://accounts.google.com/gsi/client";
+  script.async = true;
+  document.body.appendChild(script);
 
+  script.onload = () => {
+    // @ts-ignore
+    window.google?.accounts.id.initialize({
+      client_id: "525983227876-18pc8t4tn21mr0nfe2hgp9knsgleui30.apps.googleusercontent.com",
+      callback: handleGoogleResponse,
+    });
+  };
+
+  return () => {
+    document.body.removeChild(script);
+  };
+}, []);
+
+const handleGoogleResponse = async (response: { credential: string }) => {
+  try {
+    const res = await fetch("http://localhost:8000/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_token: response.credential }),
+    });
+    if (!res.ok) throw new Error("Google auth failed");
+    const data = await res.json();
+    localStorage.setItem("access_token", data.access_token);
+    localStorage.setItem("refresh_token", data.refresh_token);
+    window.location.href = "/"; // ya jahan bhi logged-in home hai
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const triggerGoogleSignIn = () => {
+  // @ts-ignore
+  window.google?.accounts.id.prompt();
+};
   const canAuthenticate = loginData.email.trim().length > 0 && loginData.password.trim().length > 0;
   const currentStep = steps[step];
   const currentValue = formData[currentStep?.key] ?? "";
@@ -258,7 +298,7 @@ export default function AuthScreen() {
           {/* ================= ACCESS TAB ================= */}
           {tab === "access" && accessScreen === "login" && (
             <>
-              <button className={`mb-3 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
+              <button onClick={triggerGoogleSignIn} className={`mb-3 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
                 <GoogleIcon />
                 Continue with Google
               </button>
@@ -473,7 +513,7 @@ export default function AuthScreen() {
               <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-white">Create account</h2>
               <p className="mb-5 text-xs text-gray-400">Quick sign up or register manually below</p>
 
-              <button className={`mb-3 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
+              <button onClick={triggerGoogleSignIn} className={`mb-3 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
                 <GoogleIcon />
                 Sign up with Google
               </button>
