@@ -147,12 +147,17 @@ const nlPlaneTypes = [
 ];
 const nlVariantSuggestions = ["Base Configuration", "Extended Range", "VIP Cabin", "Corporate Shuttle", "Executive Layout"];
 const nlNonVerifiedDocs = [
-  "Registration Certificate", "Certificate of Airworthiness", "Seller Declaration",
-  "Aircraft Specification Sheet", "Aircraft Hours & Cycles", "Maintenance Status Report",
-  "Latest Inspection Report", "Engine Status Report",
+  "Certificate of Registration",
+  "Certificate of Airworthiness",
+  "Seller Ownership Declaration",
+  "Aircraft Specification Sheet",
+  "Current Aircraft Hours & Cycles",
+  "Latest Maintenance Status Report",
+  "Most Recent Inspection Report",
+  "Engine Status Report",
 ];
 const nlVerifiedDocGroups: Record<string, string[]> = {
-  "Ownership & Legal Documents": ["Certificate of Registration", "Certificate of Airworthiness", "Seller Ownership Declaration", "Previous Bill of Sale", "Lien Declaration", "Broker Authorisation Agreement", "Trust Ownership Documents"],
+  "Ownership & Legal Documents": ["Certificate of Registration", "Certificate of Airworthiness", "Seller Ownership Declaration", "Previous Bill of Sale", "Lien Declaration", "Broker Authorization Agreement", "Trust Ownership Documents"],
   "Aircraft Information Documents": ["Aircraft Specification Sheet", "Aircraft Description", "Asking Price"],
   "Maintenance Documents": ["Latest Maintenance Status Report", "Last 24 Months Maintenance Records", "Most Recent Inspection Report", "Major Inspection Reports", "Shop Visit Reports", "Deferred Maintenance List", "Maintenance Tracking Report Export"],
   "Compliance Documents": ["AD Compliance Report", "SB Compliance Report", "STC Documentation", "RVSM Approval Certificate", "ADS-B Compliance Certificate"],
@@ -354,15 +359,22 @@ export default function NewListingWizard({
   useEffect(() => {
     if (!s.listingId || !s.listingType) return;
     let cancelled = false;
-    backend
-      .getChecklist(s.listingId)
-      .then((res) => {
+    (async () => {
+      try {
+        await backend.setVerificationChoice(
+          s.listingId!,
+          s.listingType === "verified" ? "verified" : "non_verified"
+        );
+        if (cancelled) return;
+        const res = await backend.getChecklist(s.listingId!);
         if (cancelled) return;
         const map: Record<string, number> = {};
         (res.items || []).forEach((it) => { map[it.name] = it.document_type_id; });
         update({ docTypeMap: map });
-      })
-      .catch((err) => console.error("Failed to load document checklist:", err));
+      } catch (err) {
+        console.error("Failed to load document checklist:", err);
+      }
+    })();
     return () => { cancelled = true; };
   }, [s.listingId, s.listingType]);
 
@@ -373,7 +385,7 @@ export default function NewListingWizard({
     backend
       .getFeatureTiers()
       .then((tiers) => { if (!cancelled) setFeatureTiers(tiers); })
-      .catch((err) => console.error("Failed to load feature tiers:", err));
+      .catch((err) => console.error("Feature tiers failed:", err));
     return () => { cancelled = true; };
   }, [screen]);
 
@@ -422,12 +434,22 @@ export default function NewListingWizard({
           showToast("Verification fee pending — payment step not yet implemented in this UI.");
         }
 
+        let docTypeMap = s.docTypeMap;
+        if (!docTypeMap || Object.keys(docTypeMap).length === 0) {
+          const checklistRes = await backend.getChecklist(listingId);
+          const map: Record<string, number> = {};
+          (checklistRes.items || []).forEach((it) => { map[it.name] = it.document_type_id; });
+          docTypeMap = map;
+          update({ docTypeMap: map });
+        }
+
         for (const [docName, file] of Object.entries(s.docFiles)) {
-          const docTypeId = s.docTypeMap[docName];
+          const docTypeId = docTypeMap[docName];
           if (docTypeId != null) {
             await backend.uploadDocument(listingId, docTypeId, file);
           } else {
             console.warn(`No document_type_id found for "${docName}" — skipped upload.`);
+            throw new Error(`Unable to find document type ID for "${docName}". Please try again.`);
           }
         }
         update({ step: 4 });
@@ -441,10 +463,11 @@ export default function NewListingWizard({
         });
         setScreen("feature");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Listing wizard step failed:", err);
-      setBackendError("Something went wrong talking to the server. Please try again.");
-      showToast("Something went wrong. Please try again.");
+      const msg = err?.message || "Something went wrong talking to the server. Please try again.";
+      setBackendError(msg);
+      showToast(msg);
     } finally {
       setIsSubmittingStep(false);
     }
