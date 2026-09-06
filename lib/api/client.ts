@@ -255,6 +255,19 @@ async function apiRequest<T>(
     );
   }
 
+  return unwrapEnvelope<T>(payload);
+}
+
+function unwrapEnvelope<T>(payload: unknown): T {
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    'success' in payload &&
+    'data' in payload &&
+    (payload as { data: unknown }).data !== undefined
+  ) {
+    return (payload as { data: T }).data;
+  }
   return payload as T;
 }
 
@@ -420,7 +433,7 @@ export async function apiUpload<T>(
     );
   }
 
-  return payload as T;
+  return unwrapEnvelope<T>(payload);
 }
 
 

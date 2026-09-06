@@ -826,7 +826,7 @@ export default function NewListingWizard({
                       onChange={(e) => { onDocFileChosen(e.target.files); e.target.value = ""; }}
                     />
                     {Object.entries(docGroups).map(([group, docs]) =>
-                      docs.map((d) => {
+                      (docs || []).map((d) => {
                         serial += 1;
                         const uploaded = s.docs[d];
                         return (

@@ -124,8 +124,8 @@ export default function SellerMode({
     setMyListingsAuthError(false);
     getMyListings({ limit: 20 })
       .then((res) => {
-        if (cancelled) return;
-        setMyListings(res.results.map(sellerListingToJet));
+        const results = res?.results || (res as any)?.data?.results || [];
+        setMyListings(results.map(sellerListingToJet));
       })
       .catch((err) => {
         if (cancelled) return;
