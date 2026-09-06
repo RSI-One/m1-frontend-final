@@ -118,51 +118,50 @@ export interface ListingDeclarations {
   agreed_fraud_clause: boolean;
   agreed_terms_of_use: boolean;
 }
-export function searchManufacturers(q: string): Promise<string[]> {
-  if (!q.trim()) return Promise.resolve([]);
-  return apiGet<string[]>("/api/listings/assets/manufacturers", { q }, { auth: false });
+export function searchManufacturers(q: string = ""): Promise<string[]> {
+  return apiGet<string[]>("/seller/listings/assets/manufacturers", { q }, { auth: false });
 }
-export function searchModels(manufacturer: string, q: string): Promise<AssetSearchResult[]> {
-  if (!manufacturer.trim() || !q.trim()) return Promise.resolve([]);
-  return apiGet<AssetSearchResult[]>("/api/listings/assets/models", { manufacturer, q }, { auth: false });
+export function searchModels(manufacturer: string, q: string = ""): Promise<AssetSearchResult[]> {
+  if (!manufacturer.trim()) return Promise.resolve([]);
+  return apiGet<AssetSearchResult[]>("/seller/listings/assets/models", { manufacturer, q }, { auth: false });
 }
 
 export function getMyListings(params: { limit?: number; offset?: number } = {}) {
-  return apiGet<SellerListingsResponse>("/api/listings", params);
+  return apiGet<SellerListingsResponse>("/seller/listings", params);
 }
 export function getListing(listingId: string) {
-  return apiGet<ListingResponse>(`/api/listings/${listingId}`);
+  return apiGet<ListingResponse>(`/seller/listings/${listingId}`);
 }
 
 export function createListing(payload: { asset_id: string; organization_id?: string; variant?: string }) {
-  return apiPost<ListingResponse>("/api/listings", payload);
+  return apiPost<ListingResponse>("/seller/listings", payload);
 }
 
 export function updateListingDetails(listingId: string, payload: ListingUpdateDetails) {
-  return apiPatch<ListingResponse>(`/api/listings/${listingId}/details`, payload);
+  return apiPatch<ListingResponse>(`/seller/listings/${listingId}/details`, payload);
 }
 
 export function updateMarketType(listingId: string, marketType: "on_market" | "off_market") {
-  return apiPatch<ListingResponse>(`/api/listings/${listingId}/market-type`, { market_type: marketType });
+  return apiPatch<ListingResponse>(`/seller/listings/${listingId}/market-type`, { market_type: marketType });
 }
 
 
 export function setVerificationChoice(listingId: string, verification_choice: VerificationChoice) {
-  return apiPatch<ListingResponse | VerificationPurchaseRead>(`/api/listings/${listingId}/verification-choice`, {
+  return apiPatch<ListingResponse | VerificationPurchaseRead>(`/seller/listings/${listingId}/verification-choice`, {
     verification_choice,
   });
 }
 
 export function confirmVerificationPayment(listingId: string, transaction_id: string) {
-  return apiPost<VerificationPurchaseRead>(`/api/listings/${listingId}/verification-payment`, { transaction_id });
+  return apiPost<VerificationPurchaseRead>(`/seller/listings/${listingId}/verification-payment`, { transaction_id });
 }
 
 
 export function uploadListingMedia(listingId: string, file: File, mediaType: "photo" | "video") {
   const form = new FormData();
   form.append("file", file);
-  form.append("media_type", mediaType);
-  return apiUpload<MediaUploadResponse>(`/api/listings/${listingId}/media`, form);
+  form.append("media_type", mediaType === "photo" ? "image" : "video");
+  return apiUpload<MediaUploadResponse>(`/seller/listings/${listingId}/media`, form);
 }
 
 
@@ -170,22 +169,22 @@ export function uploadListingDocument(listingId: string, documentTypeId: number,
   const form = new FormData();
   form.append("document_type_id", String(documentTypeId));
   form.append("file", file);
-  return apiUpload<ListingDocumentRead>(`/api/listings/${listingId}/documents`, form);
+  return apiUpload<ListingDocumentRead>(`/seller/listings/${listingId}/documents`, form);
 }
 
 export function getDocumentChecklist(listingId: string) {
-  return apiGet<DocumentChecklistResponse>(`/api/listings/${listingId}/documents/checklist`);
+  return apiGet<DocumentChecklistResponse>(`/seller/listings/${listingId}/documents/checklist`);
 }
 
 export function submitListing(listingId: string, declarations: ListingDeclarations) {
-  return apiPost<ListingResponse>(`/api/listings/${listingId}/submit`, declarations);
+  return apiPost<ListingResponse>(`/seller/listings/${listingId}/submit`, declarations);
 }
 
 export function getFeatureTiers() {
-  return apiGet<FeatureTierRead[]>("/api/listings/tiers/feature", undefined, { auth: false });
+  return apiGet<FeatureTierRead[]>("/seller/listings/tiers/feature", undefined, { auth: false });
 }
 
 
 export function purchaseFeature(listingId: string, tierName: FeatureTierName) {
-  return apiPost<FeaturePurchaseRead>(`/api/listings/${listingId}/feature`, { tier_name: tierName });
+  return apiPost<FeaturePurchaseRead>(`/seller/listings/${listingId}/feature`, { tier_name: tierName });
 }

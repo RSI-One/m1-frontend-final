@@ -46,57 +46,99 @@ interface ListingDeclarations {
 }
 
 const backend = {
-  searchManufacturers: (q: string) =>
-    api.get<string[]>(`/api/listings/assets/manufacturers?q=${encodeURIComponent(q)}`),
-
-  searchModels: (manufacturer: string, q: string) =>
-    api.get<AssetSearchResult[]>(
-      `/api/listings/assets/models?manufacturer=${encodeURIComponent(manufacturer)}&q=${encodeURIComponent(q)}`
-    ),
-
-  createListing: (assetId: string, variant: string) =>
-    api.post<ListingCreatedResponse>("/api/listings", {
-      asset_id: assetId,
-      variant: variant || undefined,
-    }),
-
-  updateDetails: (
-    listingId: string,
-    patch: { price?: number; total_flight_hours?: number; description?: string; reason_for_selling?: string }
-  ) => api.patch(`/api/listings/${listingId}/details`, patch),
-
-  setMarketType: (listingId: string, marketType: "on_market" | "off_market") =>
-    api.patch(`/api/listings/${listingId}/market-type`, { market_type: marketType }),
-
-  setVerificationChoice: (listingId: string, choice: "verified" | "non_verified") =>
-    api.patch<Record<string, unknown>>(`/api/listings/${listingId}/verification-choice`, {
-      verification_choice: choice,
-    }),
-
-  getChecklist: (listingId: string) =>
-    api.get<DocumentChecklistResponse>(`/api/listings/${listingId}/documents/checklist`),
-
-  uploadMedia: (listingId: string, file: File, mediaType: "photo" | "video") => {
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("media_type", mediaType);
-    return api.post(`/api/listings/${listingId}/media`, fd);
+  searchManufacturers: async (q: string = ""): Promise<string[]> => {
+    try {
+      const res = await api.get<any>(`/seller/listings/assets/manufacturers?q=${encodeURIComponent(q)}`);
+      const list = res?.data ?? res;
+      return Array.isArray(list) ? list : [];
+    } catch (err) {
+      console.error("searchManufacturers failed:", err);
+      return [];
+    }
   },
 
-  uploadDocument: (listingId: string, documentTypeId: number, file: File) => {
+  searchModels: async (manufacturer: string, q: string = ""): Promise<AssetSearchResult[]> => {
+    try {
+      const res = await api.get<any>(
+        `/seller/listings/assets/models?manufacturer=${encodeURIComponent(manufacturer)}&q=${encodeURIComponent(q)}`
+      );
+      const list = res?.data ?? res;
+      return Array.isArray(list) ? list : [];
+    } catch (err) {
+      console.error("searchModels failed:", err);
+      return [];
+    }
+  },
+
+  createListing: async (assetId: string, variant: string): Promise<ListingCreatedResponse> => {
+    const res = await api.post<any>("/seller/listings", {
+      asset_id: assetId,
+      variant: variant || undefined,
+    });
+    return res?.data ?? res;
+  },
+
+  updateDetails: async (
+    listingId: string,
+    patch: { price?: number; total_flight_hours?: number; description?: string; reason_for_selling?: string }
+  ) => {
+    const res = await api.patch<any>(`/seller/listings/${listingId}/details`, patch);
+    return res?.data ?? res;
+  },
+
+  setMarketType: async (listingId: string, marketType: "on_market" | "off_market") => {
+    const res = await api.patch<any>(`/seller/listings/${listingId}/market-type`, { market_type: marketType });
+    return res?.data ?? res;
+  },
+
+  setVerificationChoice: async (listingId: string, choice: "verified" | "non_verified") => {
+    const res = await api.patch<any>(`/seller/listings/${listingId}/verification-choice`, {
+      verification_choice: choice,
+    });
+    return res?.data ?? res;
+  },
+
+  getChecklist: async (listingId: string): Promise<DocumentChecklistResponse> => {
+    const res = await api.get<any>(`/seller/listings/${listingId}/documents/checklist`);
+    return res?.data ?? res;
+  },
+
+  uploadMedia: async (listingId: string, file: File, mediaType: "photo" | "video") => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("media_type", mediaType === "photo" ? "image" : "video");
+    const res = await api.post<any>(`/seller/listings/${listingId}/media`, fd);
+    return res?.data ?? res;
+  },
+
+  uploadDocument: async (listingId: string, documentTypeId: number, file: File) => {
     const fd = new FormData();
     fd.append("document_type_id", String(documentTypeId));
     fd.append("file", file);
-    return api.post(`/api/listings/${listingId}/documents`, fd);
+    const res = await api.post<any>(`/seller/listings/${listingId}/documents`, fd);
+    return res?.data ?? res;
   },
 
-  submitListing: (listingId: string, declarations: ListingDeclarations) =>
-    api.post(`/api/listings/${listingId}/submit`, declarations),
+  submitListing: async (listingId: string, declarations: ListingDeclarations) => {
+    const res = await api.post<any>(`/seller/listings/${listingId}/submit`, declarations);
+    return res?.data ?? res;
+  },
 
-  getFeatureTiers: () => api.get<FeatureTierRead[]>("/api/listings/tiers/feature"),
+  getFeatureTiers: async (): Promise<FeatureTierRead[]> => {
+    try {
+      const res = await api.get<any>("/seller/listings/tiers/feature");
+      const list = res?.data ?? res;
+      return Array.isArray(list) ? list : [];
+    } catch (err) {
+      console.error("getFeatureTiers failed:", err);
+      return [];
+    }
+  },
 
-  purchaseFeature: (listingId: string, tierName: string) =>
-    api.post(`/api/listings/${listingId}/feature`, { tier_name: tierName }),
+  purchaseFeature: async (listingId: string, tierName: string) => {
+    const res = await api.post<any>(`/seller/listings/${listingId}/feature`, { tier_name: tierName });
+    return res?.data ?? res;
+  },
 };
 
 const nlPlaneTypes = [
@@ -281,35 +323,32 @@ export default function NewListingWizard({
 
   // ---- Manufacturer autocomplete (backend) ----
   useEffect(() => {
-    if (!s.manufacturerQuery.trim()) {
-      setManufacturerResults([]);
-      return;
-    }
     let cancelled = false;
     const t = setTimeout(() => {
       backend
-        .searchManufacturers(s.manufacturerQuery)
+        .searchManufacturers(s.manufacturerQuery || "")
         .then((res) => { if (!cancelled) setManufacturerResults(res); })
         .catch((err) => console.error("Manufacturer search failed:", err));
-    }, 250);
+    }, 200);
     return () => { cancelled = true; clearTimeout(t); };
   }, [s.manufacturerQuery]);
 
   // ---- Model autocomplete (backend) ----
   useEffect(() => {
-    if (!s.manufacturer) {
+    const mfg = (s.manufacturer || s.manufacturerQuery || "").trim();
+    if (!mfg) {
       setModelResults([]);
       return;
     }
     let cancelled = false;
     const t = setTimeout(() => {
       backend
-        .searchModels(s.manufacturer, s.modelQuery)
+        .searchModels(mfg, s.modelQuery || "")
         .then((res) => { if (!cancelled) setModelResults(res); })
         .catch((err) => console.error("Model search failed:", err));
-    }, 250);
+    }, 200);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [s.manufacturer, s.modelQuery]);
+  }, [s.manufacturer, s.manufacturerQuery, s.modelQuery]);
 
   // Document checklist
   useEffect(() => {
@@ -518,18 +557,33 @@ export default function NewListingWizard({
                       placeholder="Start typing manufacturer…"
                       autoComplete="off"
                       value={s.manufacturerQuery}
-                      onChange={(e) =>
-                        update({ manufacturerQuery: e.target.value, manufacturer: "", model: "", modelQuery: "", assetId: null })
-                      }
-                      onFocus={() => setMfgDropdown(true)}
-                      onBlur={() => setTimeout(() => setMfgDropdown(false), 150)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        update({
+                          manufacturerQuery: val,
+                          manufacturer: val,
+                          model: "",
+                          modelQuery: "",
+                          assetId: null,
+                        });
+                      }}
+                      onFocus={() => {
+                        setMfgDropdown(true);
+                        backend.searchManufacturers(s.manufacturerQuery || "").then((res) => {
+                          if (res.length) setManufacturerResults(res);
+                        });
+                      }}
+                      onBlur={() => setTimeout(() => setMfgDropdown(false), 200)}
                     />
                     <div className={`nl-dropdown ${mfgDropdown && manufacturerResults.length ? "show" : ""}`}>
                       {manufacturerResults.map((n) => (
                         <div
                           key={n}
                           className="nl-dropdown-item"
-                          onMouseDown={() => update({ manufacturer: n, manufacturerQuery: n, model: "", modelQuery: "", assetId: null })}
+                          onMouseDown={() => {
+                            update({ manufacturer: n, manufacturerQuery: n, model: "", modelQuery: "", assetId: null });
+                            setMfgDropdown(false);
+                          }}
                         >
                           <span className="logo-dot">{n.slice(0, 2).toUpperCase()}</span>{n}
                         </div>
@@ -540,22 +594,43 @@ export default function NewListingWizard({
                     <label style={{ color: "#e7e8ec", fontSize: 12, display: "block", marginBottom: 6 }}>Model</label>
                     <input
                       className="nl-input"
-                      placeholder="Start typing model…"
+                      placeholder={!s.manufacturer && !s.manufacturerQuery.trim() ? "Select or enter manufacturer first…" : "Start typing model…"}
                       autoComplete="off"
                       value={s.modelQuery}
-                      disabled={!s.manufacturer}
-                      onChange={(e) => update({ modelQuery: e.target.value, model: "", assetId: null })}
-                      onFocus={() => setModelDropdown(true)}
-                      onBlur={() => setTimeout(() => setModelDropdown(false), 150)}
+                      disabled={!s.manufacturer && !s.manufacturerQuery.trim()}
+                      onChange={(e) => {
+                        const q = e.target.value;
+                        const match = modelResults.find(
+                          (m) => m.model.toLowerCase() === q.trim().toLowerCase()
+                        );
+                        update({
+                          modelQuery: q,
+                          model: q,
+                          assetId: match ? match.id : (s.assetId || null),
+                        });
+                      }}
+                      onFocus={() => {
+                        setModelDropdown(true);
+                        const mfg = (s.manufacturer || s.manufacturerQuery || "").trim();
+                        if (mfg) {
+                          backend.searchModels(mfg, s.modelQuery || "").then((res) => {
+                            if (res.length) setModelResults(res);
+                          });
+                        }
+                      }}
+                      onBlur={() => setTimeout(() => setModelDropdown(false), 200)}
                     />
-                    <div className={`nl-dropdown ${modelDropdown && s.manufacturer && modelResults.length ? "show" : ""}`}>
+                    <div className={`nl-dropdown ${modelDropdown && (s.manufacturer || s.manufacturerQuery) && modelResults.length ? "show" : ""}`}>
                       {modelResults.map((m) => (
                         <div
                           key={m.id}
                           className="nl-dropdown-item"
-                          onMouseDown={() => update({ model: m.model, modelQuery: m.model, assetId: m.id })}
+                          onMouseDown={() => {
+                            update({ model: m.model, modelQuery: m.model, assetId: m.id });
+                            setModelDropdown(false);
+                          }}
                         >
-                          <span className="logo-dot">{s.manufacturer.slice(0, 2).toUpperCase()}</span>{m.model}
+                          <span className="logo-dot">{(s.manufacturer || s.manufacturerQuery).slice(0, 2).toUpperCase()}</span>{m.model}
                         </div>
                       ))}
                     </div>

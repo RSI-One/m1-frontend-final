@@ -60,7 +60,10 @@ function buildUrl(
   const url = new URL(
     path.startsWith('http')
       ? path
-      : `${API_BASE_URL}${path}`
+      : `${API_BASE_URL}${path}`,
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : 'http://127.0.0.1:3000'
   );
 
   if (params) {
