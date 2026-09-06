@@ -37,7 +37,7 @@ export default function SellerMode({
   onOpenAsset: (jet: Jet) => void;
   onToggleChat: () => void;
   showToast: (msg: string) => void;
-}){
+}) {
   const [term, setTerm] = useState("");
   const [newListingOpen, setNewListingOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -50,18 +50,18 @@ export default function SellerMode({
   const [trendingList, setTrendingList] = useState<Jet[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(false);
 
+  // Header.tsx-parity state
+  const [scrolled, setScrolled] = useState(false);
   const [openPanel, setOpenPanel] = useState<SellerPanelKey>(null);
-  const navRef = useRef<HTMLElement>(null);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+
+  const headerRef = useRef<HTMLElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
-  // Portal target — SellerMode must render directly into document.body,
-  // bypassing any Framer Motion (or other) ancestor that applies a
-  // CSS transform. A transformed ancestor becomes the containing block
-  // for position:fixed descendants, which clips/traps .seller-page
-  // instead of letting it size against the real viewport — that's what
-  // was cutting off the bottom of the footer and breaking scroll.
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -84,14 +84,29 @@ export default function SellerMode({
     };
   }, [open, onClose, newListingOpen]);
 
+  // Scroll detection — same as Header.tsx
   useEffect(() => {
-    if (!openPanel) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenPanel(null);
-    };
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Click-outside + Escape — same pattern as Header.tsx
+  useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
-      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (searchContainerRef.current && !searchContainerRef.current.contains(target)) {
+        setSuggestionsOpen(false);
+      }
+      if (headerRef.current && !headerRef.current.contains(target)) {
         setOpenPanel(null);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpenPanel(null);
+        setSuggestionsOpen(false);
+        setSelectedIndex(-1);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -100,7 +115,7 @@ export default function SellerMode({
       window.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onClickOutside);
     };
-  }, [openPanel]);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -167,14 +182,25 @@ export default function SellerMode({
   );
 
   const handleMenuItem = (label: string) => {
+    if (label === "Switch to buying mode") {
+      setOpenPanel(null);
+      onClose();
+      return;
+    }
     showToast(label + " — opening…");
     setOpenPanel(null);
+  };
+
+  const runSearch = (value: string) => {
+    setSuggestionsOpen(false);
+    setSelectedIndex(-1);
+    searchInputRef.current?.blur();
+    setTerm(value);
   };
 
   const handleNewsletterSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!newsletterEmail || newsletterStatus === "loading") return;
-
     setNewsletterStatus("loading");
     try {
       await subscribeToNewsletter(newsletterEmail, "seller_footer");
@@ -190,7 +216,8 @@ export default function SellerMode({
 
   const content = (
     <div className={`seller-page ${open ? "open" : ""}`} id="sellerPage">
-      <header className="navbar seller-navbar" ref={navRef}>
+      <header className={`navbar seller-navbar ${scrolled ? "scrolled" : ""}`} ref={headerRef}>
+        {/* BRAND — same markup as Header.tsx, subtitle changed to "Seller Console" */}
         <div className="nav-brand">
           <img src="/images/logo.png" alt="M1" className="brand-mark-img" />
           <div className="brand-copy">
@@ -199,24 +226,57 @@ export default function SellerMode({
           </div>
         </div>
 
-        <div className="nav-search">
+        {/* SEARCH — same container/markup pattern as Header.tsx */}
+        <div className="nav-search" ref={searchContainerRef} style={{ position: "relative" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+
           <input
             ref={searchInputRef}
             type="text"
             placeholder={searchPlaceholder}
             autoComplete="off"
             value={term}
-            onChange={(e) => setTerm(e.target.value)}
+            onChange={(e) => {
+              setTerm(e.target.value);
+              setSuggestionsOpen(true);
+              setSelectedIndex(-1);
+            }}
+            onFocus={() => setSuggestionsOpen(true)}
+            onBlur={() => setTimeout(() => setSuggestionsOpen(false), 200)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                runSearch(term);
+              } else if (e.key === "Escape") {
+                setSuggestionsOpen(false);
+                setSelectedIndex(-1);
+              }
+            }}
           />
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
+
+          {term && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              title="Clear search"
+              aria-label="Clear search"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setTerm("");
+                setSuggestionsOpen(false);
+                setSelectedIndex(-1);
+              }}
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        {/* NAV UTILITY — mirrors Header.tsx's .nav-utility group exactly
-            (same .icon-btn 40x40 sizing, same order: Messages -> Profile -> Menu),
-            with two extra seller-only icons prepended: Notifications -> New Listing */}
+        {/* NAV UTILITY — Header.tsx order (Messages -> Profile -> Menu),
+            seller-only extras (Notifications, New Listing) prepended */}
         <div className="nav-utility-stack nav-utility-row">
           <button
             className="icon-btn"
@@ -231,12 +291,6 @@ export default function SellerMode({
             </svg>
             <span className="dot"></span>
           </button>
-          {openPanel === "notifications" && (
-            <div className="drawer show">
-              <h3>Notifications</h3>
-              <p>Buyer inquiries, listing status changes, and platform updates will appear here.</p>
-            </div>
-          )}
 
           <button
             id="newListingBtn"
@@ -251,16 +305,11 @@ export default function SellerMode({
             </svg>
           </button>
 
-          <button
-            className="icon-btn"
-            title="Messages"
-            aria-label="Messages"
-            onClick={onToggleChat}
-          >
+          <button className="icon-btn" title="Messages" aria-label="Messages" onClick={onToggleChat}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
-            <span className="dot"></span>
+            <span className="dot" />
           </button>
 
           <button
@@ -275,9 +324,6 @@ export default function SellerMode({
               <circle cx="12" cy="7" r="4" />
             </svg>
           </button>
-          {openPanel === "profile" && (
-            <ProfilePanel onClose={() => setOpenPanel(null)} />
-          )}
 
           <button
             className="icon-btn"
@@ -287,67 +333,80 @@ export default function SellerMode({
             onClick={() => togglePanel("menu")}
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          {openPanel === "menu" && (
-            <div className="drawer show">
-              <h3>Menu</h3>
-              <ul>
-                <li className="menu-item" onClick={() => handleMenuItem("Saved Assets")}>Saved Assets</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Acquisition history")}>Acquisition history</li>
-                <li className="menu-item" onClick={() => { setOpenPanel(null); onClose(); }}>Switch to buying mode</li>
-                <li className="menu-item" onClick={() => handleMenuItem("M1 Ecosystem")}>M1 Ecosystem</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Report a problem")}>Report a problem</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Contact support")}>Contact support</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Join the exclusive circle")}>Join the exclusive circle</li>
-              </ul>
-            </div>
-          )}
         </div>
 
+        {/* ACTIONS — direct navbar children, same as Header.tsx */}
         <button
-          className="filters-btn"
-          aria-expanded={openPanel === "filter"}
+          className={`filters-btn ${openPanel === "filter" ? "active" : ""}`}
           onClick={() => togglePanel("filter")}
         >
           <span>Filters</span>
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            style={{ marginLeft: 6 }}
-          >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 6 }}>
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
           </svg>
         </button>
+
+        <button className="all-listings-btn active" aria-pressed="true">
+          <span>All Listings</span>
+        </button>
+
+        {/* OVERLAY — same as Header.tsx */}
+        {openPanel && <div className="overlay" onClick={() => setOpenPanel(null)} />}
+
+        {/* FILTER DRAWER */}
         {openPanel === "filter" && (
-          <div className="drawer left show">
+          <div className="drawer show">
             <h3>Filter</h3>
             <p>Filtering for your listings and trending items — refine by keyword using the search bar above.</p>
-            <div className="btn-row">
+            <div className="btn-row" style={{ marginTop: 20 }}>
               <button
-                className="ghost-btn primary"
+                className="btn-sharp"
                 onClick={() => {
                   setTerm("");
                   showToast("Filters cleared.");
                   setOpenPanel(null);
                 }}
               >
-                Clear filters
+                Reset
+              </button>
+              <button className="btn-sharp btn-gold" onClick={() => setOpenPanel(null)}>
+                Apply
               </button>
             </div>
           </div>
         )}
 
-        <button className="all-listings-btn active" aria-pressed="true">
-          <span>All Listings</span>
-        </button>
+        {/* NOTIFICATIONS DRAWER */}
+        {openPanel === "notifications" && (
+          <div className="drawer compact show">
+            <h3>Notifications</h3>
+            <p>Buyer inquiries, listing status changes, and platform updates will appear here.</p>
+          </div>
+        )}
+
+        {/* PROFILE DRAWER */}
+        {openPanel === "profile" && <ProfilePanel onClose={() => setOpenPanel(null)} />}
+
+        {/* MENU DRAWER */}
+        {openPanel === "menu" && (
+          <div className="drawer show">
+            <h3>Menu</h3>
+            <ul>
+              <li className="menu-item" onClick={() => handleMenuItem("Saved Assets")}>Saved Assets</li>
+              <li className="menu-item" onClick={() => handleMenuItem("Acquisition history")}>Acquisition history</li>
+              <li className="menu-item" onClick={() => handleMenuItem("Switch to buying mode")}>Switch to buying mode</li>
+              <li className="menu-item" onClick={() => handleMenuItem("M1 Ecosystem")}>M1 Ecosystem</li>
+              <li className="menu-item" onClick={() => handleMenuItem("Report a problem")}>Report a problem</li>
+              <li className="menu-item" onClick={() => handleMenuItem("Get support")}>Get support</li>
+              <li className="menu-item" onClick={() => handleMenuItem("Join the exclusive circle")}>Join the exclusive circle</li>
+            </ul>
+          </div>
+        )}
       </header>
 
       <section className="seller-hero" style={{ position: "relative" }}>
@@ -454,12 +513,7 @@ export default function SellerMode({
           </div>
 
           <div className="footer-social">
-            <a
-              href="https://www.linkedin.com/company/m-onee/"
-              aria-label="LinkedIn"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href="https://www.linkedin.com/company/m-onee/" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5zM.5 8h4V23h-4V8zM8.5 8h3.8v2.05h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1V23h-4v-6.8c0-1.62-.03-3.7-2.25-3.7-2.26 0-2.6 1.77-2.6 3.6V23h-4V8z" />
               </svg>
@@ -475,12 +529,7 @@ export default function SellerMode({
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
               </svg>
             </a>
-            <a
-              href="https://rsinternational.net"
-              aria-label="Website"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href="https://rsinternational.net" aria-label="Website" target="_blank" rel="noopener noreferrer">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="2" y1="12" x2="22" y2="12" />
@@ -501,11 +550,7 @@ export default function SellerMode({
         </div>
       </footer>
 
-      <NewListingWizard
-        open={newListingOpen}
-        onClose={() => setNewListingOpen(false)}
-        showToast={showToast}
-      />
+      <NewListingWizard open={newListingOpen} onClose={() => setNewListingOpen(false)} showToast={showToast} />
     </div>
   );
 
