@@ -457,29 +457,7 @@ export default function SellerMode({
                 <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5zM.5 8h4V23h-4V8zM8.5 8h3.8v2.05h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1V23h-4v-6.8c0-1.62-.03-3.7-2.25-3.7-2.26 0-2.6 1.77-2.6 3.6V23h-4V8z" />
               </svg>
             </a>
-            <a href="#" aria-label="X (Twitter)" onClick={(e) => { e.preventDefault(); showToast("X — coming soon."); }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.9 2H22l-7.2 8.2L23 22h-6.6l-5.2-6.8L5.2 22H2l7.7-8.8L1.5 2h6.8l4.7 6.2L18.9 2z" />
-              </svg>
-            </a>
-            <a href="#" aria-label="Facebook" onClick={(e) => { e.preventDefault(); showToast("Facebook — coming soon."); }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M13.5 22v-8.5H16l.4-3.3h-2.9V8.2c0-1 .3-1.6 1.7-1.6H16V3.6c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.5-4 4.2v2.4H7v3.3h2.6V22h3.9z" />
-              </svg>
-            </a>
-            <a href="#" aria-label="Instagram" onClick={(e) => { e.preventDefault(); showToast("Instagram — coming soon."); }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <rect x="3" y="3" width="18" height="18" rx="5" />
-                <circle cx="12" cy="12" r="4" />
-                <circle cx="17.5" cy="6.5" r="1" />
-              </svg>
-            </a>
-            <a href="#" aria-label="YouTube" onClick={(e) => { e.preventDefault(); showToast("YouTube — coming soon."); }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <rect x="2" y="5" width="20" height="14" rx="4" />
-                <path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none" />
-              </svg>
-            </a>
+    
           </div>
 
           <div className="footer-bottom">
