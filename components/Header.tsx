@@ -8,6 +8,7 @@ import {
   getSearchSuggestions,
   getPopularSearches,
 } from "../lib/api/search";
+import ProfilePanel from "./ProfilePanel";
 
 type PanelKey = "menu" | "profile" | "filter" | null;
 
@@ -807,16 +808,11 @@ export default function Header({
         </div>
       )}
 
-      {/* PROFILE DRAWER */}
-          {openPanel === "profile" && (
-            <div className="drawer compact show">
-              <ul>
-                <li className="menu-item" onClick={() => handleMenuItem("Edit profile")}>Edit profile</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Account settings")}>Account settings</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Delete account")}>Delete account</li>
-              </ul>
-            </div>
-          )}
+      {/* PROFILE PANEL */}
+      {openPanel === "profile" && (
+        <ProfilePanel onClose={() => setOpenPanel(null)} />
+      )}
+
       {/* MENU DRAWER */}
       {openPanel === "menu" && (
         <div className="drawer show">
