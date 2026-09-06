@@ -858,12 +858,16 @@ body { overflow-x: hidden; }
 
 .navbar {
   position: sticky; top: 0; z-index: 200; min-height: var(--nav-h);
-  display: grid; grid-template-columns: auto minmax(0,1fr) auto; grid-template-rows: auto auto;
+  display: grid; grid-template-columns: 230px minmax(0,1fr) 230px; grid-template-rows: auto auto;
   column-gap: 24px; row-gap: 10px; align-items: center; padding: 14px 28px;
   background: rgba(7,8,12,.58); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
   border-bottom: 1px solid var(--line);
   transition: padding .35s var(--ease), background .35s var(--ease), box-shadow .35s var(--ease);
 }
+
+.nav-brand { grid-column: 1; grid-row: 1; justify-self: start; display: flex; align-items: center; gap: 12px; }
+
+.nav-utility { grid-column: 3; grid-row: 1 / span 2; justify-self: end; display: flex; align-items: center; gap: 10px; }
 .navbar.scrolled { padding: 8px 28px; background: rgba(7,8,12,.86); box-shadow: 0 12px 40px rgba(0,0,0,.4); }
 .nav-brand { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 12px; }
 .brand-mark {
@@ -1147,7 +1151,7 @@ body { overflow-x: hidden; }
 /* single row instead of stacked rows */
 .nav-utility-stack {
   grid-column: 3; grid-row: 1 / span 2; display: flex; flex-direction: row;
-  gap: 10px; align-items: center; justify-self: end;
+  gap: 8px; align-items: center; justify-self: end;
 }
 .nav-utility-row { display: flex; align-items: center; gap: 10px; }
 
