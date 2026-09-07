@@ -1149,12 +1149,58 @@ body { overflow-x: hidden; }
 .seller-navbar { position: sticky; top: 0; }
 .seller-navbar { padding-bottom: 24px; }
 .seller-navbar .nav-utility { display: none; }
-/* single row instead of stacked rows */
 .nav-utility-stack {
   grid-column: 3; grid-row: 1 / span 2; display: flex; flex-direction: row;
   gap: 8px; align-items: center; justify-self: end;
 }
 .nav-utility-row { display: flex; align-items: center; gap: 10px; }
+.seller-navbar {
+  grid-template-columns: 230px minmax(0, 1fr) 300px; 
+}
+
+.seller-navbar .nav-utility-stack {
+  gap: 6px;                
+  flex-wrap: nowrap;
+}
+
+
+.seller-navbar .icon-btn,
+.seller-navbar .new-listing-btn {
+  width: 38px;
+  height: 38px;
+}
+
+
+.seller-navbar .filters-btn,
+.seller-navbar .all-listings-btn {
+  max-width: 100%;
+}
+
+
+@media (max-width: 900px) {
+  .seller-navbar {
+    grid-template-columns: 1fr auto;
+  }
+  .seller-navbar .nav-utility-stack {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 640px) {
+  .seller-navbar .nav-utility-stack {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+    max-width: none;
+  }
+  .seller-navbar .filters-btn { grid-row: 3; }
+  .seller-navbar .all-listings-btn { grid-row: 3; }
+}
 
 /* make New Listing match the dark circular icon style */
 .new-listing-btn {

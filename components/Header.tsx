@@ -27,6 +27,7 @@ type HeaderProps = {
   onOpenSellerMode: () => void;
   onOpenReportProblem?: () => void;
   onOpenGetSupport?: () => void;
+  //onOpenAcquisitionHistory?: () => void;
 };
 
 export default function Header({
@@ -290,7 +291,14 @@ export default function Header({
       onOpenReportProblem?.();
       return;
     }
-
+    //
+    //if (label === "Acquisition history")
+    //{
+     // setOpenPanel(null);
+     // onOpenAcquisitionHistory?.();
+     // return;
+   // }
+    //
     if (label === "Get support") {
       setOpenPanel(null);
       onOpenGetSupport?.();

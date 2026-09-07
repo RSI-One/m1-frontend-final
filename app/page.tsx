@@ -16,6 +16,7 @@ import Toast from "../components/Toast";
 import SupportModals from "../components/SupportModals";
 import MessagingPage from "../components/MessagingPage";
 import SellerMode from "../components/SellerMode";
+//import AcquisitionHistoryModal from "../components/modals/AcquisitionHistoryModal";
 
 import { SiteProvider, useSite } from "../lib/site-context";
 import { Jet, SfItem } from "../lib/types";
@@ -41,7 +42,8 @@ function PageInner() {
   const [supportModalType, setSupportModalType] = useState<
     "report" | "support" | null
   >(null);
-
+   
+  const [acquisitionHistoryOpen, setAcquisitionHistoryOpen] = useState(false);
   // Marketplace state
   const [started, setStarted] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Jet | SfItem | null>(
@@ -113,8 +115,9 @@ function PageInner() {
         onOpenSellerMode={() => setSellerModeOpen(true)}
         onOpenReportProblem={() => setSupportModalType("report")}
         onOpenGetSupport={() => setSupportModalType("support")}
+        //onOpenAcquisitionHistory={() => setAcquisitionHistoryOpen(true)}
       />
-
+    
       {/* MAIN ENGINE */}
       <section className="engine-section" id="workspace">
         <div className="engine-shell">
@@ -173,6 +176,7 @@ function PageInner() {
         modalType={supportModalType}
         onClose={() => setSupportModalType(null)}
       />
+      
     </>
   );
 }
