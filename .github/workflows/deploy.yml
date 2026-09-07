@@ -1,0 +1,62 @@
+name: Deploy Frontend to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-vps-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST || '187.7.19.5' }}
+          username: ${{ secrets.SSH_USER || 'root' }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          timeout: 120s
+          command_timeout: 15m
+          script_stop: true
+          script: |
+            echo "==> Deploying M1 Frontend to VPS..."
+            cd /var/www/m1-frontend-final
+
+            # Mark directory safe for Git
+            git config --global --add safe.directory /var/www/m1-frontend-final
+
+            # Pull latest changes from main
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+
+            # Install dependencies
+            npm install --prefer-offline --no-audit
+
+            # Set production API environment variables
+            echo "NEXT_PUBLIC_API_BASE_URL=/backend" > .env.local
+            echo "NEXT_PUBLIC_API_URL=/backend" >> .env.local
+
+            # Clean any stale build artifacts and build Next.js application
+            rm -rf .next
+            NODE_OPTIONS="--max-old-space-size=2048" npm run build
+
+            # Restart Next.js frontend service
+            systemctl restart m1-frontend
+
+            # Verify service is running
+            sleep 3
+            if systemctl is-active --quiet m1-frontend; then
+              echo "✅ m1-frontend service is running successfully!"
+            else
+              echo "❌ m1-frontend service failed to start!"
+              systemctl status m1-frontend --no-pager
+              exit 1
+            fi

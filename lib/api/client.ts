@@ -1,6 +1,20 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ||
-  'http://localhost:8000';
+export function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1') {
+      const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
+      if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+        return envUrl.replace(/\/$/, '');
+      }
+      return '/backend';
+    }
+  }
+  const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+  return 'http://localhost:8000';
+}
 
 const ACCESS_TOKEN_KEY = 'm1_access_token';
 
@@ -53,14 +67,22 @@ interface RequestOptions
   formData?: FormData;
 }
 
-function buildUrl(
+export function buildUrl(
   path: string,
   params?: QueryParams
 ) {
+  const baseUrl = getApiBaseUrl();
+  let fullPath = path;
+  if (!fullPath.startsWith('http')) {
+    const cleanPath = fullPath.startsWith('/') ? fullPath : `/${fullPath}`;
+    fullPath = baseUrl && cleanPath.startsWith(baseUrl) ? cleanPath : `${baseUrl}${cleanPath}`;
+  }
+
   const url = new URL(
-    path.startsWith('http')
-      ? path
-      : `${API_BASE_URL}${path}`
+    fullPath,
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : 'http://127.0.0.1:3000'
   );
 
   if (params) {
@@ -88,7 +110,7 @@ let refreshPromise: Promise<boolean> | null = null;
 async function trySilentRefresh(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = fetch(
-      `${API_BASE_URL}/auth/refresh`,
+      buildUrl('/auth/refresh'),
       {
         method: 'POST',
         credentials: 'include',
@@ -237,6 +259,19 @@ async function apiRequest<T>(
     );
   }
 
+  return unwrapEnvelope<T>(payload);
+}
+
+function unwrapEnvelope<T>(payload: unknown): T {
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    'success' in payload &&
+    'data' in payload &&
+    (payload as { data: unknown }).data !== undefined
+  ) {
+    return (payload as { data: T }).data;
+  }
   return payload as T;
 }
 
@@ -402,7 +437,7 @@ export async function apiUpload<T>(
     );
   }
 
-  return payload as T;
+  return unwrapEnvelope<T>(payload);
 }
 
 

@@ -3,7 +3,15 @@ import { ROLE_PERMISSIONS, ROLE_SCOPE, ROLE_ROUTE_MAP, moduleDefs } from './admi
 // ============================================================
 // CONFIG
 // ============================================================
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''; // e.g. https://api.yourapp.com
+function getApiBase(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (envUrl) return envUrl.replace(/\/$/, '');
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1') return '/backend';
+  }
+  return '';
+}
 
 // ============================================================
 // TYPES
@@ -61,7 +69,14 @@ async function apiFetch(path: string, options: RequestInit = {}): Promise<Respon
   headers.set('Content-Type', 'application/json');
   if (_accessToken) headers.set('Authorization', `Bearer ${_accessToken}`);
 
-  return fetch(`${API_BASE}${path}`, {
+  const base = getApiBase();
+  let url = path;
+  if (!url.startsWith('http')) {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    url = base && cleanPath.startsWith(base) ? cleanPath : `${base}${cleanPath}`;
+  }
+
+  return fetch(url, {
     ...options,
     headers,
     credentials: 'include', // sends the httpOnly refresh-token cookie

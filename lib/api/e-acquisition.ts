@@ -1,6 +1,14 @@
 import { getAccessToken } from '../admin-auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+function getApiBase(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (envUrl) return envUrl.replace(/\/$/, '');
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1') return '/backend';
+  }
+  return '';
+}
 
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const headers = new Headers(options.headers);
@@ -8,7 +16,14 @@ async function apiFetch(path: string, options: RequestInit = {}): Promise<Respon
   const token = getAccessToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const base = getApiBase();
+  let url = path;
+  if (!url.startsWith('http')) {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    url = base && cleanPath.startsWith(base) ? cleanPath : `${base}${cleanPath}`;
+  }
+
+  const res = await fetch(url, {
     ...options,
     headers,
     credentials: 'include',
