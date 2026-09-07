@@ -1133,7 +1133,7 @@ body { overflow-x: hidden; }
    SELLER MODE — dedicated page (header + carousels + footer)
 ============================================================ */
 .seller-page {
-  position: fixed;
+  position: relative;
   inset: 0;
   height: 100vh;
   height: 100dvh;
