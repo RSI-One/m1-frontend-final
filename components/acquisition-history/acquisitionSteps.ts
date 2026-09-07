@@ -11,16 +11,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-// Acquisition process, exactly as ported from the uploaded design's 9-stage
-// list (Coordinated Meeting -> ... -> Closure).
-//
-// NOTE — stage-count mismatch: the backend's existing admin acquisition
-// module (components/modules/AcquisitionModule.tsx) works off a 7-stage
-// list that has no "Aircraft Sale Agreement" or "Closure" step. This file
-// keeps the uploaded design's original 9 stages so the UI matches 1:1 —
-// but whatever stage number `/buyer/acquisitions` actually returns needs to
-// be confirmed against this list (or the two lists reconciled) once you can
-// see a real response.
 export type AcquisitionStep = {
   id: number;
   key: string;
@@ -214,7 +204,9 @@ export const DOCUMENT_META: Record<
 export function getProgressSummary(currentStep: number, status?: string) {
   const states = getMilestoneStates(currentStep, status);
   const order: MilestoneKey[] = ["application", "letter", "verification", "saleAgreement", "agreementLetter", "completed"];
-  const current = order.map((key) => ({ key, ...states[key] })).find((m) => m.state === "active");
+  const current = order
+  .map((key) => ({ ...states[key], key }))
+  .find((m) => m.state === "active");
 
   const currentMilestone =
     PROGRESS_MILESTONES.find((m) => m.key === current?.key) ||
