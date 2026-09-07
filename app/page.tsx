@@ -16,7 +16,7 @@ import Toast from "../components/Toast";
 import SupportModals from "../components/SupportModals";
 import MessagingPage from "../components/MessagingPage";
 import SellerMode from "../components/SellerMode";
-//import AcquisitionHistoryModal from "../components/modals/AcquisitionHistoryModal";
+import AcquisitionHistoryPage from "../components/acquisition-history/AcquisitionHistoryPage";
 
 import { SiteProvider, useSite } from "../lib/site-context";
 import { Jet, SfItem } from "../lib/types";
@@ -115,7 +115,7 @@ function PageInner() {
         onOpenSellerMode={() => setSellerModeOpen(true)}
         onOpenReportProblem={() => setSupportModalType("report")}
         onOpenGetSupport={() => setSupportModalType("support")}
-        //onOpenAcquisitionHistory={() => setAcquisitionHistoryOpen(true)}
+        onOpenAcquisitionHistory={() => setAcquisitionHistoryOpen(true)}
       />
     
       {/* MAIN ENGINE */}
@@ -153,14 +153,16 @@ function PageInner() {
       <CompareModal items={compareItems} onClose={closeCompareModal} />
 
       {/* SELLER MODE */}
-      <SellerMode
-        open={sellerModeOpen}
-        onClose={() => setSellerModeOpen(false)}
-        jets={jets}
-        onOpenAsset={openAssetFromJet}
-        onToggleChat={() => setMessagingOpen(true)}
-        showToast={showToast}
-      />
+      {/* SELLER MODE */}
+    <SellerMode
+     open={sellerModeOpen}
+     onClose={() => setSellerModeOpen(false)}
+     jets={jets}
+     onOpenAsset={openAssetFromJet}
+     onToggleChat={() => setMessagingOpen(true)}
+     showToast={showToast}
+      onOpenAcquisitionHistory={() => setAcquisitionHistoryOpen(true)}   
+     />
 
       {/* TOAST */}
       <Toast />
@@ -176,7 +178,11 @@ function PageInner() {
         modalType={supportModalType}
         onClose={() => setSupportModalType(null)}
       />
-      
+      {/* ACQUISITION HISTORY */}
+      <AcquisitionHistoryPage
+          open={acquisitionHistoryOpen}
+          onClose={() => setAcquisitionHistoryOpen(false)}
+      />
     </>
   );
 }

@@ -27,7 +27,7 @@ type HeaderProps = {
   onOpenSellerMode: () => void;
   onOpenReportProblem?: () => void;
   onOpenGetSupport?: () => void;
-  //onOpenAcquisitionHistory?: () => void;
+  onOpenAcquisitionHistory?: () => void;
 };
 
 export default function Header({
@@ -35,6 +35,7 @@ export default function Header({
   onOpenSellerMode,
   onOpenReportProblem,
   onOpenGetSupport,
+  onOpenAcquisitionHistory,
 }: HeaderProps) {
   const {
     search,
@@ -291,14 +292,13 @@ export default function Header({
       onOpenReportProblem?.();
       return;
     }
-    //
-    //if (label === "Acquisition history")
-    //{
-     // setOpenPanel(null);
-     // onOpenAcquisitionHistory?.();
-     // return;
-   // }
-    //
+  
+    if (label === "Acquisition history") {
+       setOpenPanel(null);
+        onOpenAcquisitionHistory?.();
+        return;
+}
+    
     if (label === "Get support") {
       setOpenPanel(null);
       onOpenGetSupport?.();
