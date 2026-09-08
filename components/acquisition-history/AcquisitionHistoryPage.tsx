@@ -41,7 +41,7 @@ export default function AcquisitionHistoryPage({ open, onClose }: AcquisitionHis
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-40 overflow-y-auto bg-bg">
+    <div className="fixed inset-0 z-[300] overflow-y-auto bg-bg">
       <div className="mx-auto w-full max-w-3xl px-4 sm:px-8 py-10">
         {/* Closing this overlay lands back on the main page — Seller Mode
             is already closed by the mutually-exclusive overlay wiring the
