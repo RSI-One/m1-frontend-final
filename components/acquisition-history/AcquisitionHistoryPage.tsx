@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ACQUISITION_STEPS, HERO_BANNER, getProgressSummary } from "./acquisitionSteps";
 import { normalizeAcquisition, type BuyerAcquisition } from "./types";
 import AcquisitionDetailModal from "./AcquisitionDetailModal";
@@ -42,28 +42,18 @@ export default function AcquisitionHistoryPage({ open, onClose }: AcquisitionHis
 
   return (
     <div className="fixed inset-0 z-40 overflow-y-auto bg-bg">
-      <div className="fixed top-4 right-4 z-10 flex items-center gap-2">
-        {/* Closing this overlay already lands back on the buying/marketplace
-            page (Seller Mode is closed by the mutually-exclusive overlay
-            wiring the moment Acquisition History opens), so this button
-            just gives that action an explicit, familiar label — matching
-            the "Switch to buying mode" item in the Seller Mode menu. */}
-        <button
-          onClick={onClose}
-          className="rounded-full border border-white/10 bg-panel/80 px-4 py-2 text-[10.5px] font-mono uppercase tracking-wider text-silver backdrop-blur transition hover:border-champagne/40 hover:text-champagne"
-        >
-          Switch to buying mode
-        </button>
-        <button
-          onClick={onClose}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-panel/80 text-silver backdrop-blur transition hover:text-champagne"
-          aria-label="Close acquisition history"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
       <div className="mx-auto w-full max-w-3xl px-4 sm:px-8 py-10">
+        {/* Closing this overlay lands back on the main page — Seller Mode
+            is already closed by the mutually-exclusive overlay wiring the
+            moment Acquisition History opens, so a plain Back is enough. */}
+        <button
+          onClick={onClose}
+          className="mb-6 flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-silver-dim transition hover:text-champagne"
+        >
+          <ChevronLeft size={14} />
+          Back
+        </button>
+
         <div className="relative mb-8 h-40 sm:h-48 w-full overflow-hidden rounded-2xl border border-white/10">
           <img src={HERO_BANNER} alt="" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/20 to-transparent" />
