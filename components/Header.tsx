@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
+import ProfilePanel from "./ProfilePanel";
 import { useSite, BUDGET_MIN, BUDGET_MAX } from "../lib/site-context";
 import { useTypewriterPlaceholder } from "../lib/useTypewriterPlaceholder";
 import {
@@ -819,15 +819,10 @@ export default function Header({
       )}
 
       {/* PROFILE DRAWER */}
-          {openPanel === "profile" && (
-            <div className="drawer compact show">
-              <ul>
-                <li className="menu-item" onClick={() => handleMenuItem("Edit profile")}>Edit profile</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Account settings")}>Account settings</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Delete account")}>Delete account</li>
-              </ul>
-            </div>
-          )}
+          {/* PROFILE DRAWER */}
+{openPanel === "profile" && (
+  <ProfilePanel onClose={() => setOpenPanel(null)} />
+)}
       {/* MENU DRAWER */}
       {openPanel === "menu" && (
         <div className="drawer show">
