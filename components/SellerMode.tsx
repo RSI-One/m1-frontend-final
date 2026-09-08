@@ -408,17 +408,6 @@ export default function SellerMode({
                 <div className="brand-copy"></div>
               </div>
             </div>
-
-            <div className="footer-col">
-              <h5>Seller Tools</h5>
-              <ul>
-                <li><a href="#" onClick={(e) => { e.preventDefault(); setNewListingOpen(true); }}>Create Listing</a></li>
-                <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Manage Listings — coming soon."); }}>Manage Listings</a></li>
-                <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Buyer Inquiries — coming soon."); }}>Buyer Inquiries</a></li>
-                <li><a href="#" onClick={(e) => { e.preventDefault(); showToast("Seller Analytics — coming soon."); }}>Seller Analytics</a></li>
-              </ul>
-            </div>
-
             <div className="footer-col">
               <h5>Resources</h5>
               <ul>
