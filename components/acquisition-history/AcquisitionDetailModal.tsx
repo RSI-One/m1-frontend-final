@@ -117,7 +117,7 @@ export default function AcquisitionDetailModal({ acquisition, onClose }: Acquisi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+    <div className="fixed inset-0 z-[310] flex items-center justify-center p-3 sm:p-6">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

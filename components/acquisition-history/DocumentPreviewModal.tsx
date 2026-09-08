@@ -21,7 +21,7 @@ export default function DocumentPreviewModal({ docKey, acquisition, status, loiR
   const isLoiWithRecord = docKey === "letterOfIntent" && loiRecord;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6">
+    <div className="fixed inset-0 z-[320] flex items-center justify-center p-3 sm:p-6">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
