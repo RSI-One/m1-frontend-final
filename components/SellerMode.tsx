@@ -31,6 +31,8 @@ export default function SellerMode({
   onToggleChat,
   showToast,
   onOpenAcquisitionHistory,
+  onOpenReportProblem,
+  onOpenGetSupport,
 }: {
   open: boolean;
   onClose: () => void;
@@ -39,6 +41,8 @@ export default function SellerMode({
   onToggleChat: () => void;
   showToast: (msg: string) => void;
   onOpenAcquisitionHistory: () => void;
+  onOpenReportProblem?: () => void;
+  onOpenGetSupport?: () => void;
 }){
   const [term, setTerm] = useState("");
   const [newListingOpen, setNewListingOpen] = useState(false);
@@ -164,16 +168,28 @@ export default function SellerMode({
 
   const handleMenuItem = (label: string) => {
     if (label === "Switch to buying mode") {
-    setOpenPanel(null);
-    onClose();
-    return;
-  }
+      setOpenPanel(null);
+      onClose();
+      return;
+    }
 
-  if (label === "Acquisition history") {      
-    setOpenPanel(null);
-    onOpenAcquisitionHistory();
-    return;
-  }
+    if (label === "Acquisition history") {
+      setOpenPanel(null);
+      onOpenAcquisitionHistory();
+      return;
+    }
+
+    if (label === "Report a problem") {
+      setOpenPanel(null);
+      onOpenReportProblem?.();
+      return;
+    }
+
+    if (label === "Get support") {
+      setOpenPanel(null);
+      onOpenGetSupport?.();
+      return;
+    }
 
     showToast(label + " — opening…");
     setOpenPanel(null);
@@ -309,7 +325,7 @@ export default function SellerMode({
                 <li className="menu-item" onClick={() => { setOpenPanel(null); onClose(); }}>Switch to buying mode</li>
                 <li className="menu-item" onClick={() => handleMenuItem("M1 Ecosystem")}>M1 Ecosystem</li>
                 <li className="menu-item" onClick={() => handleMenuItem("Report a problem")}>Report a problem</li>
-                <li className="menu-item" onClick={() => handleMenuItem("Contact support")}>Contact support</li>
+                <li className="menu-item" onClick={() => handleMenuItem("Get support")}>Get support</li>
                 <li className="menu-item" onClick={() => handleMenuItem("Join the exclusive circle")}>Join the exclusive circle</li>
               </ul>
             </div>
