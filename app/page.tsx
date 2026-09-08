@@ -187,6 +187,8 @@ function PageInner() {
         onToggleChat={openMessaging}
         showToast={showToast}
         onOpenAcquisitionHistory={openAcquisitionHistory}
+         onOpenReportProblem={() => setSupportModalType("report")}
+         onOpenGetSupport={() => setSupportModalType("support")}
       />
 
       {/* TOAST */}
