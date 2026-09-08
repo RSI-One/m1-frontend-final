@@ -42,7 +42,7 @@ function PageInner() {
   const [supportModalType, setSupportModalType] = useState<
     "report" | "support" | null
   >(null);
-   
+
   const [acquisitionHistoryOpen, setAcquisitionHistoryOpen] = useState(false);
   // Marketplace state
   const [started, setStarted] = useState(false);
@@ -52,6 +52,32 @@ function PageInner() {
   const [compareItems, setCompareItems] = useState<SfItem[]>([]);
   const [sellerModeOpen, setSellerModeOpen] = useState(false);
   const [messagingOpen, setMessagingOpen] = useState(false);
+
+  // ---------------------------------------------------------------
+  // Full-screen overlays (Seller Mode, Acquisition History, Messaging)
+  // are mutually exclusive — opening one always closes the others,
+  // so a stale "open" state from one overlay can never resurface
+  // underneath another after it closes.
+  // ---------------------------------------------------------------
+  const openSellerMode = () => {
+    setAcquisitionHistoryOpen(false);
+    setMessagingOpen(false);
+    setSupportModalType(null);
+    setSellerModeOpen(true);
+  };
+
+  const openAcquisitionHistory = () => {
+    setSellerModeOpen(false);
+    setMessagingOpen(false);
+    setSupportModalType(null);
+    setAcquisitionHistoryOpen(true);
+  };
+
+  const openMessaging = () => {
+    setSellerModeOpen(false);
+    setAcquisitionHistoryOpen(false);
+    setMessagingOpen(true);
+  };
 
   // Check authentication session
   useEffect(() => {
@@ -111,13 +137,13 @@ function PageInner() {
     <>
       {/* HEADER */}
       <Header
-        onToggleChat={() => setMessagingOpen(true)}
-        onOpenSellerMode={() => setSellerModeOpen(true)}
+        onToggleChat={openMessaging}
+        onOpenSellerMode={openSellerMode}
         onOpenReportProblem={() => setSupportModalType("report")}
         onOpenGetSupport={() => setSupportModalType("support")}
-        onOpenAcquisitionHistory={() => setAcquisitionHistoryOpen(true)}
+        onOpenAcquisitionHistory={openAcquisitionHistory}
       />
-    
+
       {/* MAIN ENGINE */}
       <section className="engine-section" id="workspace">
         <div className="engine-shell">
@@ -153,16 +179,15 @@ function PageInner() {
       <CompareModal items={compareItems} onClose={closeCompareModal} />
 
       {/* SELLER MODE */}
-      {/* SELLER MODE */}
-    <SellerMode
-     open={sellerModeOpen}
-     onClose={() => setSellerModeOpen(false)}
-     jets={jets}
-     onOpenAsset={openAssetFromJet}
-     onToggleChat={() => setMessagingOpen(true)}
-     showToast={showToast}
-      onOpenAcquisitionHistory={() => setAcquisitionHistoryOpen(true)}   
-     />
+      <SellerMode
+        open={sellerModeOpen}
+        onClose={() => setSellerModeOpen(false)}
+        jets={jets}
+        onOpenAsset={openAssetFromJet}
+        onToggleChat={openMessaging}
+        showToast={showToast}
+        onOpenAcquisitionHistory={openAcquisitionHistory}
+      />
 
       {/* TOAST */}
       <Toast />
@@ -178,10 +203,11 @@ function PageInner() {
         modalType={supportModalType}
         onClose={() => setSupportModalType(null)}
       />
+
       {/* ACQUISITION HISTORY */}
       <AcquisitionHistoryPage
-          open={acquisitionHistoryOpen}
-          onClose={() => setAcquisitionHistoryOpen(false)}
+        open={acquisitionHistoryOpen}
+        onClose={() => setAcquisitionHistoryOpen(false)}
       />
     </>
   );
