@@ -45,3 +45,7 @@ export async function uploadMyProfilePhoto(file: File): Promise<UserProfileRead>
 export async function deleteMyProfilePhoto(): Promise<void> {
   await apiDelete("/profile/me/photo");
 }
+
+export async function deleteMyAccount(password: string): Promise<void> {
+  await apiDelete<void>("/profile/me", { body: { password } });
+}
