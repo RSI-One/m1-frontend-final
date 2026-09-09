@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 import AuthScreen from "../components/auth/AuthScreen";
 import Header from "../components/Header";
@@ -21,7 +21,6 @@ import AcquisitionHistoryPage from "../components/acquisition-history/Acquisitio
 import { SiteProvider, useSite } from "../lib/site-context";
 import { Jet, SfItem } from "../lib/types";
 import { jets } from "../lib/data";
-import * as authApi from "../lib/api/auth";
 
 export default function Page() {
   return (
@@ -32,16 +31,9 @@ export default function Page() {
 }
 
 function PageInner() {
-  const { showToast, showAllListings } = useSite();
+  const { showToast, showAllListings, user, isAuthLoading, refreshUser } = useSite();
 
-  // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
-
-  // Support / Report a Problem state (single source of truth)
-  const [supportModalType, setSupportModalType] = useState<
-    "report" | "support" | null
-  >(null);
+ const [supportModalType, setSupportModalType] = useState<"report" | "support" | null>(null);
 
   const [acquisitionHistoryOpen, setAcquisitionHistoryOpen] = useState(false);
   // Marketplace state
@@ -53,12 +45,6 @@ function PageInner() {
   const [sellerModeOpen, setSellerModeOpen] = useState(false);
   const [messagingOpen, setMessagingOpen] = useState(false);
 
-  // ---------------------------------------------------------------
-  // Full-screen overlays (Seller Mode, Acquisition History, Messaging)
-  // are mutually exclusive — opening one always closes the others,
-  // so a stale "open" state from one overlay can never resurface
-  // underneath another after it closes.
-  // ---------------------------------------------------------------
   const openSellerMode = () => {
     setAcquisitionHistoryOpen(false);
     setMessagingOpen(false);
@@ -79,24 +65,8 @@ function PageInner() {
     setMessagingOpen(true);
   };
 
-  // Check authentication session
-  useEffect(() => {
-    authApi
-      .getMe()
-      .then(() => {
-        setIsAuthenticated(true);
-      })
-      .catch(() => {
-        setIsAuthenticated(false);
-      })
-      .finally(() => {
-        setCheckingSession(false);
-      });
-  }, []);
-
-  // Called after successful login/register
   const handleAuthSuccess = () => {
-    setIsAuthenticated(true);
+    refreshUser();
   };
 
   const openAssetFromSf = (item: SfItem) => {
@@ -120,7 +90,7 @@ function PageInner() {
   };
 
   // Loading screen
-  if (checkingSession) {
+  if (isAuthLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0b0d]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
@@ -129,7 +99,7 @@ function PageInner() {
   }
 
   // Authentication screen
-  if (!isAuthenticated) {
+  if (!user) {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
 

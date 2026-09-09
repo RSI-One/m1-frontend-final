@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -10,6 +9,7 @@ import {
   UserProfileRead,
 } from "@/lib/api/profile";
 import { ApiError } from "@/lib/api/client";
+import { useSite } from "@/lib/site-context";
 
 interface CombinedProfile {
   fullName: string;
@@ -47,6 +47,7 @@ export default function ProfilePanel({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const { logoutLocally } = useSite();
 
   const [profile, setProfile] = useState<CombinedProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,8 +131,9 @@ export default function ProfilePanel({
     try {
       await logout();
     } catch {
-      // Even if logout API fails, still redirect to login
+      
     } finally {
+      logoutLocally();
       setLoggingOut(false);
       onClose();
       router.push("/");
