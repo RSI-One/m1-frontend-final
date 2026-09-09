@@ -16,6 +16,7 @@ import Toast from "../components/Toast";
 import SupportModals from "../components/SupportModals";
 import MessagingPage from "../components/MessagingPage";
 import SellerMode from "../components/SellerMode";
+import AcquisitionHistoryPage from "../components/acquisition-history/AcquisitionHistoryPage";
 
 import { SiteProvider, useSite } from "../lib/site-context";
 import { Jet, SfItem } from "../lib/types";
@@ -42,6 +43,7 @@ function PageInner() {
     "report" | "support" | null
   >(null);
 
+  const [acquisitionHistoryOpen, setAcquisitionHistoryOpen] = useState(false);
   // Marketplace state
   const [started, setStarted] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Jet | SfItem | null>(
@@ -50,6 +52,32 @@ function PageInner() {
   const [compareItems, setCompareItems] = useState<SfItem[]>([]);
   const [sellerModeOpen, setSellerModeOpen] = useState(false);
   const [messagingOpen, setMessagingOpen] = useState(false);
+
+  // ---------------------------------------------------------------
+  // Full-screen overlays (Seller Mode, Acquisition History, Messaging)
+  // are mutually exclusive — opening one always closes the others,
+  // so a stale "open" state from one overlay can never resurface
+  // underneath another after it closes.
+  // ---------------------------------------------------------------
+  const openSellerMode = () => {
+    setAcquisitionHistoryOpen(false);
+    setMessagingOpen(false);
+    setSupportModalType(null);
+    setSellerModeOpen(true);
+  };
+
+  const openAcquisitionHistory = () => {
+    setSellerModeOpen(false);
+    setMessagingOpen(false);
+    setSupportModalType(null);
+    setAcquisitionHistoryOpen(true);
+  };
+
+  const openMessaging = () => {
+    setSellerModeOpen(false);
+    setAcquisitionHistoryOpen(false);
+    setMessagingOpen(true);
+  };
 
   // Check authentication session
   useEffect(() => {
@@ -109,10 +137,11 @@ function PageInner() {
     <>
       {/* HEADER */}
       <Header
-        onToggleChat={() => setMessagingOpen(true)}
-        onOpenSellerMode={() => setSellerModeOpen(true)}
+        onToggleChat={openMessaging}
+        onOpenSellerMode={openSellerMode}
         onOpenReportProblem={() => setSupportModalType("report")}
         onOpenGetSupport={() => setSupportModalType("support")}
+        onOpenAcquisitionHistory={openAcquisitionHistory}
       />
 
       {/* MAIN ENGINE */}
@@ -155,8 +184,11 @@ function PageInner() {
         onClose={() => setSellerModeOpen(false)}
         jets={jets}
         onOpenAsset={openAssetFromJet}
-        onToggleChat={() => setMessagingOpen(true)}
+        onToggleChat={openMessaging}
         showToast={showToast}
+        onOpenAcquisitionHistory={openAcquisitionHistory}
+         onOpenReportProblem={() => setSupportModalType("report")}
+         onOpenGetSupport={() => setSupportModalType("support")}
       />
 
       {/* TOAST */}
@@ -172,6 +204,12 @@ function PageInner() {
       <SupportModals
         modalType={supportModalType}
         onClose={() => setSupportModalType(null)}
+      />
+
+      {/* ACQUISITION HISTORY */}
+      <AcquisitionHistoryPage
+        open={acquisitionHistoryOpen}
+        onClose={() => setAcquisitionHistoryOpen(false)}
       />
     </>
   );

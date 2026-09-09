@@ -27,9 +27,17 @@ const config: Config = {
       fontFamily: {
         display: ["'Big Shoulders Display'", "sans-serif"],
         sans: ["Inter", "sans-serif"],
+        body: ["'Manrope'", "sans-serif"],       
+        mono: ["'IBM Plex Mono'", "monospace"],   
       },
       borderRadius: {
         img: "10px",
+      },
+      boxShadow: {
+        glass: "0 8px 40px rgba(0,0,0,0.55)",     
+      },
+      backdropBlur: {
+        xs: "2px",                                 
       },
       keyframes: {
         fadeInQ: {

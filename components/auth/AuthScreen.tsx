@@ -301,10 +301,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     }
   };
 
-  // ---------- REGISTER: submit form -> signup ----------
-  const handleRegisterSubmit = async () => {
-    if (!canContinue || registerLoading) return;
-    if (!isLastStep) {
+ 
+    // ---------- REGISTER: submit form -> signup ----------
+    const handleRegisterSubmit = async () => {
+     if (!canContinue || registerLoading) return;
+     if (!isLastStep) {
       setStep(step + 1);
       return;
     }
@@ -313,15 +314,18 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     setRegisterLoading(true);
     try {
       const email = (formData.email ?? "").trim();
+      const phone = (formData.phone ?? "").trim();
+
       await authApi.signup({
         username: deriveUsername(email),
         email,
         password: formData.password,
+        full_name: (formData.fullName ?? "").trim() || undefined,
+        company_name: (formData.company ?? "").trim() || undefined,
+        phone_number: phone ? `${formData.phoneDial || "+92"}${phone}` : undefined,
+        location: (formData.country ?? "").trim() || undefined,
+        country: (formData.country ?? "").trim() || undefined,
       });
-      // NOTE: fullName, company, phone, country, assets, reason are collected
-      // above but not sent here — /auth/signup only accepts
-      // username/email/password today. Wire these into a profile-update
-      // call once a PATCH /users/me/profile endpoint exists.
       setVerifyError(null);
       setRegResendMessage(null);
       setRegisterScreen("verify");
@@ -331,10 +335,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       setRegisterLoading(false);
     }
   };
-
-  const handleSkip = () => setStep(step + 1);
+    const handleSkip = () => setStep(step + 1);
   const handleBack = () => step > 0 && setStep(step - 1);
-
   // ---------- REGISTER: verify email code ----------
   const handleVerifyEmailSubmit = async () => {
     if (verifyLoading) return;
