@@ -134,7 +134,7 @@ export default function ProfilePanel({
     } finally {
       setLoggingOut(false);
       onClose();
-      router.push("/login");
+      router.push("/");
     }
   };
 
