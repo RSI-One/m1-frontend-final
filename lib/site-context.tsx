@@ -54,16 +54,12 @@ interface SiteContextValue {
   refreshUnreadCount: () => Promise<void>;
   setUser: (u: UserRead | null) => void;
   setProfile: (p: UserProfileRead | null) => void;
+  logoutLocally: () => void;
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null);
 export const BUDGET_MIN = 5;
 export const BUDGET_MAX = 80;
-
-function hasToken(): boolean {
-  if (typeof window === "undefined") return false;
-  return Boolean(localStorage.getItem("access_token"));
-}
 
 export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [search, setSearchState] = useState("");
@@ -112,13 +108,10 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   }, [showToast]);
 
   // GET /auth/me + GET /profile/me
+  // NOTE: session is cookie-based (backend sets it on login), so we don't
+  // gate this on any localStorage token — we let the request itself be
+  // the source of truth. A 401 simply means "not logged in".
   const refreshUser = useCallback(async () => {
-    if (!hasToken()) {
-      setUser(null);
-      setProfile(null);
-      setIsAuthLoading(false);
-      return;
-    }
     setIsAuthLoading(true);
     try {
       const [meRes, profileRes] = await Promise.allSettled([
@@ -134,15 +127,23 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
 
   // GET /unread/count
   const refreshUnreadCount = useCallback(async () => {
-    if (!hasToken()) {
-      setUnreadCount(0);
-      return;
-    }
     try {
       const res = await api.get<{ unread_count: number }>("/unread/count");
       setUnreadCount(res.unread_count ?? 0);
     } catch {
       // Non-fatal — leave last known count in place.
+    }
+  }, []);
+
+  // Clears all client-side auth state immediately, without waiting on
+  // a network round trip. Call this right after the logout API call
+  // (success or failure) so the UI reflects "logged out" instantly.
+  const logoutLocally = useCallback(() => {
+    setUser(null);
+    setProfile(null);
+    setUnreadCount(0);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("user_id");
     }
   }, []);
 
@@ -176,6 +177,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       refreshUnreadCount,
       setUser,
       setProfile,
+      logoutLocally,
     }),
     [
       search,
@@ -196,6 +198,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       unreadCount,
       refreshUser,
       refreshUnreadCount,
+      logoutLocally,
     ]
   );
 
