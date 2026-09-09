@@ -2525,3 +2525,47 @@ body { overflow-x: hidden; }
   .epp-page { padding: 20px 10px 40px; }
   .epp-card { border-radius: 18px; }
 }
+
+
+.pp-actions-row {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+}
+
+.pp-edit-btn,
+.pp-logout-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.pp-edit-btn {
+  background: #111827;
+  color: white;
+  border: 1px solid #111827;
+}
+
+.pp-edit-btn:hover {
+  background: #1f2937;
+}
+
+.pp-logout-btn {
+  background: white;
+  color: #c0392b;
+  border: 1px solid #c0392b;
+}
+
+.pp-logout-btn:hover {
+  background: #c0392b;
+  color: white;
+}
+
+.pp-logout-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
