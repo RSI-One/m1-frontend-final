@@ -44,23 +44,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ---- Response envelope unwrapping ----
-// The backend wraps most responses as:
-//   { success: boolean, status_code: number, message: string, data: <actual payload> }
-// but the OpenAPI schema documents endpoints as returning the payload
-// directly (e.g. ConversationRead[] instead of { data: ConversationRead[] }).
-// Every api/*.ts helper in this codebase (messaging.ts, search.ts, etc.)
-// was written against the documented (unwrapped) shape, so without this
-// interceptor `const { data } = await api.get(...)` resolves to the whole
-// envelope object instead of the actual array/object — which silently
-// breaks every list/get call across the app (empty lists, undefined
-// fields) without throwing any error.
-//
-// This interceptor detects the envelope shape and swaps response.data for
-// response.data.data, so all existing call sites keep working unchanged.
-// Responses that do NOT match the envelope shape (e.g. a raw array, or an
-// endpoint that legitimately returns { data: ... } as its real payload)
-// are left untouched.
 function isEnvelope(payload: unknown): payload is { success: boolean; status_code: number; message?: string; data: unknown } {
   return (
     typeof payload === "object" &&
@@ -80,11 +63,7 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Some backends wrap error bodies the same way, e.g.
-    // { success: false, status_code: 404, message: "Not found", data: null }.
-    // Surface `message` as `detail` too, since a lot of existing error
-    // handling in this codebase reads err.response.data.detail
-    // (FastAPI's default validation error shape).
+    
     if (error?.response?.data && isEnvelope(error.response.data)) {
       const envelope = error.response.data;
       error.response.data = {

@@ -20,6 +20,11 @@ export interface SignupPayload {
   username: string;
   email: string;
   password: string;
+  full_name?: string;
+  company_name?: string;
+  phone_number?: string;
+  location?: string;
+  country?: string;
 }
 
 // ---------- LOGIN ----------
