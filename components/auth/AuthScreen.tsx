@@ -76,6 +76,42 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   );
 }
 
+// ---------------------------------------------------------------------
+// Field-level validation — mirrors the backend Pydantic rules, so a bad
+// email / phone / password is caught here instead of failing silently
+// at the final submit step.
+// ---------------------------------------------------------------------
+
+function validateEmailValue(value: string): string | null {
+  const v = value.trim();
+  if (!v) return "Email is required";
+  if (!v.includes("@")) return "Email must contain '@'";
+  const domain = v.split("@")[1] || "";
+  if (!domain.includes(".")) return "Email domain must contain a '.' (e.g. example.com)";
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(v)) return "Enter a valid email address";
+  return null;
+}
+
+function validatePhoneValue(value: string): string | null {
+  const v = value.trim();
+  if (!v) return "Phone number is required";
+  if (!/^[\d\s\-()]+$/.test(v)) return "Phone number contains invalid characters";
+  const digitsOnly = v.replace(/\D/g, "");
+  if (digitsOnly.length < 7) return "Phone number is incomplete";
+  if (digitsOnly.length > 15) return "Phone number is too long";
+  return null;
+}
+
+function validatePasswordValue(value: string): string | null {
+  if (!value) return "Password is required";
+  if (value.length < 9) return "Password must be at least 9 characters";
+  if (!/[A-Z]/.test(value)) return "Password must include one capital letter";
+  if (!/[0-9]/.test(value)) return "Password must include one number";
+  if (!/[!"#$%&'()*+,\-./:;<=>?@[\]^_`{|}~]/.test(value)) return "Password must include one special character";
+  return null;
+}
+
 function UnderlineInput({
   value,
   onChange,
@@ -182,6 +218,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
 
+  // Tracks whether the user has interacted with (or tried to advance past)
+  // the current step, so we don't show a "required" error before they've
+  // typed anything, but DO show it the moment they try to continue.
+  const [stepTouched, setStepTouched] = useState(false);
+
   const [regCode, setRegCode] = useState<string[]>(Array(6).fill(""));
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -198,27 +239,44 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const currentValue = formData[currentStep?.key] ?? "";
   const isLastStep = step === steps.length - 1;
 
-  const canContinue = (() => {
+  // Real per-step validation error, recomputed on every render from the
+  // current field value. Returns null when the step is valid.
+  const stepError: string | null = (() => {
     switch (currentStep.type) {
       case "text":
-        return currentValue.trim().length > 0;
+        if (currentStep.key === "email") return validateEmailValue(currentValue);
+        return currentValue.trim().length > 0 ? null : "This field is required";
       case "phone":
-        return !!formData.phoneDial && (formData.phone ?? "").trim().length > 0;
+        if (!formData.phoneDial) return "Select a country code";
+        return validatePhoneValue(formData.phone ?? "");
       case "country":
-        return (formData.country ?? "").trim().length > 0;
+        return (formData.country ?? "").trim().length > 0 ? null : "Select your country";
       case "select":
-        return (formData.assets ?? "").trim().length > 0;
+        return (formData.assets ?? "").trim().length > 0 ? null : "Select an option";
       case "toggle":
-        return (formData.reason ?? "").trim().length > 0;
+        return (formData.reason ?? "").trim().length > 0 ? null : "Select an option";
       case "password":
-        if (isLastStep) return currentValue.length > 0 && currentValue === formData.password;
-        return currentValue.length > 0;
+        if (currentStep.key === "confirmPassword") {
+          if (!currentValue) return "Please confirm your password";
+          if (currentValue !== formData.password) return "Passwords do not match";
+          return null;
+        }
+        return validatePasswordValue(currentValue);
       default:
-        return false;
+        return "Invalid step";
     }
   })();
 
-  const handleChange = (value: string) => setFormData((p) => ({ ...p, [currentStep.key]: value }));
+  const canContinue = stepError === null;
+  // Only show the inline error once the user has typed something in this
+  // step or already tried to continue — avoids yelling "required" on a
+  // completely untouched field.
+  const showStepError = stepTouched && (currentValue.trim().length > 0 || stepError !== "This field is required");
+
+  const handleChange = (value: string) => {
+    setFormData((p) => ({ ...p, [currentStep.key]: value }));
+    if (!stepTouched) setStepTouched(true);
+  };
 
   // ---------- LOGIN: step 1 (password) ----------
   const handleLoginSubmit = async () => {
@@ -304,9 +362,13 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
  
     // ---------- REGISTER: submit form -> signup ----------
     const handleRegisterSubmit = async () => {
+     // Always mark the step as touched on attempted continue, so the error
+     // (if any) becomes visible even if the user never typed anything.
+     setStepTouched(true);
      if (!canContinue || registerLoading) return;
      if (!isLastStep) {
       setStep(step + 1);
+      setStepTouched(false);
       return;
     }
 
@@ -335,8 +397,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       setRegisterLoading(false);
     }
   };
-    const handleSkip = () => setStep(step + 1);
-  const handleBack = () => step > 0 && setStep(step - 1);
+    const handleSkip = () => { setStep(step + 1); setStepTouched(false); };
+  const handleBack = () => { if (step > 0) { setStep(step - 1); setStepTouched(false); } };
   // ---------- REGISTER: verify email code ----------
   const handleVerifyEmailSubmit = async () => {
     if (verifyLoading) return;
@@ -703,7 +765,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   <div className="flex-1">
                     <UnderlineInput
                       value={formData.phone ?? ""}
-                      onChange={(v) => setFormData((p) => ({ ...p, phone: v }))}
+                      onChange={(v) => { setFormData((p) => ({ ...p, phone: v })); if (!stepTouched) setStepTouched(true); }}
                       placeholder="Phone number"
                     />
                   </div>
@@ -743,7 +805,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                       {filteredCountries.map((c) => (
                         <button
                           key={c.code}
-                          onClick={() => { setFormData((p) => ({ ...p, country: c.name })); setCountryOpen(false); setCountryQuery(""); }}
+                          onClick={() => { setFormData((p) => ({ ...p, country: c.name })); setCountryOpen(false); setCountryQuery(""); setStepTouched(true); }}
                           className="flex w-full justify-between px-3 py-1.5 text-left text-xs text-gray-300 hover:bg-white/10"
                         >
                           <span>{c.code}</span>
@@ -758,7 +820,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               {currentStep.type === "select" && (
                 <select
                   value={formData.assets ?? ""}
-                  onChange={(e) => setFormData((p) => ({ ...p, assets: e.target.value }))}
+                  onChange={(e) => { setFormData((p) => ({ ...p, assets: e.target.value })); setStepTouched(true); }}
                   className="mb-2 w-full border-b border-white/15 bg-transparent pb-2 text-sm text-white focus:outline-none"
                 >
                   <option value="" className="bg-[#1a1a1a]">Select one…</option>
@@ -773,7 +835,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   {REASON_OPTIONS.map((r) => (
                     <button
                       key={r}
-                      onClick={() => setFormData((p) => ({ ...p, reason: r }))}
+                      onClick={() => { setFormData((p) => ({ ...p, reason: r })); setStepTouched(true); }}
                       className={`flex-1 rounded-md border py-2 text-[10px] uppercase tracking-widest transition ${
                         formData.reason === r ? "border-white bg-white text-black" : "border-white/15 text-gray-300 hover:text-gray-100"
                       }`}
@@ -784,6 +846,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 </div>
               )}
 
+              <ErrorText message={showStepError ? stepError : null} />
               <ErrorText message={isLastStep ? registerError : null} />
 
               <div className="mt-4 flex gap-2">
@@ -794,7 +857,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 )}
                 <button
                   onClick={handleRegisterSubmit}
-                  disabled={!canContinue || registerLoading}
+                  disabled={registerLoading}
                   className={`flex flex-1 items-center justify-center py-2.5 text-sm font-medium uppercase tracking-widest transition ${cut} ${
                     canContinue && !registerLoading
                       ? "bg-white text-black hover:bg-gray-100"
