@@ -26,14 +26,6 @@ export interface SignupPayload {
   location?: string;
   country?: string;
 }
-
-// ---------- LOGIN ----------
-// Backend uses httpOnly cookies for the access + refresh tokens
-// (see client.ts: every request goes out with credentials: "include",
-// and /auth/refresh relies on the refresh_token cookie). There is no
-// access_token field in any of these response bodies — nothing to
-// extract or store client-side beyond the returned user object.
-
 export async function login(email: string, password: string): Promise<LoginPinResponse> {
   return apiPost<LoginPinResponse>("/auth/login", { email, password });
 }
