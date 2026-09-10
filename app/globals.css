@@ -2335,9 +2335,9 @@ body { overflow-x: hidden; }
   width: 100%;
 }
 .ep-field input:focus {
-  border-color: rgba(214,173,92,0.5);
+  border-color: var(--silver);
   background: rgba(255,255,255,0.07);
-  box-shadow: 0 0 0 3px rgba(214,173,92,0.12);
+  box-shadow: 0 0 0 3px rgba(200,205,216,0.16);
 }
 .ep-field input[type="date"] {
   color-scheme: dark;
