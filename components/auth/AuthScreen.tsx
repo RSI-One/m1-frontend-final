@@ -40,6 +40,11 @@ const COUNTRIES = [
   { code: "GB", name: "United Kingdom", dial: "+44" },
   { code: "US", name: "United States", dial: "+1" },
 ];
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isValidEmail = (v: string) => EMAIL_REGEX.test(v.trim());
+const isStrongPassword = (v: string) =>
+  v.length >= 9 && /[A-Z]/.test(v) && /[0-9]/.test(v) && /[^A-Za-z0-9]/.test(v);
+const LOGIN_MIN_PASSWORD_LEN = 6;
 
 const ASSET_OPTIONS = ["1-2", "3-5", "6-10", "11-20", "21-50", "50+"];
 const REASON_OPTIONS = ["Marketplace", "Management", "Both"];
@@ -231,6 +236,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [accessScreen, setAccessScreen] = useState<AccessScreen>("login");
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [loginTouched, setLoginTouched] = useState({ email: false, password: false });
+ const loginEmailError = loginTouched.email && loginData.email.length > 0 && !isValidEmail(loginData.email);
+const loginPasswordError =
+  loginTouched.password && loginData.password.length > 0 && loginData.password.length < LOGIN_MIN_PASSWORD_LEN;
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -270,7 +278,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [dialQuery, setDialQuery] = useState("");
   const [dialOpen, setDialOpen] = useState(false);
 
-  const canAuthenticate = loginData.email.trim().length > 0 && loginData.password.trim().length > 0;
+  const canAuthenticate =
+  loginData.email.trim().length > 0 &&
+  loginData.password.trim().length > 0 &&
+  isValidEmail(loginData.email) &&
+  loginData.password.length >= LOGIN_MIN_PASSWORD_LEN;
   const currentStep = steps[step];
   const currentValue = formData[currentStep?.key] ?? "";
   const isLastStep = step === steps.length - 1;
@@ -549,14 +561,14 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 <div className="h-px flex-1 bg-white/10" />
               </div>
 
-              <label className="mb-1.5 block text-[10px] uppercase tracking-widest text-gray-400">Email address</label>
+             <label className="mb-1.5 block text-[10px] uppercase tracking-widest text-gray-400">Email address</label>
 <div className="mb-5">
   <UnderlineInput
     value={loginData.email}
     onChange={(v) => setLoginData((p) => ({ ...p, email: v }))}
     onBlur={() => setLoginTouched((p) => ({ ...p, email: true }))}
     placeholder="youremail.com"
-    error={loginTouched.email && loginData.email.trim().length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginData.email.trim())}
+    error={loginEmailError}
     errorMessage="Enter a valid email address."
   />
 </div>
@@ -569,8 +581,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     onChange={(v) => setLoginData((p) => ({ ...p, password: v }))}
     onBlur={() => setLoginTouched((p) => ({ ...p, password: true }))}
     placeholder="••••••••••••"
-    error={loginTouched.password && loginData.password.trim().length === 0}
-    errorMessage="Password is required."
+    error={loginPasswordError}
+    errorMessage={`Password must be at least 6 characters.`}
   />
 </div>
 
