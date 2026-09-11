@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import * as authApi from "@/lib/api/auth";
 
 type AccessScreen = "login" | "verify" | "complete" | "reset" | "reset-checking" | "reset-sent";
@@ -115,22 +115,34 @@ function validatePasswordValue(value: string): string | null {
 function UnderlineInput({
   value,
   onChange,
+  onBlur,
   type = "text",
   placeholder,
+  error,
+  errorMessage,
 }: {
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   type?: string;
   placeholder?: string;
+  error?: boolean;
+  errorMessage?: string;
 }) {
   return (
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full border-b border-white/15 bg-transparent pb-2 text-sm text-white tracking-wide placeholder:text-gray-600 focus:border-white/50 focus:outline-none"
-    />
+    <div>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        className={`w-full border-b bg-transparent pb-2 text-sm text-white tracking-wide placeholder:text-gray-600 focus:outline-none ${
+          error ? "border-red-500 focus:border-red-500" : "border-white/15 focus:border-white/50"
+        }`}
+      />
+      {error && errorMessage && <p className="mt-1 text-[11px] text-red-500">{errorMessage}</p>}
+    </div>
   );
 }
 
@@ -190,11 +202,35 @@ interface AuthScreenProps {
 }
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
+
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    vid.muted = true;
+    vid.play().catch(() => {});
+  }, []);
+
+  const toggleSound = () => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    const next = !vid.muted;
+    vid.muted = next;
+    setIsMuted(next);
+    if (!next) vid.play().catch(() => {});
+  };
+
+  
+
+  // Access flow
+ 
   const [tab, setTab] = useState<"access" | "register">("access");
 
   // Access flow
   const [accessScreen, setAccessScreen] = useState<AccessScreen>("login");
   const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [loginTouched, setLoginTouched] = useState({ email: false, password: false });
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -446,14 +482,24 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
       <div className="relative z-10 flex w-[92%] max-w-4xl overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
         <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#0a1f4d] to-[#1b3f7a] md:flex">
-          <video
-            className="absolute inset-0 h-full w-full object-cover"
-            src="/videos/auth-preview.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
+          
+            <video
+  ref={videoRef}
+  className="absolute inset-0 h-full w-full object-cover"
+  src="/videos/auth-preview.mp4"
+  autoPlay
+  loop
+  muted
+  playsInline
+  preload="auto"
+/>
+<button
+  onClick={toggleSound}
+  aria-label={isMuted ? "Unmute video" : "Mute video"}
+  className="absolute bottom-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-sm hover:bg-black/60"
+>
+  {isMuted ? "🔇" : "🔊"}
+</button>
         </div>
 
         <div className="flex max-h-[85vh] w-full flex-col overflow-y-auto bg-[#3a3d42] px-8 py-7 md:w-1/2">
@@ -491,14 +537,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           {/* ================= ACCESS TAB ================= */}
           {tab === "access" && accessScreen === "login" && (
             <>
-              <button className={`mb-3 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
+              <button className={`mb-6 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
                 <GoogleIcon />
                 Continue with Google
               </button>
-              <button className={`mb-6 flex items-center justify-center gap-2 bg-[#1a1a1a] py-2.5 text-sm font-medium text-white ${cut} ${hoverFx}`}>
-                <AppleIcon />
-                Continue with Apple
-              </button>
+             
 
               <div className="mb-6 flex items-center gap-3">
                 <div className="h-px flex-1 bg-white/10" />
@@ -507,23 +550,29 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               </div>
 
               <label className="mb-1.5 block text-[10px] uppercase tracking-widest text-gray-400">Email address</label>
-              <div className="mb-5">
-                <UnderlineInput
-                  value={loginData.email}
-                  onChange={(v) => setLoginData((p) => ({ ...p, email: v }))}
-                  placeholder="youremail.com"
-                />
-              </div>
+<div className="mb-5">
+  <UnderlineInput
+    value={loginData.email}
+    onChange={(v) => setLoginData((p) => ({ ...p, email: v }))}
+    onBlur={() => setLoginTouched((p) => ({ ...p, email: true }))}
+    placeholder="youremail.com"
+    error={loginTouched.email && loginData.email.trim().length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginData.email.trim())}
+    errorMessage="Enter a valid email address."
+  />
+</div>
 
-              <label className="mb-1.5 block text-[10px] uppercase tracking-widest text-gray-400">Password</label>
-              <div className="mb-2">
-                <UnderlineInput
-                  type="password"
-                  value={loginData.password}
-                  onChange={(v) => setLoginData((p) => ({ ...p, password: v }))}
-                  placeholder="••••••••••••"
-                />
-              </div>
+<label className="mb-1.5 block text-[10px] uppercase tracking-widest text-gray-400">Password</label>
+<div className="mb-2">
+  <UnderlineInput
+    type="password"
+    value={loginData.password}
+    onChange={(v) => setLoginData((p) => ({ ...p, password: v }))}
+    onBlur={() => setLoginTouched((p) => ({ ...p, password: true }))}
+    placeholder="••••••••••••"
+    error={loginTouched.password && loginData.password.trim().length === 0}
+    errorMessage="Password is required."
+  />
+</div>
 
               <div className="mb-5 flex justify-end">
                 <button
@@ -716,14 +765,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-white">Create account</h2>
               <p className="mb-5 text-xs text-gray-400">Quick sign up or register manually below</p>
 
-              <button className={`mb-3 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
+              <button className={`mb-6 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
                 <GoogleIcon />
                 Sign up with Google
               </button>
-              <button className={`mb-6 flex items-center justify-center gap-2 bg-[#1a1a1a] py-2.5 text-sm font-medium text-white ${cut} ${hoverFx}`}>
-                <AppleIcon />
-                Sign up with Apple
-              </button>
+             
 
               <div className="mb-4 flex items-center gap-3">
                 <div className="h-px flex-1 bg-white/10" />
@@ -951,10 +997,3 @@ function GoogleIcon() {
   );
 }
 
-function AppleIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 384 512" fill="white">
-      <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76-19.7C63.3 141.2 4 184.8 4 273.5c0 26.2 4.8 53.3 14.4 81.2 12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
-    </svg>
-  );
-}
