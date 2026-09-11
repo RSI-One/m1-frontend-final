@@ -28,7 +28,7 @@ const COUNTRIES = [
   { code: "NG", name: "Nigeria", dial: "+234" },
   { code: "PK", name: "Pakistan", dial: "+92" },
   { code: "QA", name: "Qatar", dial: "+974" },
-  { code: "RE", name: "Réunion", dial: "+262" },
+  { code: "RE", name: "RÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©union", dial: "+262" },
   { code: "RO", name: "Romania", dial: "+40" },
   { code: "RU", name: "Russia", dial: "+7" },
   { code: "SA", name: "Saudi Arabia", dial: "+966" },
@@ -123,7 +123,7 @@ function BackPill({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 text-gray-400 hover:text-white"
     >
-      ←
+      ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Ãƒâ€šÃ‚Â
     </button>
   );
 }
@@ -152,25 +152,6 @@ export default function AuthScreen() {
   const [dialOpen, setDialOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
-useEffect(() => {
-  const script = document.createElement("script");
-  script.src = "https://accounts.google.com/gsi/client";
-  script.async = true;
-  document.body.appendChild(script);
-
-  script.onload = () => {
-    // @ts-ignore
-    window.google?.accounts.id.initialize({
-      client_id: "525983227876-18pc8t4tn21mr0nfe2hgp9knsgleui30.apps.googleusercontent.com",
-      callback: handleGoogleResponse,
-    });
-  };
-
-  return () => {
-    document.body.removeChild(script);
-  };
-}, []);
-
 const handleGoogleResponse = async (response: { credential: string }) => {
   try {
     const res = await fetch("http://localhost:8000/auth/google", {
@@ -182,12 +163,31 @@ const handleGoogleResponse = async (response: { credential: string }) => {
     const data = await res.json();
     localStorage.setItem("access_token", data.access_token);
     localStorage.setItem("refresh_token", data.refresh_token);
-    window.location.href = "/"; // ya jahan bhi logged-in home hai
+    window.location.href = "/";
   } catch (err) {
     console.error(err);
   }
 };
 
+useEffect(() => {
+  const script = document.createElement("script");
+  script.src = "https://accounts.google.com/gsi/client";
+  script.async = true;
+  document.body.appendChild(script);
+
+  script.onload = () => {
+    // @ts-ignore
+    window.google?.accounts.id.initialize({
+      client_id: "964327019655-a8qbmfl7e9pavsua5pfm6b3s4bu6e5e9.apps.googleusercontent.com",
+      callback: handleGoogleResponse,
+      use_fedcm_for_prompt: false,
+    });
+  };
+
+  return () => {
+    document.body.removeChild(script);
+  };
+}, []);
 const triggerGoogleSignIn = () => {
   // @ts-ignore
   window.google?.accounts.id.prompt();
@@ -257,7 +257,7 @@ const triggerGoogleSignIn = () => {
   className="absolute bottom-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70"
   aria-label={isMuted ? "Unmute video" : "Mute video"}
 >
-  {isMuted ? "🔇" : "🔊"}
+  {isMuted ? "ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡" : "ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€¦Ã‚Â "}
 </button> 
 </div>      
 
@@ -328,7 +328,7 @@ const triggerGoogleSignIn = () => {
                   type="password"
                   value={loginData.password}
                   onChange={(v) => setLoginData((p) => ({ ...p, password: v }))}
-                  placeholder="••••••••••••"
+                  placeholder="ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢"
                 />
               </div>
 
@@ -368,7 +368,7 @@ const triggerGoogleSignIn = () => {
                 <BackPill onClick={() => setAccessScreen("login")} />
                 <div>
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-white">Verify Identity</h2>
-                  <p className="text-xs text-gray-400">Sent · 8888</p>
+                  <p className="text-xs text-gray-400">Sent ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· 8888</p>
                 </div>
               </div>
               <p className="mb-4 text-center text-sm italic text-gray-300">
@@ -404,7 +404,7 @@ const triggerGoogleSignIn = () => {
           {tab === "access" && accessScreen === "complete" && (
             <div className="flex flex-col items-center py-10 text-center">
               <p className="mb-4 text-xs uppercase tracking-widest text-gray-400">Authentication complete</p>
-              <div className="mb-4 text-3xl text-white">✓</div>
+              <div className="mb-4 text-3xl text-white">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ</div>
               <p className="text-sm uppercase tracking-widest text-gray-300">Welcome back to M1</p>
             </div>
           )}
@@ -488,7 +488,7 @@ const triggerGoogleSignIn = () => {
 
           {tab === "access" && accessScreen === "reset-checking" && (
             <button disabled className={`py-3 text-sm font-medium uppercase tracking-widest bg-[repeating-linear-gradient(135deg,#3a3a3a,#3a3a3a_6px,#2f2f2f_6px,#2f2f2f_12px)] text-gray-400 ${cut}`}>
-              — Checking —
+              ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Checking ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
             </button>
           )}
 
@@ -500,9 +500,9 @@ const triggerGoogleSignIn = () => {
                 <br />
                 {resetData.email}
               </p>
-              <div className="mb-4 flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white">✓</div>
+              <div className="mb-4 flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ</div>
               <button onClick={() => setAccessScreen("login")} className="text-[10px] uppercase tracking-widest text-gray-400 hover:text-gray-200">
-                ← Back to sign in
+                ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Ãƒâ€šÃ‚Â Back to sign in
               </button>
             </div>
           )}
@@ -544,7 +544,7 @@ const triggerGoogleSignIn = () => {
 
               {currentStep.type === "password" && (
                 <div className="mb-2">
-                  <UnderlineInput type="password" value={currentValue} onChange={handleChange} placeholder="••••••••••••" />
+                  <UnderlineInput type="password" value={currentValue} onChange={handleChange} placeholder="ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢" />
                   {"hint" in currentStep && currentStep.hint && (
                     <p className="mt-2 text-[11px] leading-snug text-gray-400">{currentStep.hint}</p>
                   )}
@@ -620,7 +620,7 @@ const triggerGoogleSignIn = () => {
                   onChange={(e) => setFormData((p) => ({ ...p, assets: e.target.value }))}
                   className="mb-2 w-full border-b border-white/15 bg-transparent pb-2 text-sm text-white focus:outline-none"
                 >
-                  <option value="" className="bg-[#1a1a1a]">Select one…</option>
+                  <option value="" className="bg-[#1a1a1a]">Select oneÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</option>
                   {ASSET_OPTIONS.map((o) => (
                     <option key={o} value={o} className="bg-[#1a1a1a]">{o}</option>
                   ))}
@@ -646,7 +646,7 @@ const triggerGoogleSignIn = () => {
               <div className="mt-4 flex gap-2">
                 {step > 0 && (
                   <button onClick={handleBack} className={`flex w-12 items-center justify-center bg-[#1a1a1a] py-2.5 text-sm text-white ${cut}`}>
-                    ←
+                    ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Ãƒâ€šÃ‚Â
                   </button>
                 )}
                 <button
@@ -658,7 +658,7 @@ const triggerGoogleSignIn = () => {
                       : "cursor-not-allowed bg-[repeating-linear-gradient(135deg,#3a3a3a,#3a3a3a_6px,#2f2f2f_6px,#2f2f2f_12px)] text-gray-400"
                   }`}
                 >
-                  {isLastStep ? "Submit & Verify" : "Continue →"}
+                  {isLastStep ? "Submit & Verify" : "Continue ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢"}
                 </button>
               </div>
 
@@ -683,7 +683,7 @@ const triggerGoogleSignIn = () => {
                 <BackPill onClick={() => setRegisterScreen("form")} />
                 <div>
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-white">Verify Identity</h2>
-                  <p className="text-xs text-gray-400">Sent · {formData.email || "your@email.com"}</p>
+                  <p className="text-xs text-gray-400">Sent ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {formData.email || "your@email.com"}</p>
                 </div>
               </div>
               <p className="mb-4 text-center text-sm italic text-gray-300">Enter the 6-digit code sent to your address.</p>
@@ -711,7 +711,7 @@ const triggerGoogleSignIn = () => {
               <p className="mb-4 text-sm text-white">Welcome aboard.</p>
               <p className="mb-2 text-xs text-gray-400">An email to set up your special PIN has been sent.</p>
               <button className="mb-4 text-xs text-blue-400 underline">Resend</button>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white">✓</div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ</div>
             </div>
           )}
         </div>
