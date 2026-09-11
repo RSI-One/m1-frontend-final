@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 import AuthScreen from "../components/auth/AuthScreen";
 import Header from "../components/Header";
@@ -16,11 +16,11 @@ import Toast from "../components/Toast";
 import SupportModals from "../components/SupportModals";
 import MessagingPage from "../components/MessagingPage";
 import SellerMode from "../components/SellerMode";
+import AcquisitionHistoryPage from "../components/acquisition-history/AcquisitionHistoryPage";
 
 import { SiteProvider, useSite } from "../lib/site-context";
 import { Jet, SfItem } from "../lib/types";
 import { jets } from "../lib/data";
-import * as authApi from "../lib/api/auth";
 
 export default function Page() {
   return (
@@ -31,17 +31,11 @@ export default function Page() {
 }
 
 function PageInner() {
-  const { showToast, showAllListings } = useSite();
+  const { showToast, showAllListings, user, isAuthLoading, refreshUser } = useSite();
 
-  // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
+ const [supportModalType, setSupportModalType] = useState<"report" | "support" | null>(null);
 
-  // Support / Report a Problem state (single source of truth)
-  const [supportModalType, setSupportModalType] = useState<
-    "report" | "support" | null
-  >(null);
-
+  const [acquisitionHistoryOpen, setAcquisitionHistoryOpen] = useState(false);
   // Marketplace state
   const [started, setStarted] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Jet | SfItem | null>(
@@ -51,24 +45,28 @@ function PageInner() {
   const [sellerModeOpen, setSellerModeOpen] = useState(false);
   const [messagingOpen, setMessagingOpen] = useState(false);
 
-  // Check authentication session
-  useEffect(() => {
-    authApi
-      .getMe()
-      .then(() => {
-        setIsAuthenticated(true);
-      })
-      .catch(() => {
-        setIsAuthenticated(false);
-      })
-      .finally(() => {
-        setCheckingSession(false);
-      });
-  }, []);
+  const openSellerMode = () => {
+    setAcquisitionHistoryOpen(false);
+    setMessagingOpen(false);
+    setSupportModalType(null);
+    setSellerModeOpen(true);
+  };
 
-  // Called after successful login/register
+  const openAcquisitionHistory = () => {
+    setSellerModeOpen(false);
+    setMessagingOpen(false);
+    setSupportModalType(null);
+    setAcquisitionHistoryOpen(true);
+  };
+
+  const openMessaging = () => {
+    setSellerModeOpen(false);
+    setAcquisitionHistoryOpen(false);
+    setMessagingOpen(true);
+  };
+
   const handleAuthSuccess = () => {
-    setIsAuthenticated(true);
+    refreshUser();
   };
 
   const openAssetFromSf = (item: SfItem) => {
@@ -92,7 +90,7 @@ function PageInner() {
   };
 
   // Loading screen
-  if (checkingSession) {
+  if (isAuthLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0b0d]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
@@ -101,7 +99,7 @@ function PageInner() {
   }
 
   // Authentication screen
-  if (!isAuthenticated) {
+  if (!user) {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
 
@@ -109,10 +107,11 @@ function PageInner() {
     <>
       {/* HEADER */}
       <Header
-        onToggleChat={() => setMessagingOpen(true)}
-        onOpenSellerMode={() => setSellerModeOpen(true)}
+        onToggleChat={openMessaging}
+        onOpenSellerMode={openSellerMode}
         onOpenReportProblem={() => setSupportModalType("report")}
         onOpenGetSupport={() => setSupportModalType("support")}
+        onOpenAcquisitionHistory={openAcquisitionHistory}
       />
 
       {/* MAIN ENGINE */}
@@ -155,8 +154,11 @@ function PageInner() {
         onClose={() => setSellerModeOpen(false)}
         jets={jets}
         onOpenAsset={openAssetFromJet}
-        onToggleChat={() => setMessagingOpen(true)}
+        onToggleChat={openMessaging}
         showToast={showToast}
+        onOpenAcquisitionHistory={openAcquisitionHistory}
+         onOpenReportProblem={() => setSupportModalType("report")}
+         onOpenGetSupport={() => setSupportModalType("support")}
       />
 
       {/* TOAST */}
@@ -172,6 +174,12 @@ function PageInner() {
       <SupportModals
         modalType={supportModalType}
         onClose={() => setSupportModalType(null)}
+      />
+
+      {/* ACQUISITION HISTORY */}
+      <AcquisitionHistoryPage
+        open={acquisitionHistoryOpen}
+        onClose={() => setAcquisitionHistoryOpen(false)}
       />
     </>
   );
