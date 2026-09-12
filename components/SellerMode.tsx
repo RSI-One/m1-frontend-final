@@ -238,10 +238,10 @@ export default function SellerMode({
           </svg>
         </div>
 
-        {/* NAV UTILITY — mirrors Header.tsx's .nav-utility group exactly
-            (same .icon-btn 40x40 sizing, same order: Messages -> Profile -> Menu),
-            with two extra seller-only icons prepended: Notifications -> New Listing */}
-        <div className="nav-utility-stack nav-utility-row">
+        {/* NAV UTILITY — same class as main header (.nav-utility).
+            Extra seller-only: Notifications + New Listing (+) prepended */}
+        <div className="nav-utility">
+          {/* Notifications — seller only */}
           <button
             className="icon-btn"
             title="Notifications"
@@ -250,10 +250,10 @@ export default function SellerMode({
             onClick={() => togglePanel("notifications")}
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
-            <span className="dot"></span>
+            <span className="dot" />
           </button>
           {openPanel === "notifications" && (
             <div className="drawer show">
@@ -262,6 +262,7 @@ export default function SellerMode({
             </div>
           )}
 
+          {/* New Listing (+) — seller only */}
           <button
             id="newListingBtn"
             className="new-listing-btn"
@@ -270,23 +271,20 @@ export default function SellerMode({
             onClick={() => setNewListingOpen(true)}
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
 
-          <button
-            className="icon-btn"
-            title="Messages"
-            aria-label="Messages"
-            onClick={onToggleChat}
-          >
+          {/* Messages */}
+          <button className="icon-btn" title="Messages" aria-label="Messages" onClick={onToggleChat}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
-            <span className="dot"></span>
+            <span className="dot" />
           </button>
 
+          {/* Profile */}
           <button
             className="icon-btn"
             title="Profile"
@@ -303,6 +301,7 @@ export default function SellerMode({
             <ProfilePanel onClose={() => setOpenPanel(null)} />
           )}
 
+          {/* Menu */}
           <button
             className="icon-btn"
             title="Menu"
@@ -311,9 +310,9 @@ export default function SellerMode({
             onClick={() => togglePanel("menu")}
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
           {openPanel === "menu" && (
@@ -332,21 +331,14 @@ export default function SellerMode({
           )}
         </div>
 
+        {/* FILTERS & ALL LISTINGS — direct grid children (row 2), exactly like main header */}
         <button
           className="filters-btn"
           aria-expanded={openPanel === "filter"}
           onClick={() => togglePanel("filter")}
         >
           <span>Filters</span>
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            style={{ marginLeft: 6 }}
-          >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 6 }}>
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
           </svg>
         </button>
@@ -357,11 +349,7 @@ export default function SellerMode({
             <div className="btn-row">
               <button
                 className="ghost-btn primary"
-                onClick={() => {
-                  setTerm("");
-                  showToast("Filters cleared.");
-                  setOpenPanel(null);
-                }}
+                onClick={() => { setTerm(""); showToast("Filters cleared."); setOpenPanel(null); }}
               >
                 Clear filters
               </button>
@@ -374,48 +362,50 @@ export default function SellerMode({
         </button>
       </header>
 
-      <section className="seller-hero" style={{ position: "relative" }}>
-        <div className="container">
-          <h1>Your Seller Dashboard</h1>
-          <p>Manage your active listings, track buyer interest, and publish new assets.</p>
-        </div>
-      </section>
-
-      <section className="carousel-section">
-        <div className="container">
-          <h2>Your Active Listings</h2>
-          <div className="carousel-track">
-            {myListingsLoading ? (
-              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>Loading your listings…</p>
-            ) : myListingsAuthError ? (
-              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>
-                Log in as a seller to see your listings here.
-              </p>
-            ) : activeListings.length ? (
-              activeListings.map(card)
-            ) : (
-              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>No matching listings.</p>
-            )}
+      {/* FIX: scrollable body wrapper — header stays sticky, everything else scrolls */}
+      <div className="seller-scroll-body">
+        <section className="seller-hero" style={{ position: "relative" }}>
+          <div className="container">
+            <h1>Your Seller Dashboard</h1>
+            <p>Manage your active listings, track buyer interest, and publish new assets.</p>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="carousel-section">
-        <div className="container">
-          <h2>Trending on M1 Marketplace</h2>
-          <div className="carousel-track">
-            {trendingLoading ? (
-              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>Loading…</p>
-            ) : filteredTrending.length ? (
-              filteredTrending.map(card)
-            ) : (
-              <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>No matching listings.</p>
-            )}
+        <section className="carousel-section">
+          <div className="container">
+            <h2>Your Active Listings</h2>
+            <div className="carousel-track">
+              {myListingsLoading ? (
+                <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>Loading your listings…</p>
+              ) : myListingsAuthError ? (
+                <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>
+                  Log in as a seller to see your listings here.
+                </p>
+              ) : activeListings.length ? (
+                activeListings.map(card)
+              ) : (
+                <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>No matching listings.</p>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <footer className="site-footer">
+        <section className="carousel-section">
+          <div className="container">
+            <h2>Trending on M1 Marketplace</h2>
+            <div className="carousel-track">
+              {trendingLoading ? (
+                <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>Loading…</p>
+              ) : filteredTrending.length ? (
+                filteredTrending.map(card)
+              ) : (
+                <p style={{ color: "var(--muted-2)", fontSize: 12.5, padding: "10px 4px" }}>No matching listings.</p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <footer className="site-footer">
         <div className="container">
           <div className="footer-top">
             <div className="footer-brand">
@@ -518,6 +508,7 @@ export default function SellerMode({
           </div>
         </div>
       </footer>
+      </div>{/* end seller-scroll-body */}
 
       <NewListingWizard
         open={newListingOpen}
