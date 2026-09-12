@@ -108,9 +108,6 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   }, [showToast]);
 
   // GET /auth/me + GET /profile/me
-  // NOTE: session is cookie-based (backend sets it on login), so we don't
-  // gate this on any localStorage token — we let the request itself be
-  // the source of truth. A 401 simply means "not logged in".
   const refreshUser = useCallback(async () => {
     setIsAuthLoading(true);
     try {
