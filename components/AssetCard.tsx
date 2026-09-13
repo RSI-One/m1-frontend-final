@@ -28,7 +28,7 @@ export default function AssetCard({
   loc,
   year,
   image,
-  ribbon = "featured",
+  ribbon,
   suggestion = false,
   small = false,
   selected = false,
@@ -36,6 +36,8 @@ export default function AssetCard({
   showRibbon = false,
   onClick,
 }: AssetCardProps) {
+  const shouldShowRibbon = Boolean(ribbon && (showRibbon || !minimal));
+
   return (
     <motion.div
       className={`asset-card ${small ? "sf-card" : ""} ${suggestion ? "suggestion" : ""} ${selected ? "compare-selected" : ""} ${minimal ? "minimal-card" : ""}`}
@@ -44,9 +46,9 @@ export default function AssetCard({
       transition={{ duration: 0.2 }}
     >
       {!minimal && suggestion && <div className="m1-tag">M1 Suggestion</div>}
-      {(!minimal || showRibbon) && (
+      {shouldShowRibbon && ribbon && (
         <div className={`corner-ribbon ${ribbon}`}>
-          <span>{ribbon === "featured" ? "Featured" : "Verified"}</span>
+          <span>{ribbon === "featured" ? "Featured" : ribbon === "verified" ? "Verified" : "Off-Market"}</span>
         </div>
       )}
       <div className="main-img" style={{ position: "absolute", inset: 0 }}>
@@ -63,8 +65,8 @@ export default function AssetCard({
           }} />
         )}
       </div>
-      {!minimal && price && <div className="price-badge">{price}</div>}
       <div className="card-overlay">
+        {!minimal && price && <div className="price-badge">{price}</div>}
         <div className="name">{name}</div>
         {!minimal && (
           <div className="mini-detail">

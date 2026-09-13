@@ -158,8 +158,8 @@ export default function SellerMode({
       cat={j.cat}
       loc={j.loc}
       image={j.image}
-      ribbon={j.verified ? "verified" : j.featured ? "featured" : undefined}
-      showRibbon={Boolean(j.verified || j.featured)}
+      ribbon={j.featured ? "featured" : j.verified ? "verified" : undefined}
+      showRibbon={Boolean(j.featured || j.verified)}
       onClick={() => onOpenAsset(j)}
     />
   );
