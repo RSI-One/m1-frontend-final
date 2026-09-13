@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 function getApiBaseUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
@@ -171,7 +171,10 @@ const COUNTRIES = [
   { code: "GB", name: "United Kingdom", dial: "+44" },
   { code: "US", name: "United States", dial: "+1" },
 ];
-
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isValidEmail = (v: string) => EMAIL_REGEX.test(v.trim());
+const isStrongPassword = (v: string) =>
+  v.length >= 9 && /[A-Z]/.test(v) && /[0-9]/.test(v) && /[^A-Za-z0-9]/.test(v);
 type Member = { name: string; dial: string; phone: string; email: string };
 
 const steps = [
@@ -196,20 +199,30 @@ function UnderlineInput({
   onChange,
   type = "text",
   placeholder,
+  error,
+  errorMessage,
 }: {
   value: string;
   onChange: (v: string) => void;
   type?: string;
   placeholder?: string;
+  error?: boolean;
+  errorMessage?: string;
 }) {
   return (
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full border-b border-black/15 bg-transparent pb-2 text-sm text-black tracking-wide placeholder:text-gray-400 focus:border-black/50 focus:outline-none"
-    />
+    <div>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        aria-invalid={error || undefined}
+        className={`w-full border-b bg-transparent pb-2 text-sm text-black tracking-wide placeholder:text-gray-400 focus:outline-none ${
+          error ? "border-red-500 focus:border-red-500" : "border-black/15 focus:border-black/50"
+        }`}
+      />
+      {error && errorMessage && <p className="mt-1.5 text-[11px] text-red-600">{errorMessage}</p>}
+    </div>
   );
 }
 
@@ -260,6 +273,23 @@ function BackPill({ onClick }: { onClick: () => void }) {
 }
 
 export default function PartnerSignupScreen() {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+const [isMuted, setIsMuted] = useState(true);
+
+useEffect(() => {
+  const vid = videoRef.current;
+  if (!vid) return;
+  vid.muted = true;
+  vid.play().catch(() => {});
+}, []);
+
+const toggleSound = () => {
+  const vid = videoRef.current;
+  if (!vid) return;
+  const next = !vid.muted;
+  vid.muted = next;
+  setIsMuted(next);
+};
   const router = useRouter();
   const [screen, setScreen] = useState<Screen>("form");
   const [step, setStep] = useState(0);
@@ -285,16 +315,17 @@ export default function PartnerSignupScreen() {
 
   const canContinue = (() => {
     switch (currentStep.type) {
-      case "text":
-        if ("skippable" in currentStep && currentStep.skippable) return true;
-        return currentValue.trim().length > 0;
+     case "text":
+  if ("skippable" in currentStep && currentStep.skippable) return true;
+  if (currentStep.key === "email") return isValidEmail(currentValue);
+  return currentValue.trim().length > 0;
       case "phone":
         return !!formData.phoneDial && (formData.phone ?? "").trim().length > 0;
       case "members":
         return true;
       case "password":
-        if (isLastStep) return currentValue.length > 0 && currentValue === formData.password;
-        return currentValue.length > 0;
+  if (isLastStep) return currentValue.length > 0 && currentValue === formData.password;
+  return isStrongPassword(currentValue);
       default:
         return false;
     }
@@ -415,14 +446,23 @@ export default function PartnerSignupScreen() {
 
       <div className="relative z-10 flex w-[92%] max-w-4xl overflow-hidden rounded-2xl border border-black/10 shadow-2xl">
         <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#0a1f4d] to-[#1b3f7a] md:flex">
-          <video
-            className="absolute inset-0 h-full w-full object-cover"
-            src="/videos/auth-preview.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
+         <video
+  ref={videoRef}
+  className="absolute inset-0 h-full w-full object-cover"
+  src="/videos/auth-preview.mp4"
+  autoPlay
+  loop
+  muted
+  playsInline
+  preload="auto"
+/>
+<button
+  onClick={toggleSound}
+  aria-label={isMuted ? "Unmute video" : "Mute video"}
+  className="absolute bottom-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-sm hover:bg-black/60"
+>
+  {isMuted ? "🔇" : "🔊"}
+</button>
         </div>
 
         <div className="flex max-h-[85vh] w-full flex-col overflow-y-auto bg-white px-8 py-7 md:w-1/2">
@@ -462,15 +502,10 @@ export default function PartnerSignupScreen() {
                 You&apos;ve been personally invited to join M1&apos;s exclusive partner circle.
               </p>
 
-              <button className={`mb-3 flex items-center justify-center gap-2 border border-black/10 bg-black py-2.5 text-sm font-medium text-white ${cut} ${hoverFx}`}>
+              <button className={`mb-6 flex w-full items-center justify-center gap-2 border border-black/10 bg-black py-3 text-sm font-medium text-white ${cut} ${hoverFx}`}>
                 <GoogleIcon />
-                Sign up with Google
+                 Sign up with Google
               </button>
-              <button className={`mb-6 flex items-center justify-center gap-2 border border-black/15 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
-                <AppleIcon />
-                Sign up with Apple
-              </button>
-
               <div className="mb-4 flex items-center gap-3">
                 <div className="h-px flex-1 bg-black/10" />
                 <span className="text-[10px] uppercase tracking-widest text-gray-400">Or fill in details</span>
@@ -705,13 +740,6 @@ function GoogleIcon() {
   );
 }
 
-function AppleIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 384 512" fill="black">
-      <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76-19.7C63.3 141.2 4 184.8 4 273.5c0 26.2 4.8 53.3 14.4 81.2 12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
-    </svg>
-  );
-}
 
 /* ---------------------------------------------------------------------------
  * BACKEND WIRING NOTES

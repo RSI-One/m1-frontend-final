@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import * as authApi from "@/lib/api/auth";
 
 type AccessScreen = "login" | "verify" | "complete" | "reset" | "reset-checking" | "reset-sent";
@@ -40,6 +40,11 @@ const COUNTRIES = [
   { code: "GB", name: "United Kingdom", dial: "+44" },
   { code: "US", name: "United States", dial: "+1" },
 ];
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isValidEmail = (v: string) => EMAIL_REGEX.test(v.trim());
+const isStrongPassword = (v: string) =>
+  v.length >= 9 && /[A-Z]/.test(v) && /[0-9]/.test(v) && /[^A-Za-z0-9]/.test(v);
+const LOGIN_MIN_PASSWORD_LEN = 6;
 
 const ASSET_OPTIONS = ["1-2", "3-5", "6-10", "11-20", "21-50", "50+"];
 const REASON_OPTIONS = ["Marketplace", "Management", "Both"];
@@ -76,25 +81,73 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   );
 }
 
+// ---------------------------------------------------------------------
+// Field-level validation — mirrors the backend Pydantic rules, so a bad
+// email / phone / password is caught here instead of failing silently
+// at the final submit step.
+// ---------------------------------------------------------------------
+
+function validateEmailValue(value: string): string | null {
+  const v = value.trim();
+  if (!v) return "Email is required";
+  if (!v.includes("@")) return "Email must contain '@'";
+  const domain = v.split("@")[1] || "";
+  if (!domain.includes(".")) return "Email domain must contain a '.' (e.g. example.com)";
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(v)) return "Enter a valid email address";
+  return null;
+}
+
+function validatePhoneValue(value: string): string | null {
+  const v = value.trim();
+  if (!v) return "Phone number is required";
+  if (!/^[\d\s\-()]+$/.test(v)) return "Phone number contains invalid characters";
+  const digitsOnly = v.replace(/\D/g, "");
+  if (digitsOnly.length < 7) return "Phone number is incomplete";
+  if (digitsOnly.length > 15) return "Phone number is too long";
+  return null;
+}
+
+function validatePasswordValue(value: string): string | null {
+  if (!value) return "Password is required";
+  if (value.length < 9) return "Password must be at least 9 characters";
+  if (!/[A-Z]/.test(value)) return "Password must include one capital letter";
+  if (!/[0-9]/.test(value)) return "Password must include one number";
+  if (!/[!"#$%&'()*+,\-./:;<=>?@[\]^_`{|}~]/.test(value)) return "Password must include one special character";
+  return null;
+}
+
 function UnderlineInput({
   value,
   onChange,
+  onBlur,
   type = "text",
   placeholder,
+  error,
+  errorMessage,
 }: {
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   type?: string;
   placeholder?: string;
+  error?: boolean;
+  errorMessage?: string;
 }) {
   return (
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full border-b border-white/15 bg-transparent pb-2 text-sm text-white tracking-wide placeholder:text-gray-600 focus:border-white/50 focus:outline-none"
-    />
+    <div>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        className={`w-full border-b bg-transparent pb-2 text-sm text-white tracking-wide placeholder:text-gray-600 focus:outline-none ${
+          error ? "border-red-500 focus:border-red-500" : "border-white/15 focus:border-white/50"
+        }`}
+      />
+      {error && errorMessage && <p className="mt-1 text-[11px] text-red-500">{errorMessage}</p>}
+    </div>
   );
 }
 
@@ -154,11 +207,38 @@ interface AuthScreenProps {
 }
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
+
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    vid.muted = true;
+    vid.play().catch(() => {});
+  }, []);
+
+  const toggleSound = () => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    const next = !vid.muted;
+    vid.muted = next;
+    setIsMuted(next);
+    if (!next) vid.play().catch(() => {});
+  };
+
+  
+
+  // Access flow
+ 
   const [tab, setTab] = useState<"access" | "register">("access");
 
   // Access flow
   const [accessScreen, setAccessScreen] = useState<AccessScreen>("login");
   const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [loginTouched, setLoginTouched] = useState({ email: false, password: false });
+ const loginEmailError = loginTouched.email && loginData.email.length > 0 && !isValidEmail(loginData.email);
+const loginPasswordError =
+  loginTouched.password && loginData.password.length > 0 && loginData.password.length < LOGIN_MIN_PASSWORD_LEN;
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -182,6 +262,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
 
+  // Tracks whether the user has interacted with (or tried to advance past)
+  // the current step, so we don't show a "required" error before they've
+  // typed anything, but DO show it the moment they try to continue.
+  const [stepTouched, setStepTouched] = useState(false);
+
   const [regCode, setRegCode] = useState<string[]>(Array(6).fill(""));
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -193,32 +278,53 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [dialQuery, setDialQuery] = useState("");
   const [dialOpen, setDialOpen] = useState(false);
 
-  const canAuthenticate = loginData.email.trim().length > 0 && loginData.password.trim().length > 0;
+  const canAuthenticate =
+  loginData.email.trim().length > 0 &&
+  loginData.password.trim().length > 0 &&
+  isValidEmail(loginData.email) &&
+  loginData.password.length >= LOGIN_MIN_PASSWORD_LEN;
   const currentStep = steps[step];
   const currentValue = formData[currentStep?.key] ?? "";
   const isLastStep = step === steps.length - 1;
 
-  const canContinue = (() => {
+  // Real per-step validation error, recomputed on every render from the
+  // current field value. Returns null when the step is valid.
+  const stepError: string | null = (() => {
     switch (currentStep.type) {
       case "text":
-        return currentValue.trim().length > 0;
+        if (currentStep.key === "email") return validateEmailValue(currentValue);
+        return currentValue.trim().length > 0 ? null : "This field is required";
       case "phone":
-        return !!formData.phoneDial && (formData.phone ?? "").trim().length > 0;
+        if (!formData.phoneDial) return "Select a country code";
+        return validatePhoneValue(formData.phone ?? "");
       case "country":
-        return (formData.country ?? "").trim().length > 0;
+        return (formData.country ?? "").trim().length > 0 ? null : "Select your country";
       case "select":
-        return (formData.assets ?? "").trim().length > 0;
+        return (formData.assets ?? "").trim().length > 0 ? null : "Select an option";
       case "toggle":
-        return (formData.reason ?? "").trim().length > 0;
+        return (formData.reason ?? "").trim().length > 0 ? null : "Select an option";
       case "password":
-        if (isLastStep) return currentValue.length > 0 && currentValue === formData.password;
-        return currentValue.length > 0;
+        if (currentStep.key === "confirmPassword") {
+          if (!currentValue) return "Please confirm your password";
+          if (currentValue !== formData.password) return "Passwords do not match";
+          return null;
+        }
+        return validatePasswordValue(currentValue);
       default:
-        return false;
+        return "Invalid step";
     }
   })();
 
-  const handleChange = (value: string) => setFormData((p) => ({ ...p, [currentStep.key]: value }));
+  const canContinue = stepError === null;
+  // Only show the inline error once the user has typed something in this
+  // step or already tried to continue — avoids yelling "required" on a
+  // completely untouched field.
+  const showStepError = stepTouched && (currentValue.trim().length > 0 || stepError !== "This field is required");
+
+  const handleChange = (value: string) => {
+    setFormData((p) => ({ ...p, [currentStep.key]: value }));
+    if (!stepTouched) setStepTouched(true);
+  };
 
   // ---------- LOGIN: step 1 (password) ----------
   const handleLoginSubmit = async () => {
@@ -304,9 +410,13 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
  
     // ---------- REGISTER: submit form -> signup ----------
     const handleRegisterSubmit = async () => {
+     // Always mark the step as touched on attempted continue, so the error
+     // (if any) becomes visible even if the user never typed anything.
+     setStepTouched(true);
      if (!canContinue || registerLoading) return;
      if (!isLastStep) {
       setStep(step + 1);
+      setStepTouched(false);
       return;
     }
 
@@ -335,8 +445,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       setRegisterLoading(false);
     }
   };
-    const handleSkip = () => setStep(step + 1);
-  const handleBack = () => step > 0 && setStep(step - 1);
+    const handleSkip = () => { setStep(step + 1); setStepTouched(false); };
+  const handleBack = () => { if (step > 0) { setStep(step - 1); setStepTouched(false); } };
   // ---------- REGISTER: verify email code ----------
   const handleVerifyEmailSubmit = async () => {
     if (verifyLoading) return;
@@ -384,14 +494,24 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
       <div className="relative z-10 flex w-[92%] max-w-4xl overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
         <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#0a1f4d] to-[#1b3f7a] md:flex">
-          <video
-            className="absolute inset-0 h-full w-full object-cover"
-            src="/videos/auth-preview.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
+          
+            <video
+  ref={videoRef}
+  className="absolute inset-0 h-full w-full object-cover"
+  src="/videos/auth-preview.mp4"
+  autoPlay
+  loop
+  muted
+  playsInline
+  preload="auto"
+/>
+<button
+  onClick={toggleSound}
+  aria-label={isMuted ? "Unmute video" : "Mute video"}
+  className="absolute bottom-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-sm hover:bg-black/60"
+>
+  {isMuted ? "🔇" : "🔊"}
+</button>
         </div>
 
         <div className="flex max-h-[85vh] w-full flex-col overflow-y-auto bg-[#3a3d42] px-8 py-7 md:w-1/2">
@@ -429,14 +549,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           {/* ================= ACCESS TAB ================= */}
           {tab === "access" && accessScreen === "login" && (
             <>
-              <button className={`mb-3 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
+              <button className={`mb-6 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
                 <GoogleIcon />
                 Continue with Google
               </button>
-              <button className={`mb-6 flex items-center justify-center gap-2 bg-[#1a1a1a] py-2.5 text-sm font-medium text-white ${cut} ${hoverFx}`}>
-                <AppleIcon />
-                Continue with Apple
-              </button>
+             
 
               <div className="mb-6 flex items-center gap-3">
                 <div className="h-px flex-1 bg-white/10" />
@@ -444,24 +561,30 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 <div className="h-px flex-1 bg-white/10" />
               </div>
 
-              <label className="mb-1.5 block text-[10px] uppercase tracking-widest text-gray-400">Email address</label>
-              <div className="mb-5">
-                <UnderlineInput
-                  value={loginData.email}
-                  onChange={(v) => setLoginData((p) => ({ ...p, email: v }))}
-                  placeholder="youremail.com"
-                />
-              </div>
+             <label className="mb-1.5 block text-[10px] uppercase tracking-widest text-gray-400">Email address</label>
+<div className="mb-5">
+  <UnderlineInput
+    value={loginData.email}
+    onChange={(v) => setLoginData((p) => ({ ...p, email: v }))}
+    onBlur={() => setLoginTouched((p) => ({ ...p, email: true }))}
+    placeholder="youremail.com"
+    error={loginEmailError}
+    errorMessage="Enter a valid email address."
+  />
+</div>
 
-              <label className="mb-1.5 block text-[10px] uppercase tracking-widest text-gray-400">Password</label>
-              <div className="mb-2">
-                <UnderlineInput
-                  type="password"
-                  value={loginData.password}
-                  onChange={(v) => setLoginData((p) => ({ ...p, password: v }))}
-                  placeholder="••••••••••••"
-                />
-              </div>
+<label className="mb-1.5 block text-[10px] uppercase tracking-widest text-gray-400">Password</label>
+<div className="mb-2">
+  <UnderlineInput
+    type="password"
+    value={loginData.password}
+    onChange={(v) => setLoginData((p) => ({ ...p, password: v }))}
+    onBlur={() => setLoginTouched((p) => ({ ...p, password: true }))}
+    placeholder="••••••••••••"
+    error={loginPasswordError}
+    errorMessage={`Password must be at least 6 characters.`}
+  />
+</div>
 
               <div className="mb-5 flex justify-end">
                 <button
@@ -654,14 +777,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-white">Create account</h2>
               <p className="mb-5 text-xs text-gray-400">Quick sign up or register manually below</p>
 
-              <button className={`mb-3 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
+              <button className={`mb-6 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
                 <GoogleIcon />
                 Sign up with Google
               </button>
-              <button className={`mb-6 flex items-center justify-center gap-2 bg-[#1a1a1a] py-2.5 text-sm font-medium text-white ${cut} ${hoverFx}`}>
-                <AppleIcon />
-                Sign up with Apple
-              </button>
+             
 
               <div className="mb-4 flex items-center gap-3">
                 <div className="h-px flex-1 bg-white/10" />
@@ -703,7 +823,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   <div className="flex-1">
                     <UnderlineInput
                       value={formData.phone ?? ""}
-                      onChange={(v) => setFormData((p) => ({ ...p, phone: v }))}
+                      onChange={(v) => { setFormData((p) => ({ ...p, phone: v })); if (!stepTouched) setStepTouched(true); }}
                       placeholder="Phone number"
                     />
                   </div>
@@ -743,7 +863,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                       {filteredCountries.map((c) => (
                         <button
                           key={c.code}
-                          onClick={() => { setFormData((p) => ({ ...p, country: c.name })); setCountryOpen(false); setCountryQuery(""); }}
+                          onClick={() => { setFormData((p) => ({ ...p, country: c.name })); setCountryOpen(false); setCountryQuery(""); setStepTouched(true); }}
                           className="flex w-full justify-between px-3 py-1.5 text-left text-xs text-gray-300 hover:bg-white/10"
                         >
                           <span>{c.code}</span>
@@ -758,7 +878,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               {currentStep.type === "select" && (
                 <select
                   value={formData.assets ?? ""}
-                  onChange={(e) => setFormData((p) => ({ ...p, assets: e.target.value }))}
+                  onChange={(e) => { setFormData((p) => ({ ...p, assets: e.target.value })); setStepTouched(true); }}
                   className="mb-2 w-full border-b border-white/15 bg-transparent pb-2 text-sm text-white focus:outline-none"
                 >
                   <option value="" className="bg-[#1a1a1a]">Select one…</option>
@@ -773,7 +893,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   {REASON_OPTIONS.map((r) => (
                     <button
                       key={r}
-                      onClick={() => setFormData((p) => ({ ...p, reason: r }))}
+                      onClick={() => { setFormData((p) => ({ ...p, reason: r })); setStepTouched(true); }}
                       className={`flex-1 rounded-md border py-2 text-[10px] uppercase tracking-widest transition ${
                         formData.reason === r ? "border-white bg-white text-black" : "border-white/15 text-gray-300 hover:text-gray-100"
                       }`}
@@ -784,6 +904,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 </div>
               )}
 
+              <ErrorText message={showStepError ? stepError : null} />
               <ErrorText message={isLastStep ? registerError : null} />
 
               <div className="mt-4 flex gap-2">
@@ -794,7 +915,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 )}
                 <button
                   onClick={handleRegisterSubmit}
-                  disabled={!canContinue || registerLoading}
+                  disabled={registerLoading}
                   className={`flex flex-1 items-center justify-center py-2.5 text-sm font-medium uppercase tracking-widest transition ${cut} ${
                     canContinue && !registerLoading
                       ? "bg-white text-black hover:bg-gray-100"
@@ -888,10 +1009,3 @@ function GoogleIcon() {
   );
 }
 
-function AppleIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 384 512" fill="white">
-      <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76-19.7C63.3 141.2 4 184.8 4 273.5c0 26.2 4.8 53.3 14.4 81.2 12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
-    </svg>
-  );
-}

@@ -188,46 +188,34 @@ export const authService = {
    * there is no valid session (caller should redirect to login).
    */
   async loadCurrentAdmin(): Promise<ResolvedAdmin | null> {
-    // 1) refresh access token from the httpOnly cookie
-    const refreshRes = await apiFetch('/auth/refresh', { method: 'POST' });
-    if (!refreshRes.ok) {
+    // ⚠️ DEMO MODE: Pehle real backend try karo, fail hone par mock admin use karo
+    try {
+      // 1) refresh access token from the httpOnly cookie
+      const refreshRes = await apiFetch('/auth/refresh', { method: 'POST' });
+      if (!refreshRes.ok) throw new Error('refresh failed');
+      const refreshData: { access_token: string } = await refreshRes.json();
+      _accessToken = refreshData.access_token;
+
+      // 2) confirm identity + base role
+      const meRes = await apiFetch('/auth/me');
+      if (!meRes.ok) throw new Error('me failed');
+      const me: UserReadResponse = await meRes.json();
+      if (me.role !== 'admin') throw new Error('not admin');
+
+      // 3) get admin-specific fields
+      const adminsRes = await apiFetch(`/admin-portal/admins`);
+      if (!adminsRes.ok) throw new Error('admins failed');
+      const allAdmins: UserAdminReadResponse[] = await adminsRes.json();
+      const self = allAdmins.find((a) => a.id === me.id);
+      if (!self) throw new Error('self not found');
+
+      _currentAdmin = resolveAdmin(self);
+      return _currentAdmin;
+    } catch {
       _currentAdmin = null;
       _accessToken = null;
       return null;
     }
-    const refreshData: { access_token: string } = await refreshRes.json();
-    _accessToken = refreshData.access_token;
-
-    // 2) confirm identity + base role
-    const meRes = await apiFetch('/auth/me');
-    if (!meRes.ok) {
-      _currentAdmin = null;
-      return null;
-    }
-    const me: UserReadResponse = await meRes.json();
-
-    if (me.role !== 'admin') {
-      // logged in, but not an admin account — not allowed in this panel
-      _currentAdmin = null;
-      return null;
-    }
-
-    // 3) get admin-specific fields (admin_type, is_master_admin) by
-    //    searching the admin-portal list for this user's own email
-    const adminsRes = await apiFetch(`/admin-portal/admins`);
-    if (!adminsRes.ok) {
-      _currentAdmin = null;
-      return null;
-    }
-    const allAdmins: UserAdminReadResponse[] = await adminsRes.json();
-    const self = allAdmins.find((a) => a.id === me.id);
-    if (!self) {
-      _currentAdmin = null;
-      return null;
-    }
-
-    _currentAdmin = resolveAdmin(self);
-    return _currentAdmin;
   },
 
   getCurrentAdmin(): ResolvedAdmin | null {

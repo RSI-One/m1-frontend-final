@@ -67,6 +67,10 @@ export default function EditProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Delete account isn't properly wired to the backend yet, so the
+  // button(s) below are disabled until that's ready.
+  const DELETE_ACCOUNT_ENABLED = false;
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -174,6 +178,9 @@ export default function EditProfilePage() {
   };
 
   const handleDeleteAccount = () => {
+    // Guarded again here as a safety net, even though the trigger
+    // buttons are already disabled while this isn't backend-ready.
+    if (!DELETE_ACCOUNT_ENABLED) return;
     alert("Account deletion isn't available yet. Please contact support.");
   };
 
@@ -309,14 +316,34 @@ export default function EditProfilePage() {
               <div className="ep-danger-card">
                 <h4>Delete Account</h4>
                 <p>Permanently delete your M1 Marketplace account and all associated data. This action <strong>cannot be undone</strong>.</p>
+
+                {!DELETE_ACCOUNT_ENABLED && (
+                  <p className="ep-error" style={{ marginTop: 4, marginBottom: 8 }}>
+                    This feature is temporarily unavailable. Please contact support if you need to delete your account.
+                  </p>
+                )}
+
                 {!showDeleteConfirm ? (
-                  <button className="ep-delete-btn" onClick={() => setShowDeleteConfirm(true)}>Delete My Account</button>
+                  <button
+                    className="ep-delete-btn"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={!DELETE_ACCOUNT_ENABLED}
+                    title={!DELETE_ACCOUNT_ENABLED ? "Account deletion is currently unavailable" : undefined}
+                  >
+                    Delete My Account
+                  </button>
                 ) : (
                   <div className="ep-delete-confirm">
                     <p className="ep-confirm-text">Are you absolutely sure?</p>
                     <div className="ep-confirm-btns">
                       <button className="ep-btn-cancel" onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
-                      <button className="ep-delete-btn" onClick={handleDeleteAccount}>Yes, Delete Account</button>
+                      <button
+                        className="ep-delete-btn"
+                        onClick={handleDeleteAccount}
+                        disabled={!DELETE_ACCOUNT_ENABLED}
+                      >
+                        Yes, Delete Account
+                      </button>
                     </div>
                   </div>
                 )}
