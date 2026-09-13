@@ -45,10 +45,44 @@ export default function AssetModal({ asset, onClose }: AssetModalProps) {
     ].slice(0, 4);
   }, [asset]);
 
-  const exteriorImages = useMemo(
-    () => galleryAssets.map((item) => item.image).filter(Boolean) as string[],
-    [galleryAssets]
-  );
+  const exteriorImages = useMemo(() => {
+    if (!asset) return [];
+    if ("images" in asset && Array.isArray(asset.images) && asset.images.length > 0) {
+      return asset.images.filter(Boolean);
+    }
+    if (asset.image && typeof asset.image === "string" && asset.image.trim()) {
+      return [asset.image];
+    }
+    return galleryAssets.map((item) => item.image).filter(Boolean) as string[];
+  }, [asset, galleryAssets]);
+
+  const cabinImages = useMemo(() => {
+    if (!asset) return [];
+    if ("cabinImages" in asset && Array.isArray(asset.cabinImages) && asset.cabinImages.length > 0) {
+      return asset.cabinImages.filter(Boolean);
+    }
+    if ("images" in asset && Array.isArray(asset.images) && asset.images.length > 1) {
+      return asset.images.slice(1).filter(Boolean);
+    }
+    return [];
+  }, [asset]);
+
+  const blueprintImages = useMemo(() => {
+    if (!asset) return [];
+    if ("blueprintImages" in asset && Array.isArray(asset.blueprintImages) && asset.blueprintImages.length > 0) {
+      return asset.blueprintImages.filter(Boolean);
+    }
+    if ("images" in asset && Array.isArray(asset.images) && asset.images.length >= 3) {
+      return [asset.images[asset.images.length - 1]].filter(Boolean);
+    }
+    return [];
+  }, [asset]);
+
+  const currentViewImages = useMemo(() => {
+    if (activeView === "cabin") return cabinImages;
+    if (activeView === "blueprint") return blueprintImages;
+    return exteriorImages;
+  }, [activeView, exteriorImages, cabinImages, blueprintImages]);
 
   useEffect(() => {
     setActiveView("exterior");
@@ -64,10 +98,17 @@ export default function AssetModal({ asset, onClose }: AssetModalProps) {
   const realDescription = "description" in asset ? asset.description : undefined;
 
   const nextImage = () => {
-    setActiveImage((current) => (current === exteriorImages.length - 1 ? 0 : current + 1));
+    if (!currentViewImages.length) return;
+    setActiveImage((current) => (current === currentViewImages.length - 1 ? 0 : current + 1));
   };
   const previousImage = () => {
-    setActiveImage((current) => (current === 0 ? exteriorImages.length - 1 : current - 1));
+    if (!currentViewImages.length) return;
+    setActiveImage((current) => (current === 0 ? currentViewImages.length - 1 : current - 1));
+  };
+
+  const handleTabChange = (view: ViewKey) => {
+    setActiveView(view);
+    setActiveImage(0);
   };
 
   const handleGetThisPlane = () => {
@@ -171,21 +212,21 @@ export default function AssetModal({ asset, onClose }: AssetModalProps) {
                   <button
                     type="button"
                     className={activeView === "exterior" ? "am3-tab active" : "am3-tab"}
-                    onClick={() => setActiveView("exterior")}
+                    onClick={() => handleTabChange("exterior")}
                   >
                     Exterior
                   </button>
                   <button
                     type="button"
                     className={activeView === "cabin" ? "am3-tab active" : "am3-tab"}
-                    onClick={() => setActiveView("cabin")}
+                    onClick={() => handleTabChange("cabin")}
                   >
                     Cabin
                   </button>
                   <button
                     type="button"
                     className={activeView === "blueprint" ? "am3-tab active" : "am3-tab"}
-                    onClick={() => setActiveView("blueprint")}
+                    onClick={() => handleTabChange("blueprint")}
                   >
                     Blueprint
                   </button>
@@ -196,7 +237,7 @@ export default function AssetModal({ asset, onClose }: AssetModalProps) {
                     <>
                       {exteriorImages.length ? (
                         <img
-                          src={exteriorImages[activeImage]}
+                          src={exteriorImages[activeImage] || exteriorImages[0]}
                           alt={overview.name}
                           className="am3-viewer-img"
                         />
@@ -238,45 +279,131 @@ export default function AssetModal({ asset, onClose }: AssetModalProps) {
                   )}
 
                   {activeView === "cabin" && (
-                    <div className="am3-schematic">
-                      <div className="am3-schematic-glow" />
-                      <div className="am3-schematic-grid" />
-                      <div className="am3-schematic-icon">
-                        <svg width="150" height="72" viewBox="0 0 150 72" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="6" y="20" width="138" height="32" rx="16" />
-                          <line x1="30" y1="20" x2="30" y2="52" />
-                          <line x1="58" y1="20" x2="58" y2="52" />
-                          <line x1="86" y1="20" x2="86" y2="52" />
-                          <line x1="114" y1="20" x2="114" y2="52" />
-                          <circle cx="18" cy="36" r="3.5" />
-                          <circle cx="44" cy="36" r="3.5" />
-                          <circle cx="72" cy="36" r="3.5" />
-                          <circle cx="100" cy="36" r="3.5" />
-                          <circle cx="128" cy="36" r="3.5" />
-                        </svg>
-                      </div>
-                      <span className="am3-schematic-label">Cabin — Interior View</span>
-                      <span className="am3-schematic-tag">Photography pending</span>
-                    </div>
+                    <>
+                      {cabinImages.length ? (
+                        <>
+                          <img
+                            src={cabinImages[activeImage] || cabinImages[0]}
+                            alt={`${overview.name} Cabin`}
+                            className="am3-viewer-img"
+                          />
+                          {cabinImages.length > 1 && (
+                            <>
+                              <button
+                                type="button"
+                                className="am3-arrow prev"
+                                onClick={previousImage}
+                                aria-label="Previous image"
+                              >
+                                ‹
+                              </button>
+                              <button
+                                type="button"
+                                className="am3-arrow next"
+                                onClick={nextImage}
+                                aria-label="Next image"
+                              >
+                                ›
+                              </button>
+                              <div className="am3-dots">
+                                {cabinImages.map((image, index) => (
+                                  <button
+                                    key={`${image}-${index}`}
+                                    type="button"
+                                    aria-label={`Open cabin image ${index + 1}`}
+                                    className={index === activeImage ? "carousel-dot active" : "carousel-dot"}
+                                    onClick={() => setActiveImage(index)}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <div className="am3-schematic">
+                          <div className="am3-schematic-glow" />
+                          <div className="am3-schematic-grid" />
+                          <div className="am3-schematic-icon">
+                            <svg width="150" height="72" viewBox="0 0 150 72" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="6" y="20" width="138" height="32" rx="16" />
+                              <line x1="30" y1="20" x2="30" y2="52" />
+                              <line x1="58" y1="20" x2="58" y2="52" />
+                              <line x1="86" y1="20" x2="86" y2="52" />
+                              <line x1="114" y1="20" x2="114" y2="52" />
+                              <circle cx="18" cy="36" r="3.5" />
+                              <circle cx="44" cy="36" r="3.5" />
+                              <circle cx="72" cy="36" r="3.5" />
+                              <circle cx="100" cy="36" r="3.5" />
+                              <circle cx="128" cy="36" r="3.5" />
+                            </svg>
+                          </div>
+                          <span className="am3-schematic-label">Cabin — Interior View</span>
+                          <span className="am3-schematic-tag">Photography pending</span>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {activeView === "blueprint" && (
-                    <div className="am3-schematic">
-                      <div className="am3-schematic-glow" />
-                      <div className="am3-schematic-grid" />
-                      <div className="am3-schematic-icon">
-                        <svg width="170" height="80" viewBox="0 0 170 80" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M8 40 L48 22 L122 22 L162 40 L122 58 L48 58 Z" />
-                          <line x1="48" y1="22" x2="48" y2="58" />
-                          <line x1="70" y1="22" x2="70" y2="58" />
-                          <line x1="92" y1="22" x2="92" y2="58" />
-                          <line x1="114" y1="22" x2="114" y2="58" />
-                          <path d="M85 4 L85 22 M85 58 L85 76" strokeDasharray="3 3" opacity="0.5" />
-                        </svg>
-                      </div>
-                      <span className="am3-schematic-label">Cabin Blueprint</span>
-                      <span className="am3-schematic-tag">Photography pending</span>
-                    </div>
+                    <>
+                      {blueprintImages.length ? (
+                        <>
+                          <img
+                            src={blueprintImages[activeImage] || blueprintImages[0]}
+                            alt={`${overview.name} Blueprint`}
+                            className="am3-viewer-img"
+                          />
+                          {blueprintImages.length > 1 && (
+                            <>
+                              <button
+                                type="button"
+                                className="am3-arrow prev"
+                                onClick={previousImage}
+                                aria-label="Previous image"
+                              >
+                                ‹
+                              </button>
+                              <button
+                                type="button"
+                                className="am3-arrow next"
+                                onClick={nextImage}
+                                aria-label="Next image"
+                              >
+                                ›
+                              </button>
+                              <div className="am3-dots">
+                                {blueprintImages.map((image, index) => (
+                                  <button
+                                    key={`${image}-${index}`}
+                                    type="button"
+                                    aria-label={`Open blueprint image ${index + 1}`}
+                                    className={index === activeImage ? "carousel-dot active" : "carousel-dot"}
+                                    onClick={() => setActiveImage(index)}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <div className="am3-schematic">
+                          <div className="am3-schematic-glow" />
+                          <div className="am3-schematic-grid" />
+                          <div className="am3-schematic-icon">
+                            <svg width="170" height="80" viewBox="0 0 170 80" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M8 40 L48 22 L122 22 L162 40 L122 58 L48 58 Z" />
+                              <line x1="48" y1="22" x2="48" y2="58" />
+                              <line x1="70" y1="22" x2="70" y2="58" />
+                              <line x1="92" y1="22" x2="92" y2="58" />
+                              <line x1="114" y1="22" x2="114" y2="58" />
+                              <path d="M85 4 L85 22 M85 58 L85 76" strokeDasharray="3 3" opacity="0.5" />
+                            </svg>
+                          </div>
+                          <span className="am3-schematic-label">Cabin Blueprint</span>
+                          <span className="am3-schematic-tag">Photography pending</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

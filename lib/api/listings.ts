@@ -118,27 +118,117 @@ function displayPrice(item: ApiListingItem): string {
   return `$${millions.toFixed(1)}M`;
 }
 
+function resolveMediaUrls(mediaUrls: unknown): string[] {
+  if (!Array.isArray(mediaUrls)) return [];
+  return mediaUrls
+    .map((item) => {
+      if (!item) return "";
+      if (typeof item === "string") return item;
+      if (typeof item === "object") {
+        const obj = item as Record<string, unknown>;
+        if (typeof obj.url === "string") return obj.url;
+        if (typeof obj.file_url === "string") return obj.file_url;
+      }
+      return "";
+    })
+    .filter(Boolean);
+}
+
+function resolveMediaByView(mediaUrls: unknown): {
+  exterior: string[];
+  cabin: string[];
+  blueprint: string[];
+} {
+  if (!Array.isArray(mediaUrls)) return { exterior: [], cabin: [], blueprint: [] };
+
+  const exterior: string[] = [];
+  const cabin: string[] = [];
+  const blueprint: string[] = [];
+  const untagged: string[] = [];
+
+  for (const item of mediaUrls) {
+    if (!item) continue;
+    let url = "";
+    let viewType = "";
+    if (typeof item === "string") {
+      url = item;
+    } else if (typeof item === "object") {
+      const obj = item as Record<string, unknown>;
+      url = typeof obj.url === "string" ? obj.url : typeof obj.file_url === "string" ? obj.file_url : "";
+      viewType = typeof obj.view_type === "string" ? obj.view_type.toLowerCase() : "";
+    }
+    if (!url) continue;
+
+    if (viewType === "interior" || viewType === "cabin") {
+      cabin.push(url);
+    } else if (viewType === "blueprint") {
+      blueprint.push(url);
+    } else if (viewType === "exterior") {
+      exterior.push(url);
+    } else {
+      untagged.push(url);
+    }
+  }
+
+  // If untagged images exist, distribute them logically across views
+  if (untagged.length > 0) {
+    if (exterior.length === 0 && cabin.length === 0 && blueprint.length === 0) {
+      if (untagged.length === 1) {
+        exterior.push(untagged[0]);
+      } else if (untagged.length === 2) {
+        exterior.push(untagged[0]);
+        cabin.push(untagged[1]);
+      } else if (untagged.length === 3) {
+        exterior.push(untagged[0]);
+        cabin.push(untagged[1]);
+        blueprint.push(untagged[2]);
+      } else {
+        // >= 4 images: first 2 exterior, middle cabin, last blueprint
+        exterior.push(untagged[0], untagged[1]);
+        cabin.push(...untagged.slice(2, untagged.length - 1));
+        blueprint.push(untagged[untagged.length - 1]);
+      }
+    } else {
+      exterior.push(...untagged);
+    }
+  }
+
+  return { exterior, cabin, blueprint };
+}
+
 /** Maps a raw listing into the `Jet` shape used by Featured/Verified sections. */
 export function toJet(item: ApiListingItem): Jet {
+  const { exterior, cabin, blueprint } = resolveMediaByView(item.media_urls);
+  const allImages = resolveMediaUrls(item.media_urls);
+  const primaryImage = item.thumbnail || exterior[0] || allImages[0] || undefined;
   return {
     id: item.listing_id || item.id,
     name: displayName(item),
     price: displayPrice(item),
     cat: item.jet_type ? String(item.jet_type).replace(/_/g, " ") : item.manufacturer || "Aircraft",
     loc: item.location_country || "Worldwide",
-    image: item.thumbnail || (Array.isArray(item.media_urls) ? (item.media_urls[0] as string) : undefined) || undefined,
+    image: primaryImage,
+    images: exterior.length ? exterior : (allImages.length ? allImages : (primaryImage ? [primaryImage] : undefined)),
+    cabinImages: cabin,
+    blueprintImages: blueprint,
     description: item.short_description || item.description || undefined,
   };
 }
 
 /** Maps a raw listing into the `SfItem` shape used by AllListings / Wizard-style cards. */
 export function toSfItem(item: ApiListingItem): SfItem {
+  const { exterior, cabin, blueprint } = resolveMediaByView(item.media_urls);
+  const allImages = resolveMediaUrls(item.media_urls);
+  const primaryImage = item.thumbnail || exterior[0] || allImages[0] || undefined;
   return {
     id: item.listing_id || item.id,
     name: displayName(item),
     cat: item.jet_type ? String(item.jet_type).replace(/_/g, " ") : item.manufacturer || "Aircraft",
     year: item.year_of_manufacture || 0,
-    image: item.thumbnail || (Array.isArray(item.media_urls) ? (item.media_urls[0] as string) : undefined) || undefined,
+    image: primaryImage,
+    images: exterior.length ? exterior : (allImages.length ? allImages : (primaryImage ? [primaryImage] : undefined)),
+    cabinImages: cabin,
+    blueprintImages: blueprint,
     price: displayPrice(item),
     loc: item.location_country || "Worldwide",
     description: item.short_description || item.description || undefined,
@@ -165,15 +255,15 @@ export interface ListingResponse {
   description?: string | null;
   is_verified: boolean;
   is_featured: boolean;
-  view_count: number;
-  click_count: number;
-  chats_initiated: number;
+  view_count?: number;
+  click_count?: number;
+  chats_initiated?: number;
   created_at: string;
   manufacturer?: string | null;
   model?: string | null;
   jet_type?: string | null;
   thumbnail_url?: string | null;
-  media_urls?: Record<string, unknown>[] | null;
+  media_urls?: unknown;
 }
 
 export interface SellerListingsResponse {
@@ -193,13 +283,19 @@ function sellerListingDisplayPrice(price?: number | null): string {
 
 export function sellerListingToJet(listing: ListingResponse): Jet {
   const name = [listing.manufacturer, listing.model, listing.variant].filter(Boolean).join(" ") || "Unnamed Asset";
+  const { exterior, cabin, blueprint } = resolveMediaByView(listing.media_urls);
+  const allImages = resolveMediaUrls(listing.media_urls);
+  const primaryImage = listing.thumbnail_url || exterior[0] || allImages[0] || undefined;
   return {
     id: listing.id,
     name,
     price: sellerListingDisplayPrice(listing.price),
     cat: listing.jet_type ? String(listing.jet_type).replace(/_/g, " ") : listing.manufacturer || "Aircraft",
     loc: "Worldwide",
-    image: listing.thumbnail_url || (Array.isArray(listing.media_urls) ? (listing.media_urls[0] as unknown as string) : undefined) || undefined,
+    image: primaryImage,
+    images: exterior.length ? exterior : (allImages.length ? allImages : (primaryImage ? [primaryImage] : undefined)),
+    cabinImages: cabin,
+    blueprintImages: blueprint,
     description: listing.description || undefined,
   };
 }

@@ -89,6 +89,11 @@ export interface ListingResponse {
   click_count?: number;
   chats_initiated?: number;
   created_at: string;
+  thumbnail_url?: string | null;
+  media_urls?: (string | { url?: string; file_url?: string; media_type?: string; public_id?: string; [key: string]: unknown })[] | null;
+  manufacturer?: string | null;
+  model?: string | null;
+  jet_type?: string | null;
 }
 
 export interface VerificationPurchaseRead {

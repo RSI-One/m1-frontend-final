@@ -1,25 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { Jet } from "../lib/types";
 import { useTypewriterPlaceholder } from "../lib/useTypewriterPlaceholder";
 import NewListingWizard from "./NewListingWizard";
-import { getMyListings, ListingResponse } from "../lib/api/sellerListings";
-import { getCarousels, toJet } from "../lib/api/listings";
+import { getMyListings } from "../lib/api/sellerListings";
+import { getCarousels, toJet, sellerListingToJet } from "../lib/api/listings";
 import { ApiError } from "../lib/api/client";
 import ProfilePanel from "./ProfilePanel";
 import { subscribeToNewsletter } from "@/lib/api/newsletter";
-
-function sellerListingToJet(listing: ListingResponse): Jet {
-  return {
-    id: listing.id,
-    name: listing.variant ? `${listing.variant} listing` : `Listing #${listing.id.slice(0, 8)}`,
-    price: typeof listing.price === "number" ? `$${(listing.price / 1_000_000).toFixed(1)}M` : "Price pending",
-    cat: listing.status,
-    loc: listing.is_verified ? "Verified" : "Unverified",
-  };
-}
 
 type SellerPanelKey = "notifications" | "menu" | "profile" | "filter" | null;
 
@@ -102,12 +92,11 @@ export default function SellerMode({
     };
   }, [openPanel]);
 
-  useEffect(() => {
-    if (!open) return;
+  const loadMyListings = useCallback(() => {
     let cancelled = false;
     setMyListingsLoading(true);
     setMyListingsAuthError(false);
-    getMyListings({ limit: 20 })
+    getMyListings({ limit: 50 })
       .then((res) => {
         if (cancelled) return;
         setMyListings(res.results.map(sellerListingToJet));
@@ -126,7 +115,12 @@ export default function SellerMode({
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    return loadMyListings();
+  }, [open, loadMyListings]);
 
   useEffect(() => {
     if (!open) return;
@@ -156,8 +150,14 @@ export default function SellerMode({
   const filteredTrending = useMemo(() => trendingList.filter(match).slice(0, 8), [trendingList, term]);
 
   const card = (j: Jet, idx: number) => (
-    <div className="carousel-card" key={j.name + idx} onClick={() => { onClose(); onOpenAsset(j); }}>
-      {j.image && <img src={j.image} alt={j.name} />}
+    <div className="carousel-card" key={j.id || j.name + idx} onClick={() => onOpenAsset(j)}>
+      {j.image ? (
+        <img src={j.image} alt={j.name} />
+      ) : (
+        <div style={{ height: 160, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.03)", color: "var(--muted-2)", fontSize: 12 }}>
+          No image
+        </div>
+      )}
       <div className="carousel-card-body">
         <div className="cc-name">{j.name}</div>
         <div className="cc-meta">{j.cat}</div>
@@ -512,7 +512,10 @@ export default function SellerMode({
 
       <NewListingWizard
         open={newListingOpen}
-        onClose={() => setNewListingOpen(false)}
+        onClose={() => {
+          setNewListingOpen(false);
+          loadMyListings();
+        }}
         showToast={showToast}
       />
     </div>

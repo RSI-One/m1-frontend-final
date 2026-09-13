@@ -6,6 +6,9 @@ export interface Jet {
   cat: string;
   loc: string;
   image?: string;
+  images?: string[];
+  cabinImages?: string[];
+  blueprintImages?: string[];
   /** Real listing description/blurb from the backend, when available. */
   description?: string;
   featured?: boolean;
@@ -28,6 +31,9 @@ export interface SfItem {
   cat: string;
   year: number;
   image?: string;
+  images?: string[];
+  cabinImages?: string[];
+  blueprintImages?: string[];
   /** Real price string (e.g. "$12.3M"), when this item came from the backend. */
   price?: string;
   /** Real location string, when this item came from the backend. */

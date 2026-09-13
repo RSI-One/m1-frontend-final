@@ -151,10 +151,13 @@ const backend = {
     return res?.data ?? res;
   },
 
-  uploadMedia: async (listingId: string, file: File, mediaType: "photo" | "video") => {
+  uploadMedia: async (listingId: string, file: File, mediaType: "photo" | "video", viewType?: "exterior" | "interior" | "blueprint") => {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("media_type", mediaType === "photo" ? "image" : "video");
+    if (viewType) {
+      fd.append("view_type", viewType);
+    }
     const res = await api.post<any>(`/seller/listings/${listingId}/media`, fd);
     return res?.data ?? res;
   },
@@ -465,13 +468,13 @@ export default function NewListingWizard({
         const pendingPhotos = s.photos.filter((p) => !p.uploaded && p.file);
         const pendingVideos = s.videos.filter((v) => !v.uploaded && v.file);
 
-        await Promise.all([
-          ...pendingPhotos.map(async (p) => {
-            const fileToUpload = await compressImage(p.file!);
-            return backend.uploadMedia(listingId, fileToUpload, "photo");
-          }),
-          ...pendingVideos.map((v) => backend.uploadMedia(listingId, v.file!, "video")),
-        ]);
+        for (const p of pendingPhotos) {
+          const fileToUpload = await compressImage(p.file!);
+          await backend.uploadMedia(listingId, fileToUpload, "photo", p.kind === "int" ? "interior" : "exterior");
+        }
+        for (const v of pendingVideos) {
+          await backend.uploadMedia(listingId, v.file!, "video", v.kind === "int" ? "interior" : "exterior");
+        }
 
         update({
           photos: s.photos.map((p) => ({ ...p, uploaded: true })),
