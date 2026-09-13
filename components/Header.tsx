@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import ProfilePanel from "./ProfilePanel";
 import { useSite, BUDGET_MIN, BUDGET_MAX } from "../lib/site-context";
 import { useTypewriterPlaceholder } from "../lib/useTypewriterPlaceholder";
@@ -37,6 +38,8 @@ export default function Header({
   onOpenGetSupport,
   onOpenAcquisitionHistory,
 }: HeaderProps) {
+  const router = useRouter();
+
   const {
     search,
     setSearch,
@@ -47,8 +50,6 @@ export default function Header({
     setActiveSuggestions,
     maxBudget,
     setMaxBudget,
-    showAllListings,
-    toggleShowAllListings,
     showToast,
     refreshUser,
   } = useSite();
@@ -70,8 +71,7 @@ export default function Header({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [popularKeywords, setPopularKeywords] = useState<string[]>([]);
   const [trendingCategories, setTrendingCategories] = useState<
-    { category: string; count: number }[]
-  >([]);
+  { category: string; count: number }[] >([]);
 
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -292,13 +292,13 @@ export default function Header({
       onOpenReportProblem?.();
       return;
     }
-  
+
     if (label === "Acquisition history") {
-       setOpenPanel(null);
-        onOpenAcquisitionHistory?.();
-        return;
-}
-    
+      setOpenPanel(null);
+      onOpenAcquisitionHistory?.();
+      return;
+    }
+
     if (label === "Get support") {
       setOpenPanel(null);
       onOpenGetSupport?.();
@@ -704,16 +704,10 @@ export default function Header({
       </button>
 
       <button
-        className={`all-listings-btn ${
-          showAllListings ? "active" : ""
-        }`}
-        onClick={toggleShowAllListings}
+        className="all-listings-btn"
+        onClick={() => router.push("/listings")}
       >
-        <span>
-          {showAllListings
-            ? "Showing All"
-            : "All Listings"}
-        </span>
+        <span>All Listings</span>
       </button>
 
       {/* OVERLAY */}
@@ -819,10 +813,10 @@ export default function Header({
       )}
 
       {/* PROFILE DRAWER */}
-          {/* PROFILE DRAWER */}
-{openPanel === "profile" && (
-  <ProfilePanel onClose={() => setOpenPanel(null)} />
-)}
+      {openPanel === "profile" && (
+        <ProfilePanel onClose={() => setOpenPanel(null)} />
+      )}
+
       {/* MENU DRAWER */}
       {openPanel === "menu" && (
         <div className="drawer show">

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./admin-globals.css";
 
+import { SiteProvider } from "./lib/site-context";
+
 export const metadata: Metadata = {
   title: "M1 Marketplace — E-Acquisition Engine",
   description: "M1 · Private Acquisition Marketplace",
@@ -9,7 +11,7 @@ export const metadata: Metadata = {
     icon: "/icon.png",
   },
 };
-// hello
+
 export default function RootLayout({
   children,
 }: {
@@ -17,7 +19,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <SiteProvider>{children}</SiteProvider>
+      </body>
     </html>
   );
 }
