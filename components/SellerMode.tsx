@@ -9,6 +9,7 @@ import { getMyListings } from "../lib/api/sellerListings";
 import { getCarousels, toJet, sellerListingToJet } from "../lib/api/listings";
 import { ApiError } from "../lib/api/client";
 import ProfilePanel from "./ProfilePanel";
+import AssetCard from "./AssetCard";
 import { subscribeToNewsletter } from "@/lib/api/newsletter";
 
 type SellerPanelKey = "notifications" | "menu" | "profile" | "filter" | null;
@@ -150,20 +151,17 @@ export default function SellerMode({
   const filteredTrending = useMemo(() => trendingList.filter(match).slice(0, 8), [trendingList, term]);
 
   const card = (j: Jet, idx: number) => (
-    <div className="carousel-card" key={j.id || j.name + idx} onClick={() => onOpenAsset(j)}>
-      {j.image ? (
-        <img src={j.image} alt={j.name} />
-      ) : (
-        <div style={{ height: 160, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.03)", color: "var(--muted-2)", fontSize: 12 }}>
-          No image
-        </div>
-      )}
-      <div className="carousel-card-body">
-        <div className="cc-name">{j.name}</div>
-        <div className="cc-meta">{j.cat}</div>
-        <div className="cc-price">{j.price}</div>
-      </div>
-    </div>
+    <AssetCard
+      key={j.id ?? (j.name + idx)}
+      name={j.name}
+      price={j.price}
+      cat={j.cat}
+      loc={j.loc}
+      image={j.image}
+      ribbon={j.verified ? "verified" : j.featured ? "featured" : undefined}
+      showRibbon={Boolean(j.verified || j.featured)}
+      onClick={() => onOpenAsset(j)}
+    />
   );
 
   const handleMenuItem = (label: string) => {

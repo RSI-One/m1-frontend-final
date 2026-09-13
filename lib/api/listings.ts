@@ -212,6 +212,8 @@ export function toJet(item: ApiListingItem): Jet {
     cabinImages: cabin,
     blueprintImages: blueprint,
     description: item.short_description || item.description || undefined,
+    featured: Boolean(item.featured_status ?? item.is_featured),
+    verified: Boolean(item.is_verified || item.verification_status === "verified" || item.verification_status === "approved"),
   };
 }
 
@@ -297,5 +299,7 @@ export function sellerListingToJet(listing: ListingResponse): Jet {
     cabinImages: cabin,
     blueprintImages: blueprint,
     description: listing.description || undefined,
+    featured: Boolean(listing.is_featured),
+    verified: Boolean(listing.is_verified || listing.verification_status === "verified" || listing.verification_status === "approved"),
   };
 }
