@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./admin-globals.css";
 
-import { SiteProvider } from "./lib/site-context";
+import { SiteProvider } from "../lib/site-context";
 
 export const metadata: Metadata = {
   title: "M1 Marketplace — E-Acquisition Engine",
