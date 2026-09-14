@@ -216,6 +216,48 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     vid.muted = true;
     vid.play().catch(() => {});
   }, []);
+  
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      // @ts-ignore
+      window.google?.accounts.id.initialize({
+        client_id: "964327019655-a8qbmfl7e9pavsua5pfm6b3s4bu6e5e9.apps.googleusercontent.com",
+        callback: handleGoogleResponse,
+        use_fedcm_for_prompt: false,
+      });
+    };
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  const handleGoogleResponse = async (response: { credential: string }) => {
+    try {
+      const res = await fetch("http://localhost:8000/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_token: response.credential }),
+      });
+      if (!res.ok) throw new Error("Google auth failed");
+      const data = await res.json();
+      localStorage.setItem("access_token", data.access_token);
+      localStorage.setItem("refresh_token", data.refresh_token);
+      window.location.href = "/";
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const triggerGoogleSignIn = () => {
+    // @ts-ignore
+    window.google?.accounts.id.prompt();
+  };
 
   const toggleSound = () => {
     const vid = videoRef.current;
@@ -549,9 +591,11 @@ const loginPasswordError =
           {/* ================= ACCESS TAB ================= */}
           {tab === "access" && accessScreen === "login" && (
             <>
-              <button className={`mb-6 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}>
+              <button className={`mb-6 flex items-center justify-center gap-2 bg-white py-2.5 text-sm font-medium text-black ${cut} ${hoverFx}`}onClick={triggerGoogleSignIn}>
+              
                 <GoogleIcon />
                 Continue with Google
+                
               </button>
              
 
