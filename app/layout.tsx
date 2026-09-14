@@ -5,10 +5,10 @@ import "./admin-globals.css";
 import { SiteProvider } from "../lib/site-context";
 
 export const metadata: Metadata = {
-  title: "M1 Marketplace — E-Acquisition Engine",
-  description: "M1 · Private Acquisition Marketplace",
+  title: "M1 Marketplace - E-Acquisition Engine",
+  description: "M1 - Private Acquisition Marketplace",
   icons: {
-    icon: "/icon.png",
+    icon: '/m1-favicon.png',
   },
 };
 

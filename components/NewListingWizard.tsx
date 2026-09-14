@@ -45,6 +45,54 @@ interface ListingDeclarations {
   agreed_terms_of_use: boolean;
 }
 
+async function compressImage(file: File, maxWidth = 2048, maxHeight = 2048, quality = 0.85): Promise<File> {
+  if (typeof window === "undefined" || !file.type.startsWith("image/") || file.type === "image/svg+xml" || file.type === "image/gif") {
+    return file;
+  }
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width <= maxWidth && height <= maxHeight && file.size < 1.5 * 1024 * 1024) {
+        return resolve(file);
+      }
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      if (height > maxHeight) {
+        width = Math.round((width * maxHeight) / height);
+        height = maxHeight;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(file);
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return resolve(file);
+          const compressed = new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          });
+          resolve(compressed);
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
 const backend = {
   searchManufacturers: async (q: string = ""): Promise<string[]> => {
     try {
@@ -103,10 +151,13 @@ const backend = {
     return res?.data ?? res;
   },
 
-  uploadMedia: async (listingId: string, file: File, mediaType: "photo" | "video") => {
+  uploadMedia: async (listingId: string, file: File, mediaType: "photo" | "video", viewType?: "exterior" | "interior" | "blueprint") => {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("media_type", mediaType === "photo" ? "image" : "video");
+    if (viewType) {
+      fd.append("view_type", viewType);
+    }
     const res = await api.post<any>(`/seller/listings/${listingId}/media`, fd);
     return res?.data ?? res;
   },
@@ -416,8 +467,14 @@ export default function NewListingWizard({
 
         const pendingPhotos = s.photos.filter((p) => !p.uploaded && p.file);
         const pendingVideos = s.videos.filter((v) => !v.uploaded && v.file);
-        for (const p of pendingPhotos) await backend.uploadMedia(listingId, p.file!, "photo");
-        for (const v of pendingVideos) await backend.uploadMedia(listingId, v.file!, "video");
+
+        for (const p of pendingPhotos) {
+          const fileToUpload = await compressImage(p.file!);
+          await backend.uploadMedia(listingId, fileToUpload, "photo", p.kind === "int" ? "interior" : "exterior");
+        }
+        for (const v of pendingVideos) {
+          await backend.uploadMedia(listingId, v.file!, "video", v.kind === "int" ? "interior" : "exterior");
+        }
 
         update({
           photos: s.photos.map((p) => ({ ...p, uploaded: true })),
@@ -443,15 +500,17 @@ export default function NewListingWizard({
           update({ docTypeMap: map });
         }
 
-        for (const [docName, file] of Object.entries(s.docFiles)) {
-          const docTypeId = docTypeMap[docName];
-          if (docTypeId != null) {
-            await backend.uploadDocument(listingId, docTypeId, file);
-          } else {
-            console.warn(`No document_type_id found for "${docName}" — skipped upload.`);
-            throw new Error(`Unable to find document type ID for "${docName}". Please try again.`);
-          }
-        }
+        await Promise.all(
+          Object.entries(s.docFiles).map(([docName, file]) => {
+            const docTypeId = docTypeMap[docName];
+            if (docTypeId != null) {
+              return backend.uploadDocument(listingId, docTypeId, file);
+            } else {
+              console.warn(`No document_type_id found for "${docName}" — skipped upload.`);
+              throw new Error(`Unable to find document type ID for "${docName}". Please try again.`);
+            }
+          })
+        );
         update({ step: 4 });
       } else if (s.step === 4) {
         const listingId = s.listingId!;
