@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Jet } from "../lib/types";
 import { useTypewriterPlaceholder } from "../lib/useTypewriterPlaceholder";
@@ -35,6 +36,8 @@ export default function SellerMode({
   onOpenReportProblem?: () => void;
   onOpenGetSupport?: () => void;
 }){
+  const router = useRouter();
+
   const [term, setTerm] = useState("");
   const [newListingOpen, setNewListingOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -355,7 +358,14 @@ export default function SellerMode({
           </div>
         )}
 
-        <button className="all-listings-btn active" aria-pressed="true">
+        <button
+          className="all-listings-btn active"
+          aria-pressed="true"
+          onClick={() => {
+            onClose();
+            router.push("/listings");
+          }}
+        >
           <span>All Listings</span>
         </button>
       </header>
