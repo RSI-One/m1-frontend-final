@@ -6775,3 +6775,24 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+.listings-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--line-2, rgba(255,255,255,.14));
+  color: var(--gold-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all .18s ease;
+}
+.listings-back-btn:hover {
+  background: var(--gold-soft);
+  border-color: rgba(214,173,92,.5);
+  color: var(--gold-bright);
+  transform: translateY(-1px);
+}
