@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import AssetCard from "./AssetCard";
 import CarouselRow from "./CarouselRow";
 import { SfItem } from "../lib/types";
-import { getCarousels, toSfItem, trackListingView } from "../lib/api/listings";
+import { getCarousels, getAllListings, toSfItem, trackListingView } from "../lib/api/listings";
 import { smartSearch, searchResultToJet, SearchResultItem } from "../lib/api/search";
 import { useSite } from "../lib/site-context";
 
@@ -28,8 +28,14 @@ function searchResultToSfItem(r: SearchResultItem): SfItem {
 }
 
 export default function AllListings({ onOpenAsset }: AllListingsProps) {
-  const { committedSearch, clearCommittedSearch } = useSite();
-
+  const {
+  committedSearch,
+  clearCommittedSearch,
+  maxBudget,
+  jetType,
+  minPassengers,
+  minRange,
+} = useSite();
   const [sections, setSections] = useState<Sections | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,19 +48,32 @@ export default function AllListings({ onOpenAsset }: AllListingsProps) {
   const isSearchMode = committedSearch.trim().length > 0;
 
   // Normal carousels — only needed when not searching.
+    // Normal listings — load from the filter-capable /listings endpoint.
   useEffect(() => {
     if (isSearchMode) return;
+
     let cancelled = false;
     setLoading(true);
-    getCarousels()
+
+    getAllListings({
+      budget_max: maxBudget * 1_000_000,
+      jet_type: jetType || undefined,
+      passengers_min: minPassengers || undefined,
+      range_min_nm: minRange || undefined,
+      limit: 100,
+    })
       .then((data) => {
         if (cancelled) return;
+
+        const items = data.results.map(toSfItem);
+
         setSections({
-          featured: data.featured.map(toSfItem),
-          verified: data.verified.map(toSfItem),
-          fresh: data.new.map(toSfItem),
-          general: data.general.map(toSfItem),
+          featured: items,
+          verified: [],
+          fresh: [],
+          general: [],
         });
+
         setError(null);
       })
       .catch((err) => {
@@ -64,10 +83,17 @@ export default function AllListings({ onOpenAsset }: AllListingsProps) {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
-  }, [isSearchMode]);
+  }, [
+    isSearchMode,
+    maxBudget,
+    jetType,
+    minPassengers,
+    minRange,
+     ]);
 
   // Backend integration: GET /search — runs when the user commits a search (Enter).
   useEffect(() => {

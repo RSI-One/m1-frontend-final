@@ -50,6 +50,12 @@ export default function Header({
     setActiveSuggestions,
     maxBudget,
     setMaxBudget,
+    jetType,
+    setJetType,
+    minPassengers,
+    setMinPassengers,
+    minRange,
+    setMinRange,
     showToast,
     refreshUser,
   } = useSite();
@@ -305,7 +311,7 @@ export default function Header({
       return;
     }
 
-    showToast(label + " — opening…");
+    showToast(label + " â€” openingâ€¦");
     setOpenPanel(null);
   };
 
@@ -422,7 +428,7 @@ export default function Header({
               setSelectedIndex(-1);
             }}
           >
-            ✕
+            âœ•
           </button>
         )}
 
@@ -546,7 +552,7 @@ export default function Header({
                             opacity: 0.6,
                           }}
                         >
-                          ✈
+                          âœˆ
                         </span>
 
                         <span>{cat.category}</span>
@@ -675,7 +681,7 @@ export default function Header({
         </button>
       </div>
 
-      {/* ACTIONS — direct grid children of .navbar (no wrapper),
+      {/* ACTIONS â€” direct grid children of .navbar (no wrapper),
           so the .filters-btn / .all-listings-btn grid-column /
           grid-row / justify-self rules in the CSS actually apply */}
       <button
@@ -788,7 +794,50 @@ export default function Header({
               </span>
             </div>
           </div>
+                       <div className="mini" style={{ borderTop: "none", paddingTop: 4, flexDirection: "column", gap: 10 }}>
+            <label style={{ fontSize: 12, opacity: 0.8 }}>Jet Type</label>
+            <select
+              value={jetType}
+              onChange={(e) => setJetType(e.target.value)}
+              style={{ width: "100%", padding: "6px 8px" }}
+            >
+              <option value="">Any</option>
+              <option value="LIGHT_JET">Light Jet</option>
+              <option value="MID_SIZE_JET">Mid-Size Jet</option>
+              <option value="SUPER_MID_JET">Super Mid Jet</option>
+              <option value="HEAVY_JET">Heavy Jet</option>
+              <option value="ULTRA_LONG_RANGE">Ultra Long Range</option>
+              <option value="TURBOPROP">Turboprop</option>
+              <option value="HELICOPTER">Helicopter</option>
+              <option value="MARITIME_VESSEL">Maritime Vessel</option>
+            </select>
+          </div>
 
+          <div className="mini" style={{ borderTop: "none", paddingTop: 4, flexDirection: "column", gap: 10 }}>
+            <div className="badge">Min Passengers: {minPassengers}</div>
+            <input
+              type="range"
+              min={0}
+              max={20}
+              step={1}
+              value={minPassengers}
+              onChange={(e) => setMinPassengers(Number(e.target.value))}
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <div className="mini" style={{ borderTop: "none", paddingTop: 4, flexDirection: "column", gap: 10 }}>
+            <div className="badge">Min Range: {minRange} NM</div>
+            <input
+              type="range"
+              min={0}
+              max={7000}
+              step={100}
+              value={minRange}
+              onChange={(e) => setMinRange(Number(e.target.value))}
+              style={{ width: "100%" }}
+            />
+          </div>
           <div
             className="btn-row"
             style={{ marginTop: 28 }}
