@@ -34,6 +34,7 @@ function listingToJet(l: ListingResponse): Jet {
     id: l.id,
     name: [l.manufacturer, l.model].filter(Boolean).join(" ") || "Unnamed asset",
     price: formatPriceM(l.price),
+    year: undefined, 
     cat: formatCategory(l.jet_type),
     loc: "Location on request",
     image: l.thumbnail_url ?? undefined,
