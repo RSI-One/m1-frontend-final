@@ -34,6 +34,12 @@ export default function Header({
     setActiveSuggestions,
     maxBudget,
     setMaxBudget,
+    jetType,
+    setJetType,
+    minPassengers,
+    setMinPassengers,
+    minRange,
+    setMinRange,
     showAllListings,
     toggleShowAllListings,
     showToast,
@@ -76,7 +82,7 @@ export default function Header({
     };
   }, [openPanel]);
 
-  // GET /search/suggestions?q=... — debounced live autocomplete while typing.
+  // GET /search/suggestions?q=... â€” debounced live autocomplete while typing.
   useEffect(() => {
     if (suggestDebounce.current) clearTimeout(suggestDebounce.current);
 
@@ -92,7 +98,7 @@ export default function Header({
         );
         setActiveSuggestions(res.suggestions ?? []);
       } catch {
-        // Suggestions are non-critical — fail silently.
+        // Suggestions are non-critical â€” fail silently.
         setActiveSuggestions([]);
       }
     }, 250);
@@ -161,7 +167,7 @@ export default function Header({
       case "Join the exclusive circle": {
         try {
           await api.post("/auth/join-partner-circle", {});
-          showToast("Request submitted — we'll be in touch.");
+          showToast("Request submitted â€” we'll be in touch.");
         } catch (err) {
           showToast(err instanceof Error ? err.message : "Couldn't submit request.");
         }
@@ -172,10 +178,10 @@ export default function Header({
       case "Report a problem":
       case "Contact support":
       default: {
-        // No dedicated screen wired up for these yet from Header — surface
+        // No dedicated screen wired up for these yet from Header â€” surface
         // the intent so the rest of the app can pick it up (e.g. router push
         // to /support for the latter two, once that route exists).
-        showToast(label + " — opening…");
+        showToast(label + " â€” openingâ€¦");
         return;
       }
     }
@@ -197,10 +203,10 @@ export default function Header({
   };
 
   const handleDeleteAccount = () => {
-    // There is no account-deletion endpoint in the backend today — don't
+    // There is no account-deletion endpoint in the backend today â€” don't
     // fake one. Route the person to support instead.
     setOpenPanel(null);
-    showToast("Account deletion isn't self-serve yet — please contact support.");
+    showToast("Account deletion isn't self-serve yet â€” please contact support.");
   };
 
   const clearFilters = () => {
@@ -309,7 +315,7 @@ export default function Header({
                 <div className="tight">
                   {displayName}
                   <br />
-                  {user?.username ?? "—"}
+                  {user?.username ?? "â€”"}
                   <br />
                   {profile?.company_name || "No company set"}
                   <br />
@@ -319,7 +325,7 @@ export default function Header({
             </div>
             <div className="btn-row">
               <button className="ghost-btn" onClick={handleEditProfile} disabled={profileSaving}>
-                {profileSaving ? "Saving…" : "Edit profile"}
+                {profileSaving ? "Savingâ€¦" : "Edit profile"}
               </button>
               <button className="ghost-btn" onClick={handleDeleteAccount}>
                 Delete account
@@ -362,6 +368,50 @@ export default function Header({
               step={1}
               value={maxBudget}
               onChange={(e) => setMaxBudget(Number(e.target.value))}
+              style={{ width: "100%" }}
+            />
+          </div>
+                    <div className="mini" style={{ borderTop: "none", paddingTop: 4, flexDirection: "column", gap: 10 }}>
+            <label style={{ fontSize: 12, opacity: 0.8 }}>Jet Type</label>
+            <select
+              value={jetType}
+              onChange={(e) => setJetType(e.target.value)}
+              style={{ width: "100%", padding: "6px 8px" }}
+            >
+              <option value="">Any</option>
+              <option value="LIGHT_JET">Light Jet</option>
+              <option value="MID_SIZE_JET">Mid-Size Jet</option>
+              <option value="SUPER_MID_JET">Super Mid Jet</option>
+              <option value="HEAVY_JET">Heavy Jet</option>
+              <option value="ULTRA_LONG_RANGE">Ultra Long Range</option>
+              <option value="TURBOPROP">Turboprop</option>
+              <option value="HELICOPTER">Helicopter</option>
+              <option value="MARITIME_VESSEL">Maritime Vessel</option>
+            </select>
+          </div>
+
+          <div className="mini" style={{ borderTop: "none", paddingTop: 4, flexDirection: "column", gap: 10 }}>
+            <div className="badge">Min Passengers: {minPassengers}</div>
+            <input
+              type="range"
+              min={0}
+              max={20}
+              step={1}
+              value={minPassengers}
+              onChange={(e) => setMinPassengers(Number(e.target.value))}
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <div className="mini" style={{ borderTop: "none", paddingTop: 4, flexDirection: "column", gap: 10 }}>
+            <div className="badge">Min Range: {minRange} NM</div>
+            <input
+              type="range"
+              min={0}
+              max={7000}
+              step={100}
+              value={minRange}
+              onChange={(e) => setMinRange(Number(e.target.value))}
               style={{ width: "100%" }}
             />
           </div>
