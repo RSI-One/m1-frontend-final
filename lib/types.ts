@@ -15,11 +15,13 @@ export interface Jet {
   verified?: boolean;
   isNew?: boolean;
   isOffMarket?: boolean;
+  year?: number;
 }
 
 export interface Yacht {
   name: string;
   price: string;
+  year?: number;
   cat: string;
   loc: string;
 }

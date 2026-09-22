@@ -3,13 +3,15 @@
 import { useRouter } from "next/navigation";
 import AppShell from "../../components/AppShell";
 import AllListings from "../../components/AllListings";
+import FeaturedSection from "../../components/FeaturedSection";
+import VerifiedSection from "../../components/VerifiedSection";
 
 export default function ListingsPage() {
   const router = useRouter();
 
   return (
     <AppShell>
-      {({ openAssetFromSf }) => (
+      {({ openAssetFromSf ,openAssetFromJet, openCompareModal}) => (
         <>
           <div
             style={{
@@ -32,7 +34,10 @@ export default function ListingsPage() {
             </button>
           </div>
 
+         
           <AllListings onOpenAsset={openAssetFromSf} />
+           <FeaturedSection onOpenAsset={openAssetFromJet} />
+          <VerifiedSection onOpenAsset={openAssetFromJet} />
         </>
       )}
     </AppShell>
