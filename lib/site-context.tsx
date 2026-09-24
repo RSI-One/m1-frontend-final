@@ -40,6 +40,12 @@ interface SiteContextValue {
   setActiveSuggestions: (v: string[]) => void;
   maxBudget: number;
   setMaxBudget: (v: number) => void;
+  jetType: string;
+  setJetType: (v: string) => void;
+  minPassengers: number;
+  setMinPassengers: (v: number) => void;
+  minRange: number;
+  setMinRange: (v: number) => void;
   showAllListings: boolean;
   toggleShowAllListings: () => void;
   toast: string | null;
@@ -68,6 +74,9 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [activeSuggestions, setActiveSuggestions] = useState<string[]>([]);
   const [maxBudget, setMaxBudget] = useState(BUDGET_MAX);
   const [showAllListings, setShowAllListings] = useState(false);
+  const [jetType, setJetType] = useState("");
+  const [minPassengers, setMinPassengers] = useState(0);
+  const [minRange, setMinRange] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -163,6 +172,12 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       maxBudget,
       setMaxBudget,
       showAllListings,
+      jetType,
+      setJetType,
+      minPassengers,
+      setMinPassengers,
+      minRange,
+      setMinRange,
       toggleShowAllListings,
       toast,
       showToast,
@@ -186,6 +201,9 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       activeSuggestions,
       maxBudget,
       showAllListings,
+      jetType,
+      minPassengers,
+      minRange,
       toggleShowAllListings,
       toast,
       showToast,

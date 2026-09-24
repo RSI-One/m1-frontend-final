@@ -144,8 +144,6 @@ export default function Wizard({
   };
 
   useEffect(() => {
-    startAutoAdvance();
-
     return () => {
       stopAutoAdvance();
     };
@@ -211,17 +209,14 @@ export default function Wizard({
   const goPrev = () => {
     if (wstep > 0) {
       setWstep(wstep - 1);
-      startAutoAdvance();
     }
   };
 
   const goNext = () => {
     if (wstep < 3) {
       setWstep(wstep + 1);
-      startAutoAdvance();
     } else {
       setWstep(0);
-      startAutoAdvance();
     }
   };
 
