@@ -1,17 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "../../components/AppShell";
 import AllListings from "../../components/AllListings";
 import FeaturedSection from "../../components/FeaturedSection";
 import VerifiedSection from "../../components/VerifiedSection";
+import Hero from "../../components/Hero";
+import Wizard from "../../components/Wizard";
 
 export default function ListingsPage() {
   const router = useRouter();
+  const [started, setStarted] = useState(false);
 
   return (
     <AppShell>
-      {({ openAssetFromSf ,openAssetFromJet, openCompareModal}) => (
+      {({ openAssetFromSf, openAssetFromJet, openCompareModal }) => (
         <>
           <div
             style={{
@@ -34,9 +38,22 @@ export default function ListingsPage() {
             </button>
           </div>
 
-         
+          <section className="engine-section">
+            <div className="engine-shell">
+              {!started ? (
+                <Hero onStart={() => setStarted(true)} />
+              ) : (
+                <Wizard
+                  onBack={() => setStarted(false)}
+                  onOpenAsset={openAssetFromSf}
+                  onOpenCompare={openCompareModal}
+                />
+              )}
+            </div>
+          </section>
+
           <AllListings onOpenAsset={openAssetFromSf} />
-           <FeaturedSection onOpenAsset={openAssetFromJet} />
+          <FeaturedSection onOpenAsset={openAssetFromJet} />
           <VerifiedSection onOpenAsset={openAssetFromJet} />
         </>
       )}
