@@ -38,20 +38,6 @@ export default function ListingsPage() {
             </button>
           </div>
 
-          <section className="engine-section">
-            <div className="engine-shell">
-              {!started ? (
-                <Hero onStart={() => setStarted(true)} />
-              ) : (
-                <Wizard
-                  onBack={() => setStarted(false)}
-                  onOpenAsset={openAssetFromSf}
-                  onOpenCompare={openCompareModal}
-                />
-              )}
-            </div>
-          </section>
-
           <AllListings onOpenAsset={openAssetFromSf} />
           <FeaturedSection onOpenAsset={openAssetFromJet} />
           <VerifiedSection onOpenAsset={openAssetFromJet} />
