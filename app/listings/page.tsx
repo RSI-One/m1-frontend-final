@@ -8,7 +8,7 @@ import FeaturedSection from "../../components/FeaturedSection";
 import VerifiedSection from "../../components/VerifiedSection";
 import Hero from "../../components/Hero";
 import Wizard from "../../components/Wizard";
-
+import GeneralListing from "../../components/GeneralListing";
 export default function ListingsPage() {
   const router = useRouter();
   const [started, setStarted] = useState(false);
@@ -41,6 +41,7 @@ export default function ListingsPage() {
           <AllListings onOpenAsset={openAssetFromSf} />
           <FeaturedSection onOpenAsset={openAssetFromJet} />
           <VerifiedSection onOpenAsset={openAssetFromJet} />
+          <GeneralListing onOpenAsset={openAssetFromJet} />
         </>
       )}
     </AppShell>
