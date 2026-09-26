@@ -595,9 +595,6 @@ export default function NewListingWizard({
         <div
           className="nl-overlay open"
           id="nlOverlay"
-          onClick={(e) => {
-            if ((e.target as HTMLElement).id === "nlOverlay") handleClose();
-          }}
         >
           <div className="nl-modal">
             <button className="nl-close" id="nlCloseBtn" aria-label="Close" onClick={handleClose}>

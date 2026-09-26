@@ -5151,8 +5151,8 @@ body {
 }
 
 .nl-close:hover {
-  border-color: var(--gold-2);
-  color: var(--gold-2)
+  border-color: #000;
+  color: #000;
 }
 
 .nl-steps-bar {
