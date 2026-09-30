@@ -162,6 +162,7 @@ export default function SellerMode({
       loc={j.loc}
       image={j.image}
       ribbon={j.featured ? "featured" : j.verified ? "verified" : undefined}
+      minimal
       showRibbon={Boolean(j.featured || j.verified)}
       onClick={() => onOpenAsset(j)}
     />
