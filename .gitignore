@@ -1,3 +1,35 @@
-.venv/
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build output
+dist/
+frontend/dist/
+
+# Vite/TS local files
+*.local
+dist-ssr/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Python (legacy - not used anymore)
 __pycache__/
-db.json
+*.py[cod]
+.venv/
+*.pyc

@@ -1,0 +1,16 @@
+/* Reset Vite defaults — dashboard.css handles all styling */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Ensure React root takes full height */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+/* The m1-dashboard-root wrapper should not add any layout */
+#m1-dashboard-root {
+  display: contents;
+}
