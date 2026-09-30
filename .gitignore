@@ -1,35 +1,29 @@
-# Dependencies
-node_modules/
-frontend/node_modules/
-
-# Build output
-dist/
-frontend/dist/
-
-# Vite/TS local files
-*.local
-dist-ssr/
-
 # Logs
+logs
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# OS
-.DS_Store
-Thumbs.db
+node_modules
+dist
+dist-ssr
+*.local
 
-# Editor
+# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea/
+.idea
+.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Python (legacy - not used anymore)
-__pycache__/
-*.py[cod]
-.venv/
-*.pyc
+# Generated/extracted files (kept in public/ for runtime)
+src/dashboard_body.html
+src/dashboard.js
+src/App.css
