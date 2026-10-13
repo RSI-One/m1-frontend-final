@@ -4,7 +4,7 @@ type TableColumn<T = Record<string, any>> = {
   key?: string;
   label: string;
   muted?: boolean;
-  render?: (row: T) => string;
+  render?: (row: T) => React.ReactNode;
 };
 
 type TableProps<T = Record<string, any>> = {
@@ -14,7 +14,12 @@ type TableProps<T = Record<string, any>> = {
   emptyText?: string;
 };
 
-export default function Table<T extends Record<string, any>>({ columns, rows, onRowClick, emptyText }: TableProps<T>) {
+export default function Table<T extends Record<string, any>>({
+  columns,
+  rows,
+  onRowClick,
+  emptyText,
+}: TableProps<T>) {
   if (!rows || !rows.length) {
     return (
       <div className="sheet-wrap">
@@ -47,13 +52,14 @@ export default function Table<T extends Record<string, any>>({ columns, rows, on
               onClick={() => onRowClick && onRowClick(row)}
               style={onRowClick ? { cursor: 'pointer' } : {}}
             >
-              {columns.map((c) => (
-                <td key={c.key || c.label} className={c.muted ? 'muted-cell' : ''}>
-                  {c.render
-                    ? <span dangerouslySetInnerHTML={{ __html: c.render(row) }} />
-                    : String((row as any)[c.key ?? ''] ?? '')}
-                </td>
-              ))}
+              {columns.map((c) => {
+                const value = c.render ? c.render(row) : ((row as any)[c.key ?? ''] ?? '');
+                return (
+                  <td key={c.key || c.label} className={c.muted ? 'muted-cell' : ''}>
+                    {value}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>

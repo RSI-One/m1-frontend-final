@@ -44,9 +44,12 @@ async function apiCall(path: string, options: RequestInit = {}) {
 export default function AdminManagementModule({ showToast }: { showToast?: (msg: string) => void }) {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const isMaster = authService.isMasterAdmin();
+  const [isMaster, setIsMaster] = useState(false);
 
-  // Invite Modal State
+  useEffect(() => {
+    setIsMaster(Boolean(authService.getCurrentAdmin()?.isMaster || authService.isMasterAdmin()));
+  }, []);
+
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteType, setInviteType] = useState('general');
@@ -55,7 +58,6 @@ export default function AdminManagementModule({ showToast }: { showToast?: (msg:
   const [codeFromMasterAdmin, setCodeFromMasterAdmin] = useState('');
   const [submittingInvite, setSubmittingInvite] = useState(false);
 
-  // Remove Modal State
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [targetAdmin, setTargetAdmin] = useState<AdminUser | null>(null);
   const [removeBatchId, setRemoveBatchId] = useState<string | null>(null);
@@ -239,10 +241,9 @@ export default function AdminManagementModule({ showToast }: { showToast?: (msg:
         }))}
       />
 
-      {/* Invite Modal */}
       {showInviteModal && (
         <Modal
-          title={inviteBatchId ? "Confirm Admin Invitation" : "Invite New Administrator"}
+          title={inviteBatchId ? 'Confirm Admin Invitation' : 'Invite New Administrator'}
           onClose={() => setShowInviteModal(false)}
         >
           {!inviteBatchId ? (
@@ -328,7 +329,6 @@ export default function AdminManagementModule({ showToast }: { showToast?: (msg:
         </Modal>
       )}
 
-      {/* Remove Modal */}
       {showRemoveModal && targetAdmin && (
         <Modal
           title={`Remove Administrator (${targetAdmin.username})`}
