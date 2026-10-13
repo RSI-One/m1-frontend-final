@@ -44,10 +44,26 @@ async function apiCall(path: string, options: RequestInit = {}) {
 export default function AdminManagementModule({ showToast }: { showToast?: (msg: string) => void }) {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isMaster, setIsMaster] = useState(false);
+  const [isMaster, setIsMaster] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setIsMaster(Boolean(authService.getCurrentAdmin()?.isMaster || authService.isMasterAdmin()));
+    let active = true;
+
+    async function resolveMasterAccess() {
+      try {
+        const currentAdmin = authService.getCurrentAdmin() ?? (await authService.loadCurrentAdmin());
+        const masterFlag = Boolean(currentAdmin?.isMaster ?? authService.isMasterAdmin(currentAdmin));
+
+        if (active) setIsMaster(masterFlag);
+      } catch {
+        if (active) setIsMaster(false);
+      }
+    }
+
+    resolveMasterAccess();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -77,8 +93,9 @@ export default function AdminManagementModule({ showToast }: { showToast?: (msg:
   }
 
   useEffect(() => {
+    if (!isMaster) return;
     loadAdmins();
-  }, []);
+  }, [isMaster]);
 
   async function handleInitiateInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -173,6 +190,15 @@ export default function AdminManagementModule({ showToast }: { showToast?: (msg:
     } finally {
       setSubmittingRemove(false);
     }
+  }
+
+  if (isMaster === null) {
+    return (
+      <div className="panel" style={{ padding: 24, textAlign: 'center', color: '#888' }}>
+        <h3>Checking access…</h3>
+        <p>Verifying Master Administrator permissions.</p>
+      </div>
+    );
   }
 
   if (!isMaster) {
