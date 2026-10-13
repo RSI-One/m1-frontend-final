@@ -3,11 +3,15 @@ import { getAccessToken } from './admin-auth';
 function getApiBase(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
   if (envUrl) return envUrl.replace(/\/$/, '');
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host !== 'localhost' && host !== '127.0.0.1') return '/backend';
+  if (typeof window !== 'undefined') return '/backend';
+  return 'http://127.0.0.1:8000';
+}
+
+function unwrapData<T = any>(payload: any): T {
+  if (payload && typeof payload === 'object' && 'data' in payload && payload.data !== undefined && 'success' in payload) {
+    return payload.data as T;
   }
-  return '';
+  return payload as T;
 }
 
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
@@ -31,7 +35,7 @@ async function apiFetch(path: string, options: RequestInit = {}): Promise<Respon
 
   if (!res.ok) {
     const err = await res.json().catch(() => null);
-    throw new Error(err?.detail ?? `Request failed: ${res.status}`);
+    throw new Error(err?.detail ?? err?.message ?? `Request failed: ${res.status}`);
   }
 
   // some endpoints (204) have no body
@@ -60,20 +64,21 @@ export const acquisitionsApi = {
   async list(status?: 'active' | 'cancelled' | 'completed'): Promise<AcquisitionListItem[]> {
     const qs = status ? `?status=${status}` : '';
     const res = await apiFetch(`/admin/acquisitions${qs}`);
-    const data = await res.json();
+    const raw = await res.json();
+    const data = unwrapData(raw);
     return Array.isArray(data) ? data : (data?.results ?? []);
   },
 
   async get(acquisitionId: string): Promise<AcquisitionDetail> {
     const res = await apiFetch(`/admin/acquisitions/${acquisitionId}`);
-    return res.json();
+    return unwrapData<AcquisitionDetail>(await res.json());
   },
 
   async getStage(acquisitionId: string, stageIdx: number): Promise<Record<string, any>> {
     const res = await apiFetch(
       `/admin/acquisitions/${acquisitionId}/stage/${toStageNumber(stageIdx)}`
     );
-    return res.json();
+    return unwrapData<Record<string, any>>(await res.json());
   },
 
   async saveNextStep(acquisitionId: string, stageIdx: number, data: Record<string, any>) {
@@ -81,7 +86,7 @@ export const acquisitionsApi = {
       `/admin/acquisitions/${acquisitionId}/stage/${toStageNumber(stageIdx)}/next-step`,
       { method: 'PATCH', body: JSON.stringify({ data }) }
     );
-    return res.json();
+    return unwrapData(await res.json());
   },
 
   async publishUpdate(acquisitionId: string, stageIdx: number, data: Record<string, any>) {
@@ -89,12 +94,12 @@ export const acquisitionsApi = {
       `/admin/acquisitions/${acquisitionId}/stage/${toStageNumber(stageIdx)}/update`,
       { method: 'PATCH', body: JSON.stringify({ data }) }
     );
-    return res.json();
+    return unwrapData(await res.json());
   },
 
   async getMeetings(acquisitionId: string) {
     const res = await apiFetch(`/admin/acquisitions/${acquisitionId}/meetings`);
-    return res.json();
+    return unwrapData(await res.json());
   },
 
   /** Stage 0 ("Coordinated Meeting") has its own dedicated endpoint. */
@@ -106,7 +111,7 @@ export const acquisitionsApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-    return res.json();
+    return unwrapData(await res.json());
   },
 
   async cancel(acquisitionId: string, reason: string) {
@@ -114,7 +119,7 @@ export const acquisitionsApi = {
       method: 'PATCH',
       body: JSON.stringify({ reason }),
     });
-    return res.json();
+    return unwrapData(await res.json());
   },
 
   async linkInventory(acquisitionId: string, inventoryId: string) {
@@ -122,6 +127,6 @@ export const acquisitionsApi = {
       method: 'PATCH',
       body: JSON.stringify({ inventory_id: inventoryId }),
     });
-    return res.json();
+    return unwrapData(await res.json());
   },
 };

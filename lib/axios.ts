@@ -7,21 +7,10 @@ import axios from "axios";
 // sent on requests made through this axios instance — every call here
 // will silently come back 401 "Missing or invalid authentication
 const getAxiosBaseUrl = (): string => {
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    if (host !== "localhost" && host !== "127.0.0.1") {
-      const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
-      if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
-        return envUrl.replace(/\/$/, "");
-      }
-      return "/backend";
-    }
-  }
   const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl) {
-    return envUrl.replace(/\/$/, "");
-  }
-  return "http://localhost:8000";
+  if (envUrl) return envUrl.replace(/\/$/, "");
+  if (typeof window !== "undefined") return "/backend";
+  return "http://127.0.0.1:8000";
 };
 
 const api = axios.create({
@@ -34,7 +23,7 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("m1_access_token");
+    const token = localStorage.getItem("m1_access_token") || localStorage.getItem("access_token");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

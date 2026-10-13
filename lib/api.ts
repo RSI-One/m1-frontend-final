@@ -1,19 +1,8 @@
 
 function getApiBaseUrl(): string {
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    if (host !== "localhost" && host !== "127.0.0.1") {
-      const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
-      if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
-        return envUrl.replace(/\/$/, "");
-      }
-      return "/backend";
-    }
-  }
   const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (envUrl) {
-    return envUrl.replace(/\/$/, "");
-  }
+  if (envUrl) return envUrl.replace(/\/$/, "");
+  if (typeof window !== "undefined") return "/backend";
   return "http://127.0.0.1:8000";
 }
 
@@ -53,7 +42,11 @@ async function apiFetch<T>(
 
   if (res.status === 204) return undefined as T;
 
-  return res.json();
+  const raw = await res.json();
+  if (raw && typeof raw === "object" && "data" in raw && raw.data !== undefined && "success" in raw) {
+    return raw.data as T;
+  }
+  return raw as T;
 }
 
 export const api = {

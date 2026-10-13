@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "./client";
+import { apiGet, apiPost, setAccessToken } from "./client";
 
 export interface LoginPinResponse {
   session_id: string;
@@ -38,6 +38,9 @@ export async function verifyLoginPin(sessionId: string, code: string): Promise<U
 
   if (user?.id && typeof window !== "undefined") {
     localStorage.setItem("user_id", String(user.id));
+    if (user.access_token && typeof user.access_token === "string") {
+      setAccessToken(user.access_token);
+    }
   }
 
   return user;
@@ -52,6 +55,7 @@ export async function logout(): Promise<void> {
   await apiPost("/auth/logout");
   if (typeof window !== "undefined") {
     localStorage.removeItem("user_id");
+    setAccessToken(null);
   }
 }
 

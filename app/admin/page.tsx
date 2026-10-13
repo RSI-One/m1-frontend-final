@@ -24,10 +24,10 @@ export default function AdminPage() {
   const [showToast, setShowToast] = useState<boolean>(false);
 
   useEffect(() => {
-    // NEW: async, hits the real backend (silent refresh -> /auth/me ->
-    // /admin-portal/admins) instead of reading a hardcoded local list.
+    let isMounted = true;
     (async () => {
       const admin = await authService.loadCurrentAdmin();
+      if (!isMounted) return;
 
       if (admin) {
         setCurrentAdmin(admin);
@@ -36,12 +36,15 @@ export default function AdminPage() {
             '/admin/dashboard'
         );
       } else {
-        // no valid session — send them to the admin login screen
         router.replace('/admin/login');
       }
 
       setCheckingSession(false);
     })();
+
+    return () => {
+      isMounted = false;
+    };
   }, [router]);
 
   const showToastMsg = (msg: string): void => {
@@ -83,8 +86,23 @@ export default function AdminPage() {
   // instead of nothing / instead of assuming logged-out.
   if (checkingSession) {
     return (
-      <div style={{ color: '#fff' }}>
-        Loading admin session...
+      <div className="admin-root min-h-screen flex items-center justify-center bg-[#07080c] text-white">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              border: '3px solid rgba(255,255,255,0.15)',
+              borderTopColor: '#cda45e',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+            }}
+          />
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+          <div style={{ fontSize: '14px', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#a9b2be' }}>
+            Loading admin session...
+          </div>
+        </div>
       </div>
     );
   }
@@ -96,8 +114,12 @@ export default function AdminPage() {
   }
 
   return (
-    <>
-      <Navbar currentAdmin={currentAdmin} />
+    <div className="admin-root min-h-screen">
+      <Navbar
+        currentAdmin={currentAdmin}
+        onNotifClick={() => showToastMsg('Notifications: No unread notifications')}
+        onProfileClick={() => showToastMsg(`Logged in as ${currentAdmin.name} (${currentAdmin.role})`)}
+      />
 
       <main className="admin-shell">
         <Sidebar
@@ -142,6 +164,6 @@ export default function AdminPage() {
         show={showToast}
         onClose={() => setShowToast(false)}
       />
-    </>
+    </div>
   );
 }
