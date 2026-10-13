@@ -2,13 +2,14 @@
 import { useEffect, type ReactNode } from 'react';
 
 type ModalProps = {
-  show: boolean;
+  show?: boolean;
   onClose?: () => void;
   children?: ReactNode;
   className?: string;
+  title?: string;
 };
 
-export default function Modal({ show, onClose, children, className = '' }: ModalProps) {
+export default function Modal({ show = true, onClose, children, className = '', title }: ModalProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose?.(); };
     if (show) document.addEventListener('keydown', handler);
@@ -27,6 +28,7 @@ export default function Modal({ show, onClose, children, className = '' }: Modal
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
+        {title && <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>{title}</h3>}
         {children}
       </div>
     </>

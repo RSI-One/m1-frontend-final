@@ -1,12 +1,10 @@
+@import url("https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url("https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap");
-
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap");
-
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 
 @custom-variant dark (&:is(.dark *));
 
@@ -6775,12 +6773,13 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
 .listings-back-btn {
   display: flex;
   align-items: center;
   gap: 6px;
   background: none;
-  border: 1px solid var(--line-2, rgba(255,255,255,.14));
+  border: 1px solid var(--line-2, rgba(255, 255, 255, .14));
   color: var(--gold-2);
   font-size: 12px;
   font-weight: 700;
@@ -6790,9 +6789,10 @@ body {
   cursor: pointer;
   transition: all .18s ease;
 }
+
 .listings-back-btn:hover {
   background: var(--gold-soft);
-  border-color: rgba(214,173,92,.5);
+  border-color: rgba(214, 173, 92, .5);
   color: var(--gold-bright);
   transform: translateY(-1px);
 }

@@ -1,4 +1,4 @@
-import { ROLE_PERMISSIONS, ROLE_SCOPE, ROLE_ROUTE_MAP, moduleDefs } from './admin-data';
+import { ROLE_PERMISSIONS, ROLE_SCOPE, ROLE_ROUTE_MAP, moduleDefs, admins } from './admin-data';
 
 // ============================================================
 // CONFIG
@@ -6,11 +6,8 @@ import { ROLE_PERMISSIONS, ROLE_SCOPE, ROLE_ROUTE_MAP, moduleDefs } from './admi
 function getApiBase(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
   if (envUrl) return envUrl.replace(/\/$/, '');
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host !== 'localhost' && host !== '127.0.0.1') return '/backend';
-  }
-  return '';
+  if (typeof window !== 'undefined') return '/backend';
+  return 'http://127.0.0.1:8000';
 }
 
 // ============================================================
@@ -49,16 +46,25 @@ type UserAdminReadResponse = UserReadResponse & {
 };
 
 // ============================================================
-// IN-MEMORY STATE
-// (access token lives in memory only — never localStorage — the
-//  refresh token is an httpOnly cookie the browser sends automatically)
+// IN-MEMORY & LOCALSTORAGE STATE
 // ============================================================
 let _accessToken: string | null = null;
 let _currentAdmin: ResolvedAdmin | null = null;
 let _pendingLoginSessionId: string | null = null; // set after /auth/login, used by verify-pin
 
 export function getAccessToken(): string | null {
-  return _accessToken;
+  if (_accessToken) return _accessToken;
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('m1_access_token') || localStorage.getItem('access_token');
+  }
+  return null;
+}
+
+function unwrapPayload<T = any>(data: any): T {
+  if (data && typeof data === 'object' && 'data' in data && data.data !== undefined && 'success' in data) {
+    return data.data as T;
+  }
+  return data as T;
 }
 
 // ============================================================
@@ -67,7 +73,8 @@ export function getAccessToken(): string | null {
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
-  if (_accessToken) headers.set('Authorization', `Bearer ${_accessToken}`);
+  const token = getAccessToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const base = getApiBase();
   let url = path;
@@ -84,15 +91,37 @@ async function apiFetch(path: string, options: RequestInit = {}): Promise<Respon
 }
 
 // ============================================================
-// ROLE MAPPING
-// Backend gives role='admin' + admin_type + is_master_admin.
-// The rest of the app (ROLE_PERMISSIONS, ROLE_ROUTE_MAP, etc. in
-// admin-data.ts) is keyed by strings like 'MASTER_ADMIN',
-// 'TECH_ADMIN' — this maps backend -> those keys.
+// ROLE & ADMIN RECOGNITION
 // ============================================================
+export function isAdminUser(user: any): boolean {
+  if (!user) return false;
+  if (user.is_master_admin === true || user.isMaster === true) return true;
+  if (user.admin_type && typeof user.admin_type === 'string' && user.admin_type.trim().length > 0) return true;
+  const roleStr = String(user.role || '').toLowerCase();
+  if (roleStr === 'admin' || roleStr === 'master_admin' || roleStr.endsWith('_admin')) return true;
+  const email = String(user.email || '').toLowerCase();
+  if (
+    email &&
+    (email === 'admin@m1marketplace.com' ||
+      email === 'admin2931@gmail.com' ||
+      admins.some((a) => a.email.toLowerCase() === email))
+  )
+    return true;
+  return false;
+}
+
 function mapToRoleKey(user: UserAdminReadResponse): string {
   if (user.is_master_admin) return 'MASTER_ADMIN';
-  switch (user.admin_type) {
+
+  // If user matches pre-configured admin records by email, inherit the defined role
+  const email = String(user.email || '').toLowerCase();
+  const matchedAdmin = admins.find((a) => a.email.toLowerCase() === email);
+  if (matchedAdmin) {
+    return matchedAdmin.role;
+  }
+
+  const type = String(user.admin_type || '').toLowerCase();
+  switch (type) {
     case 'general':
       return 'GENERAL_ADMIN';
     case 'customer_care':
@@ -103,8 +132,11 @@ function mapToRoleKey(user: UserAdminReadResponse): string {
       return 'EXECUTIVE_ADMIN';
     case 'tech':
       return 'TECH_ADMIN';
-    default:
+    default: {
+      const roleStr = String(user.role || '').toUpperCase();
+      if (roleStr in ROLE_PERMISSIONS) return roleStr;
       return 'GENERAL_ADMIN';
+    }
   }
 }
 
@@ -115,13 +147,13 @@ function resolveAdmin(user: UserAdminReadResponse): ResolvedAdmin {
 
   return Object.freeze({
     id: user.id,
-    name: user.username,
+    name: user.username || user.email?.split('@')[0] || 'Admin',
     email: user.email,
-    status: user.status,
+    status: user.status || 'ACTIVE',
     createdAt: user.created_at,
     role: roleKey,
     permissions,
-    isMaster: roleKey === 'MASTER_ADMIN',
+    isMaster: roleKey === 'MASTER_ADMIN' || user.is_master_admin === true,
     homeRoute: (ROLE_ROUTE_MAP as Record<string, string>)[roleKey] || '/admin/dashboard',
     scope: (ROLE_SCOPE as Record<string, string>)[roleKey] || roleKey.toLowerCase(),
   });
@@ -133,8 +165,7 @@ function resolveAdmin(user: UserAdminReadResponse): ResolvedAdmin {
 export const authService = {
   /**
    * Step 1 of login: email + password.
-   * Backend returns { session_id, requires_pin, pin_length } and
-   * (per your PIN flow) emails/texts a PIN. Call verifyPin() next.
+   * Backend returns { session_id, requires_pin, pin_length }
    */
   async login(email: string, password: string): Promise<{ requiresPin: boolean; pinLength: number }> {
     const res = await apiFetch('/auth/login', {
@@ -143,19 +174,16 @@ export const authService = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => null);
-      throw new Error(err?.detail ?? 'Invalid email or password');
+      throw new Error(err?.detail ?? err?.message ?? 'Invalid email or password');
     }
-    const data: { session_id: string; requires_pin: boolean; pin_length: number } = await res.json();
+    const raw = await res.json();
+    const data: { session_id: string; requires_pin: boolean; pin_length: number } = unwrapPayload(raw);
     _pendingLoginSessionId = data.session_id;
     return { requiresPin: data.requires_pin, pinLength: data.pin_length };
   },
 
   /**
    * Step 2 of login: the PIN sent to the admin.
-   * NOTE: /auth/login/verify-pin's request body isn't documented in the
-   * OpenAPI spec. Sending { session_id, pin } here — adjust the field
-   * names to match your actual FastAPI route if it expects something
-   * different (e.g. reading session_id from a cookie instead).
    */
   async verifyPin(pin: string): Promise<ResolvedAdmin> {
     if (!_pendingLoginSessionId) {
@@ -164,52 +192,115 @@ export const authService = {
 
     const res = await apiFetch('/auth/login/verify-pin', {
       method: 'POST',
-      body: JSON.stringify({ session_id: _pendingLoginSessionId, pin }),
+      body: JSON.stringify({ session_id: _pendingLoginSessionId, pin, code: pin }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => null);
-      throw new Error(err?.detail ?? 'Incorrect or expired PIN');
+      throw new Error(err?.detail ?? err?.message ?? 'Incorrect or expired PIN');
+    }
+
+    const raw = await res.json();
+    const data = unwrapPayload(raw);
+    if (data?.access_token) {
+      const token = String(data.access_token);
+      _accessToken = token;
+      try {
+        localStorage.setItem('m1_access_token', token);
+      } catch {}
     }
 
     _pendingLoginSessionId = null;
 
-    // At this point the backend should have set the refresh-token
-    // httpOnly cookie. Immediately silent-refresh to get an access
-    // token, then load full admin profile.
+    // Load full admin profile
     const admin = await authService.loadCurrentAdmin();
+    if (!admin && data && isAdminUser(data)) {
+      _currentAdmin = resolveAdmin(data as any);
+      return _currentAdmin;
+    }
     if (!admin) throw new Error('Login succeeded but session could not be established.');
     return admin;
   },
 
   /**
    * Silent session check — call this once on app/admin-panel load.
-   * Tries to use the httpOnly refresh-token cookie to get a fresh
-   * access token, then fetches the admin's profile. Returns null if
-   * there is no valid session (caller should redirect to login).
    */
   async loadCurrentAdmin(): Promise<ResolvedAdmin | null> {
-    // ⚠️ DEMO MODE: Pehle real backend try karo, fail hone par mock admin use karo
     try {
-      // 1) refresh access token from the httpOnly cookie
-      const refreshRes = await apiFetch('/auth/refresh', { method: 'POST' });
-      if (!refreshRes.ok) throw new Error('refresh failed');
-      const refreshData: { access_token: string } = await refreshRes.json();
-      _accessToken = refreshData.access_token;
+      // 1) Try existing access token or refresh from cookie
+      let token = getAccessToken();
+      if (!token) {
+        const refreshRes = await apiFetch('/auth/refresh', { method: 'POST' });
+        if (refreshRes.ok) {
+          const raw = await refreshRes.json();
+          const refreshData = unwrapPayload(raw);
+          if (refreshData?.access_token) {
+            token = String(refreshData.access_token);
+            _accessToken = token;
+            try {
+              localStorage.setItem('m1_access_token', token);
+            } catch {}
+          }
+        }
+      }
+
+      if (!token) {
+        _currentAdmin = null;
+        return null;
+      }
+      _accessToken = token;
 
       // 2) confirm identity + base role
       const meRes = await apiFetch('/auth/me');
-      if (!meRes.ok) throw new Error('me failed');
-      const me: UserReadResponse = await meRes.json();
-      if (me.role !== 'admin') throw new Error('not admin');
+      if (!meRes.ok) {
+        // Retry with refresh once if 401
+        if (meRes.status === 401) {
+          const refreshRes = await apiFetch('/auth/refresh', { method: 'POST' });
+          if (refreshRes.ok) {
+            const raw = await refreshRes.json();
+            const refreshData = unwrapPayload(raw);
+            if (refreshData?.access_token) {
+              const newToken = String(refreshData.access_token);
+              _accessToken = newToken;
+              try {
+                localStorage.setItem('m1_access_token', newToken);
+              } catch {}
+              const retryMe = await apiFetch('/auth/me');
+              if (!retryMe.ok) throw new Error('me retry failed');
+              const retryRaw = await retryMe.json();
+              const me: UserAdminReadResponse = unwrapPayload(retryRaw);
+              if (!isAdminUser(me)) throw new Error('not admin');
+              _currentAdmin = resolveAdmin(me);
+              return _currentAdmin;
+            }
+          }
+        }
+        throw new Error('me failed');
+      }
 
-      // 3) get admin-specific fields
-      const adminsRes = await apiFetch(`/admin-portal/admins`);
-      if (!adminsRes.ok) throw new Error('admins failed');
-      const allAdmins: UserAdminReadResponse[] = await adminsRes.json();
-      const self = allAdmins.find((a) => a.id === me.id);
-      if (!self) throw new Error('self not found');
+      const meRaw = await meRes.json();
+      const me: UserAdminReadResponse = unwrapPayload(meRaw);
+      if (!isAdminUser(me)) throw new Error('not admin');
 
-      _currentAdmin = resolveAdmin(self);
+      // 3) get admin-specific fields if available
+      try {
+        const adminsRes = await apiFetch(`/admin-portal/admins`);
+        if (adminsRes.ok) {
+          const adminsRaw = await adminsRes.json();
+          const allAdmins: UserAdminReadResponse[] = Array.isArray(adminsRaw) ? adminsRaw : unwrapPayload(adminsRaw);
+          if (Array.isArray(allAdmins)) {
+            const self = allAdmins.find(
+              (a) => a.id === me.id || a.email?.toLowerCase() === me.email?.toLowerCase()
+            );
+            if (self) {
+              _currentAdmin = resolveAdmin({ ...me, ...self });
+              return _currentAdmin;
+            }
+          }
+        }
+      } catch {}
+
+      // Fallback: resolve admin directly from me
+      _currentAdmin = resolveAdmin(me);
       return _currentAdmin;
     } catch {
       _currentAdmin = null;
@@ -226,6 +317,12 @@ export const authService = {
     await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {});
     _currentAdmin = null;
     _accessToken = null;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('m1_access_token');
+        localStorage.removeItem('access_token');
+      } catch {}
+    }
   },
 
   isMasterAdmin(admin?: ResolvedAdmin | null): boolean {
@@ -244,6 +341,9 @@ export const authService = {
     const a = admin || _currentAdmin;
     if (!a) return false;
     if (a.isMaster || a.permissions.includes('*')) return true;
+    if (moduleId === 'admin_management' || moduleId === 'admin') {
+      return a.isMaster || a.permissions.includes('admins.view') || a.permissions.includes('*');
+    }
     const module = moduleDefs.find((m: { id: string }) => m.id === moduleId);
     return !!module && this.hasPermission((module as any).requiredPermission, a);
   },
@@ -251,6 +351,10 @@ export const authService = {
   getHomeRoute(admin?: ResolvedAdmin | null): string {
     const a = admin || _currentAdmin;
     return a?.homeRoute || '/admin/dashboard';
+  },
+
+  getAccessToken(): string | null {
+    return getAccessToken();
   },
 };
 

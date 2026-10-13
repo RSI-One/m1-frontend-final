@@ -1,19 +1,8 @@
 export function getApiBaseUrl(): string {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host !== 'localhost' && host !== '127.0.0.1') {
-      const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
-      if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
-        return envUrl.replace(/\/$/, '');
-      }
-      return '/backend';
-    }
-  }
   const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl) {
-    return envUrl.replace(/\/$/, '');
-  }
-  return 'http://localhost:8000';
+  if (envUrl) return envUrl.replace(/\/$/, '');
+  if (typeof window !== 'undefined') return '/backend';
+  return 'http://127.0.0.1:8000';
 }
 
 const ACCESS_TOKEN_KEY = 'm1_access_token';
@@ -116,7 +105,17 @@ async function trySilentRefresh(): Promise<boolean> {
         credentials: 'include',
       }
     )
-      .then((res) => res.ok)
+      .then(async (res) => {
+        if (!res.ok) return false;
+        try {
+          const raw = await res.json();
+          const data = raw && typeof raw === 'object' && 'data' in raw && raw.data !== undefined ? raw.data : raw;
+          if (data?.access_token) {
+            setAccessToken(String(data.access_token));
+          }
+        } catch {}
+        return true;
+      })
       .catch(() => false)
       .finally(() => {
         refreshPromise = null;

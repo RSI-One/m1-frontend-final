@@ -3,11 +3,8 @@ import { getAccessToken } from './admin-auth';
 function getApiBase(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
   if (envUrl) return envUrl.replace(/\/$/, '');
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host !== 'localhost' && host !== '127.0.0.1') return '/backend';
-  }
-  return '';
+  if (typeof window !== 'undefined') return '/backend';
+  return 'http://127.0.0.1:8000';
 }
 
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
@@ -31,7 +28,7 @@ async function apiFetch(path: string, options: RequestInit = {}): Promise<Respon
 
   if (!res.ok) {
     const err = await res.json().catch(() => null);
-    throw new Error(err?.detail ?? `Request failed: ${res.status}`);
+    throw new Error(err?.detail ?? err?.message ?? `Request failed: ${res.status}`);
   }
   if (res.status === 204) return res as any;
   return res;
@@ -99,8 +96,16 @@ export type DbOffMarketItem = {
   status: string;
 };
 
+function unwrapData<T = any>(payload: any): T {
+  if (payload && typeof payload === 'object' && 'data' in payload && payload.data !== undefined && 'success' in payload) {
+    return payload.data as T;
+  }
+  return payload as T;
+}
+
 function unwrapList<T>(data: any): T[] {
-  return Array.isArray(data) ? data : (data?.results ?? data?.items ?? []);
+  const inner = unwrapData(data);
+  return Array.isArray(inner) ? inner : (inner?.results ?? inner?.items ?? []);
 }
 
 export const databasesApi = {
@@ -111,7 +116,7 @@ export const databasesApi = {
 
   async getUserSummary(userId: string): Promise<DbUserSummary> {
     const res = await apiFetch(`/admin/databases/users/${userId}/summary`);
-    return res.json();
+    return unwrapData<DbUserSummary>(await res.json());
   },
 
   async listPartners(search = '', skip = 0, limit = 50): Promise<DbPartner[]> {
@@ -124,7 +129,7 @@ export const databasesApi = {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return res.json();
+    return unwrapData<DbPartner>(await res.json());
   },
 
   async listAssets(search = '', skip = 0, limit = 50): Promise<DbAsset[]> {
@@ -137,7 +142,7 @@ export const databasesApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
-    return res.json();
+    return unwrapData<DbAsset>(await res.json());
   },
 
   async listInventory(skip = 0, limit = 50): Promise<DbInventoryItem[]> {
