@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import * as authApi from "@/lib/api/auth";
+import { apiPost } from "@/lib/api/client";
 
 type AccessScreen = "login" | "verify" | "complete" | "reset" | "reset-checking" | "reset-sent";
 type RegisterScreen = "form" | "verify" | "complete";
@@ -237,20 +238,19 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     };
   }, []);
 
-  const handleGoogleResponse = async (response: { credential: string }) => {
+    const handleGoogleResponse = async (response: { credential: string }) => {
     try {
-      const res = await fetch("http://localhost:8000/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: response.credential }),
-      });
-      if (!res.ok) throw new Error("Google auth failed");
-      const data = await res.json();
-      localStorage.setItem("access_token", data.access_token);
-      localStorage.setItem("refresh_token", data.refresh_token);
+      await apiPost(
+        "/auth/google",
+        { id_token: response.credential },
+        { auth: false }
+      );
       window.location.href = "/";
     } catch (err) {
       console.error(err);
+      setLoginError(
+        err instanceof Error ? err.message : "Google sign-in failed"
+      );
     }
   };
 
