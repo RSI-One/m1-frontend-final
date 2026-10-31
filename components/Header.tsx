@@ -58,6 +58,7 @@ export default function Header({
     setMinRange,
     showToast,
     refreshUser,
+    profile,
   } = useSite();
 
   const [scrolled, setScrolled] = useState(false);
@@ -311,7 +312,7 @@ export default function Header({
       return;
     }
 
-    showToast(label + " â€” openingâ€¦");
+    showToast(label + " — opening…");
     setOpenPanel(null);
   };
 
@@ -351,7 +352,7 @@ export default function Header({
 
         <div className="brand-copy">
           <strong>Marketplace</strong>
-          <span>Aviation </span>
+          <span>Aviation &amp; Maritime</span>
         </div>
       </div>
 
@@ -552,7 +553,7 @@ export default function Header({
                             opacity: 0.6,
                           }}
                         >
-                          âœˆ
+                          ✈
                         </span>
 
                         <span>{cat.category}</span>
@@ -592,6 +593,27 @@ export default function Header({
 
       {/* NAV UTILITY */}
       <div className="nav-utility">
+        {/* + Button */}
+        <button
+          id="newListingBtn"
+          className="new-listing-btn"
+          title="New Listing"
+          aria-label="New Listing"
+          onClick={onOpenSellerMode}
+        >
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+
         {/* Messages */}
         <button
           className="icon-btn"
@@ -613,33 +635,6 @@ export default function Header({
           <span className="dot" />
         </button>
 
-        {/* Profile */}
-        <button
-          className="icon-btn"
-          title="Profile"
-          aria-label="Profile"
-          onClick={() =>
-            togglePanel("profile")
-          }
-        >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-          >
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-
-            <circle
-              cx="12"
-              cy="7"
-              r="4"
-            />
-          </svg>
-        </button>
-
         {/* Menu */}
         <button
           className="icon-btn"
@@ -659,18 +654,16 @@ export default function Header({
           >
             <line
               x1="3"
-              y1="12"
-              x2="21"
-              y2="12"
-            />
-
-            <line
-              x1="3"
               y1="6"
               x2="21"
               y2="6"
             />
-
+            <line
+              x1="3"
+              y1="12"
+              x2="21"
+              y2="12"
+            />
             <line
               x1="3"
               y1="18"
@@ -679,9 +672,51 @@ export default function Header({
             />
           </svg>
         </button>
+
+        {/* Profile Avatar */}
+        <button
+          className="avatar-btn"
+          title="Profile"
+          aria-label="Profile"
+          onClick={() =>
+            togglePanel("profile")
+          }
+        >
+          <img
+            src={profile?.profile_picture_url || "https://randomuser.me/api/portraits/men/32.jpg"}
+            alt="Profile"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              const fallback = e.currentTarget.parentElement?.querySelector(".avatar-fallback");
+              if (fallback) (fallback as HTMLElement).style.display = "flex";
+            }}
+          />
+          <span
+            className="avatar-fallback"
+            style={{
+              display: "none",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </span>
+        </button>
       </div>
 
-      {/* ACTIONS â€” direct grid children of .navbar (no wrapper),
+      {/* ACTIONS — direct grid children of .navbar (no wrapper),
           so the .filters-btn / .all-listings-btn grid-column /
           grid-row / justify-self rules in the CSS actually apply */}
       <button
@@ -695,18 +730,6 @@ export default function Header({
         }
       >
         <span>Filters</span>
-
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          style={{ marginLeft: 6 }}
-        >
-          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-        </svg>
       </button>
 
       <button

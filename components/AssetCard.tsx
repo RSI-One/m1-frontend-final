@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 interface AssetCardProps {
@@ -9,7 +10,11 @@ interface AssetCardProps {
   loc?: string;
   year?: number;
   image?: string;
-  ribbon?: "featured" | "verified" | "off-market";
+  ribbon?: "featured" | "verified" | "off-market" | string;
+  ribbonText?: string;
+  badge?: string;
+  discount?: string;
+  timeRemaining?: string;
   suggestion?: boolean;
   small?: boolean;
   selected?: boolean;
@@ -29,6 +34,10 @@ export default function AssetCard({
   year,
   image,
   ribbon,
+  ribbonText,
+  badge,
+  discount,
+  timeRemaining,
   suggestion = false,
   small = false,
   selected = false,
@@ -36,7 +45,14 @@ export default function AssetCard({
   showRibbon = false,
   onClick,
 }: AssetCardProps) {
-  const shouldShowRibbon = Boolean(ribbon && (showRibbon || !minimal));
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [image]);
+
+  const shouldShowRibbon = Boolean((ribbon || badge) && (showRibbon || !minimal));
+  const activeRibbon = ribbon || (badge ? "off-market" : undefined);
 
   return (
     <motion.div
@@ -46,31 +62,88 @@ export default function AssetCard({
       transition={{ duration: 0.2 }}
     >
       {!minimal && suggestion && <div className="m1-tag">M1 Suggestion</div>}
-      {shouldShowRibbon && ribbon && (
-        <div className={`corner-ribbon ${ribbon}`}>
-          <span>{ribbon === "featured" ? "Featured" : ribbon === "verified" ? "Verified" : "Off-Market"}</span>
+      {shouldShowRibbon && activeRibbon && (
+        <div className={`corner-ribbon ${activeRibbon}`}>
+          <span>
+            {ribbonText ||
+              (activeRibbon === "featured"
+                ? "Featured"
+                : activeRibbon === "verified"
+                ? "Verified"
+                : activeRibbon === "off-market"
+                ? "Off-Market"
+                : activeRibbon)}
+          </span>
         </div>
       )}
       <div className="main-img" style={{ position: "absolute", inset: 0 }}>
-        {image ? (
+        {image && !imgError ? (
           <img
             src={image}
             alt={name}
+            onError={() => setImgError(true)}
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         ) : (
-          <div style={{
-            width: "100%", height: "100%",
-            background: "linear-gradient(135deg, #2a2d36, #14161c 70%)",
-          }} />
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              background: "linear-gradient(135deg, #1f232b 0%, #12141a 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "16px",
+              boxSizing: "border-box",
+            }}
+          >
+            <span
+              style={{
+                color: "rgba(212, 175, 120, 0.7)",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                textAlign: "center",
+                pointerEvents: "none",
+                userSelect: "none",
+              }}
+            >
+              {name}
+            </span>
+          </div>
         )}
       </div>
       <div className="card-overlay">
-        {!minimal && price && <div className="price-badge">{price}</div>}
+        {!minimal && (price || discount) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 9 }}>
+            {price && <div className="price-badge" style={{ marginBottom: 0 }}>{price}</div>}
+            {discount && (
+              <span
+                style={{
+                  background: "rgba(220, 38, 38, 0.88)",
+                  color: "#fff",
+                  fontWeight: 800,
+                  fontSize: 11,
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(239, 68, 68, 0.5)",
+                  backdropFilter: "blur(4px)",
+                }}
+              >
+                {discount}
+              </span>
+            )}
+          </div>
+        )}
         <div className="name">{name}</div>
         {!minimal && (
           <div className="mini-detail">
-            <span>{cat}{year ? ` · ${year}` : ""}</span>
+            <span>
+              {cat}
+              {year ? ` · ${year}` : ""}
+              {timeRemaining ? ` · ${timeRemaining}` : ""}
+            </span>
             {loc && (
               <span className="loc">
                 <span className="loc-dot" />
