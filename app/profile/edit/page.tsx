@@ -73,6 +73,31 @@ export default function EditProfilePage() {
 
   useEffect(() => {
     let cancelled = false;
+
+    // TEMP: Auth bypass for local preview
+    if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
+      const previewData: CombinedProfile = {
+        fullName: "Local Preview User",
+        companyName: "M1 Partner",
+        location: "Geneva, Switzerland",
+        phoneNumber: "+41 22 000 0000",
+        bio: "Local preview mode active",
+        profilePictureUrl: null,
+        username: "preview_user",
+        email: "preview@m-1.tech",
+      };
+      setProfile(previewData);
+      setForm({
+        fullName: previewData.fullName,
+        companyName: previewData.companyName,
+        location: previewData.location,
+        phoneNumber: previewData.phoneNumber,
+        bio: previewData.bio,
+      });
+      setLoading(false);
+      return;
+    }
+
     (async () => {
       try {
         const [user, prof] = await Promise.all([getMe(), getMyProfile()]);

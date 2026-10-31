@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Jet } from "../lib/types";
+import { jets } from "../lib/data";
 import AssetCard from "./AssetCard";
 import CarouselRow from "./CarouselRow";
 import { useSite, parsePriceToM } from "../lib/site-context";
@@ -13,27 +14,36 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
   const [verified, setVerified] = useState<Jet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDemoData, setIsDemoData] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadVerified = useCallback(() => {
     setLoading(true);
+    setError(null);
     getCarousels()
       .then((data) => {
-        if (cancelled) return;
         setVerified(data.verified.map(toJet));
+        setIsDemoData(false);
         setError(null);
       })
       .catch((err) => {
         console.error(err);
-        if (!cancelled) setError("Couldn't load verified listings.");
+        // TEMP: Auth bypass for local preview
+        if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
+          setVerified(jets.slice(3, 9));
+          setIsDemoData(true);
+          setError(null);
+        } else {
+          setError("Cannot reach the server.");
+        }
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    loadVerified();
+  }, [loadVerified]);
 
   const handleOpen = (jet: Jet) => {
     if (jet.id) trackListingView(jet.id);
@@ -54,13 +64,34 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
 
   return (
     <section className="below-section" id="verified">
-      <CarouselRow headClassName="carousel-block-head" headingTag="h2" title="Verified Listings">
+      <CarouselRow
+        headClassName="carousel-block-head"
+        headingTag="h2"
+        title={isDemoData ? "Verified Listings — Demo data (backend offline)" : "Verified Listings"}
+      >
         {loading ? (
           <div style={{ padding: "24px 4px", color: "var(--muted, var(--text-dim))", fontSize: 13.5 }}>
             Loading verified listings…
           </div>
         ) : error ? (
-          <div style={{ padding: "24px 4px", color: "#c0392b", fontSize: 13.5 }}>{error}</div>
+          <div style={{ padding: "24px 4px", color: "#c0392b", fontSize: 13.5, display: "flex", alignItems: "center", gap: 12 }}>
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={loadVerified}
+              style={{
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,.2)",
+                color: "#e6e9ee",
+                borderRadius: 4,
+                padding: "2px 8px",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              Retry
+            </button>
+          </div>
         ) : filtered.length === 0 ? (
           <div style={{ padding: "24px 4px", color: "var(--muted, var(--text-dim))", fontSize: 13.5 }}>
             No listings match your search or filters.
