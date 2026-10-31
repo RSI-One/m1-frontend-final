@@ -730,6 +730,18 @@ export default function Header({
         }
       >
         <span>Filters</span>
+
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          style={{ marginLeft: 6 }}
+        >
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+        </svg>
       </button>
 
       <button
