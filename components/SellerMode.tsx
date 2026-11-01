@@ -107,7 +107,11 @@ export default function SellerMode({
       })
       .catch((err) => {
         if (cancelled) return;
-        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+        // TEMP: Auth bypass for local preview
+        if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
+          setMyListings(jets.slice(0, 3));
+          setMyListingsAuthError(false);
+        } else if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
           setMyListingsAuthError(true);
         } else {
           console.error(err);
@@ -217,7 +221,15 @@ export default function SellerMode({
   const content = (
     <div className={`seller-page ${open ? "open" : ""}`} id="sellerPage">
       <header className="navbar seller-navbar" ref={navRef}>
-        <div className="nav-brand">
+        <div
+          className="nav-brand"
+          onClick={() => {
+            setOpenPanel(null);
+            onClose();
+          }}
+          style={{ cursor: "pointer" }}
+          title="Return to Marketplace"
+        >
           <img src="/images/logo.png" alt="M1" className="brand-mark-img" />
           <div className="brand-copy">
             <strong>Marketplace</strong>
@@ -374,9 +386,31 @@ export default function SellerMode({
       {/* FIX: scrollable body wrapper — header stays sticky, everything else scrolls */}
       <div className="seller-scroll-body">
         <section className="seller-hero" style={{ position: "relative" }}>
-          <div className="container">
-            <h1>Your Seller Dashboard</h1>
-            <p>Manage your active listings, track buyer interest, and publish new assets.</p>
+          <div className="container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+            <div>
+              <h1>Your Seller Dashboard</h1>
+              <p>Manage your active listings, track buyer interest, and publish new assets.</p>
+            </div>
+            <button
+              className="ghost-btn"
+              onClick={onClose}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 16px",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: "4px",
+                background: "rgba(255,255,255,0.06)",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: "12px",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              <span>← Switch to Buying Mode</span>
+            </button>
           </div>
         </section>
 

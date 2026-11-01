@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import * as authApi from "@/lib/api/auth";
+import { buildUrl } from "@/lib/api/client";
 
 type AccessScreen = "login" | "verify" | "complete" | "reset" | "reset-checking" | "reset-sent";
 type RegisterScreen = "form" | "verify" | "complete";
@@ -73,12 +74,22 @@ function deriveUsername(email: string): string {
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   const anyErr = err as any;
-  return (
+  const msg =
     anyErr?.response?.data?.detail ||
     anyErr?.response?.data?.message ||
     anyErr?.message ||
-    fallback
-  );
+    fallback;
+  if (
+    typeof msg === "string" &&
+    (msg.toLowerCase().includes("failed to fetch") ||
+      msg.toLowerCase().includes("networkerror") ||
+      msg.toLowerCase().includes("fetch failed") ||
+      msg.toLowerCase().includes("load failed") ||
+      msg.toLowerCase().includes("cannot reach"))
+  ) {
+    return "Cannot reach the server. Check that the backend is running.";
+  }
+  return typeof msg === "string" ? msg : fallback;
 }
 
 // ---------------------------------------------------------------------
@@ -239,7 +250,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   const handleGoogleResponse = async (response: { credential: string }) => {
     try {
-      const res = await fetch("http://localhost:8000/auth/google", {
+      const res = await fetch(buildUrl("/auth/google"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_token: response.credential }),
@@ -283,6 +294,7 @@ const loginPasswordError =
   loginTouched.password && loginData.password.length > 0 && loginData.password.length < LOGIN_MIN_PASSWORD_LEN;
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [previewMessage, setPreviewMessage] = useState<string | null>(null);
 
   const [pin, setPin] = useState<string[]>(Array(6).fill(""));
   const [pinSessionId, setPinSessionId] = useState<string | null>(null);
@@ -370,6 +382,20 @@ const loginPasswordError =
 
   // ---------- LOGIN: step 1 (password) ----------
   const handleLoginSubmit = async () => {
+    // TEMP: Auth bypass for local preview
+    if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
+      setLoginError(null);
+      setPreviewMessage("Auth bypass active for local preview. Entering marketplace…");
+      setTimeout(() => {
+        if (onAuthSuccess) {
+          onAuthSuccess();
+        } else {
+          setAccessScreen("complete");
+        }
+      }, 300);
+      return;
+    }
+
     if (!canAuthenticate || loginLoading) return;
     setLoginError(null);
     setLoginLoading(true);
@@ -402,6 +428,17 @@ const loginPasswordError =
 
   // ---------- LOGIN: step 2 (PIN) ----------
   const handlePinSubmit = async () => {
+    // TEMP: Auth bypass for local preview
+    if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
+      setPinError(null);
+      if (onAuthSuccess) {
+        onAuthSuccess();
+      } else {
+        setAccessScreen("complete");
+      }
+      return;
+    }
+
     if (!pinSessionId || pinLoading) return;
     const code = pin.join("");
     if (code.length < pin.length) return;
@@ -462,6 +499,20 @@ const loginPasswordError =
       return;
     }
 
+    // TEMP: Auth bypass for local preview
+    if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
+      setRegisterError(null);
+      setPreviewMessage("Auth bypass active for local preview. Entering marketplace…");
+      setTimeout(() => {
+        if (onAuthSuccess) {
+          onAuthSuccess();
+        } else {
+          setRegisterScreen("complete");
+        }
+      }, 300);
+      return;
+    }
+
     setRegisterError(null);
     setRegisterLoading(true);
     try {
@@ -491,6 +542,17 @@ const loginPasswordError =
   const handleBack = () => { if (step > 0) { setStep(step - 1); setStepTouched(false); } };
   // ---------- REGISTER: verify email code ----------
   const handleVerifyEmailSubmit = async () => {
+    // TEMP: Auth bypass for local preview
+    if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
+      setVerifyError(null);
+      if (onAuthSuccess) {
+        onAuthSuccess();
+      } else {
+        setRegisterScreen("complete");
+      }
+      return;
+    }
+
     if (verifyLoading) return;
     const code = regCode.join("");
     if (code.length < 6) return;
@@ -640,6 +702,7 @@ const loginPasswordError =
               </div>
 
               <ErrorText message={loginError} />
+              {previewMessage && <p className="mb-4 text-xs text-green-400">{previewMessage}</p>}
 
               <button
                 disabled={!canAuthenticate || loginLoading}
@@ -950,6 +1013,7 @@ const loginPasswordError =
 
               <ErrorText message={showStepError ? stepError : null} />
               <ErrorText message={isLastStep ? registerError : null} />
+              {previewMessage && <p className="mb-4 text-xs text-green-400">{previewMessage}</p>}
 
               <div className="mt-4 flex gap-2">
                 {step > 0 && (

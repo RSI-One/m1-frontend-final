@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AuthScreen from "./auth/AuthScreen";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -33,6 +33,15 @@ export default function AppShell({ children }: AppShellProps) {
   const [compareItems, setCompareItems] = useState<SfItem[]>([]);
   const [sellerModeOpen, setSellerModeOpen] = useState(false);
   const [messagingOpen, setMessagingOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("seller") === "1" || params.get("seller") === "true") {
+        setSellerModeOpen(true);
+      }
+    }
+  }, []);
 
   const openSellerMode = () => {
     setAcquisitionHistoryOpen(false);
@@ -72,7 +81,8 @@ export default function AppShell({ children }: AppShellProps) {
     );
   }
 
-  if (!user) {
+  // TEMP: Auth bypass for local preview
+  if (!user && process.env.NEXT_PUBLIC_BYPASS_AUTH !== "true") {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
 
@@ -88,7 +98,7 @@ export default function AppShell({ children }: AppShellProps) {
 
       {children({ openAssetFromSf, openAssetFromJet, openCompareModal })}
 
-      <Footer />
+      <Footer onOpenSellerMode={openSellerMode} />
 
       <AssetModal asset={selectedAsset} onClose={closeAssetModal} />
       <CompareModal items={compareItems} onClose={closeCompareModal} />

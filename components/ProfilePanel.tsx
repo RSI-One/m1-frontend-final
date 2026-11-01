@@ -60,6 +60,23 @@ export default function ProfilePanel({
   useEffect(() => {
     let cancelled = false;
 
+    // TEMP: Auth bypass for local preview
+    if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
+      setProfile({
+        fullName: "Local Preview User",
+        companyName: "M1 Partner",
+        location: "Geneva, Switzerland",
+        phoneNumber: "+41 22 000 0000",
+        bio: "Local preview mode active",
+        profilePictureUrl: null,
+        username: "preview_user",
+        email: "preview@m-1.tech",
+        joinedAt: new Date().toISOString(),
+      });
+      setLoading(false);
+      return;
+    }
+
     (async () => {
       try {
         const [user, prof] = await Promise.all([

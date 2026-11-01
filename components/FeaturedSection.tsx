@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Jet } from "../lib/types";
+import { jets } from "../lib/data";
 import AssetCard from "./AssetCard";
 import CarouselRow from "./CarouselRow";
 import { useSite, parsePriceToM } from "../lib/site-context";
@@ -15,28 +16,37 @@ export default function FeaturedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
   const [searchResults, setSearchResults] = useState<Jet[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDemoData, setIsDemoData] = useState(false);
 
   // Load initial featured carousel
-  useEffect(() => {
-    let cancelled = false;
+  const loadFeatured = useCallback(() => {
     setLoading(true);
+    setError(null);
     getCarousels()
       .then((data) => {
-        if (cancelled) return;
         setFeatured(data.featured.map(toJet));
+        setIsDemoData(false);
         setError(null);
       })
       .catch((err) => {
         console.error(err);
-        if (!cancelled) setError("Couldn't load featured listings.");
+        // TEMP: Auth bypass for local preview
+        if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
+          setFeatured(jets.slice(0, 6));
+          setIsDemoData(true);
+          setError(null);
+        } else {
+          setError("Cannot reach the server.");
+        }
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    loadFeatured();
+  }, [loadFeatured]);
 
   // When search query is entered, perform smart search from backend
   useEffect(() => {
@@ -86,6 +96,8 @@ export default function FeaturedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
 
   const sectionTitle = search.trim()
     ? `Search Results for "${search}"`
+    : isDemoData
+    ? "Featured Listings — Demo data (backend offline)"
     : "Featured Listings";
 
   const handleApplyDidYouMean = (correction: string) => {
@@ -139,7 +151,24 @@ export default function FeaturedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
             {search.trim() ? "Searching aircraft fleet…" : "Loading featured listings…"}
           </div>
         ) : error ? (
-          <div style={{ padding: "24px 4px", color: "#c0392b", fontSize: 13.5 }}>{error}</div>
+          <div style={{ padding: "24px 4px", color: "#c0392b", fontSize: 13.5, display: "flex", alignItems: "center", gap: 12 }}>
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={loadFeatured}
+              style={{
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,.2)",
+                color: "#e6e9ee",
+                borderRadius: 4,
+                padding: "2px 8px",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              Retry
+            </button>
+          </div>
         ) : filtered.length === 0 ? (
           <div style={{ padding: "24px 4px", color: "var(--muted, var(--text-dim))", fontSize: 13.5 }}>
             No listings match &ldquo;{search}&rdquo;. Try another model or filter.
