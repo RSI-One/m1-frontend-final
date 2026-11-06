@@ -673,6 +673,8 @@ const loginPasswordError =
               </div>
               <p className="mb-4 text-center text-sm italic text-gray-300">
                 Enter the {pin.length}-digit code sent to your email.
+                <br />
+                <span className="text-xs text-amber-300/90 not-italic">(Local Dev PIN: 123456)</span>
               </p>
               <div className="mb-6 flex justify-center">
                 <OtpInput

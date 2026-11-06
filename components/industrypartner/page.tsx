@@ -1,3 +1,4 @@
+import FloatingNavbar from "../FloatingNavbar";
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -9,7 +10,7 @@ import AssetModal from "components/AssetModal";
 import CompareModal from "components/CompareModal";
 import Toast from "components/Toast";
 import MessagingPage from "components/MessagingPage";
-import SellerMode from "components/industry-sellermode";
+import SellerMode from "@/components/SellerMode";
 import { SiteProvider, useSite, parsePriceToM } from "@/lib/site-context";
 import { Jet, SfItem, ListingResponse } from "@/lib/types";
 import { jets as staticJets, sfAlternative } from "@/lib/data";
@@ -293,6 +294,7 @@ function PageInner() {
       )}
 
       <Footer />
+      <FloatingNavbar onToggleChat={() => setMessagingOpen(true)} onOpenSellerMode={() => setSellerModeOpen(true)} />
 
       <AssetModal asset={selectedAsset} onClose={closeAssetModal} />
       <CompareModal items={compareItems} onClose={closeCompareModal} />

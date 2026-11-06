@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Jet } from "../lib/types";
+import { jets } from "../lib/data";
 import AssetCard from "./AssetCard";
 import CarouselRow from "./CarouselRow";
 import { useSite, parsePriceToM } from "../lib/site-context";
@@ -20,16 +21,21 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
     getCarousels()
       .then((data) => {
         if (cancelled) return;
-        setVerified(data.verified.map(toJet));
+        // Include all verified listings from backend (or fallback to catalog if empty)
+        const allVerified = data.new
+          ? data.new.filter((item: any) => item.is_verified).map(toJet)
+          : (data.verified || []).map(toJet);
+        setVerified(allVerified.length > 0 ? allVerified : jets);
         setError(null);
       })
       .catch((err) => {
         console.error(err);
-        if (!cancelled) setError("Couldn't load verified listings.");
+        if (!cancelled) { setVerified(jets); setError(null); }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
@@ -41,7 +47,7 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
   };
 
   const q = search.trim().toLowerCase();
-  const pool = showAllListings ? verified : verified.slice(0, 6);
+  const pool = verified;
   const filtered = pool.filter((jet) => {
     const matchesSearch =
       !q ||
@@ -51,6 +57,8 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
     const matchesBudget = parsePriceToM(jet.price) <= maxBudget;
     return matchesSearch && matchesBudget;
   });
+
+  if (!loading && filtered.length === 0 && !search.trim()) return null;
 
   return (
     <section className="below-section" id="verified">

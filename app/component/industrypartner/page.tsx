@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SfItem } from "@/lib/types";
+import { useSite } from "@/lib/site-context";
 import { api } from "@/lib/api";
 import { sellerFairNews } from "@/lib/seller-data";
 import { useTypewriterPlaceholder } from "@/lib/useTypewriterPlaceholder";
@@ -124,6 +125,7 @@ export default function IndustryPartnerPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [newsIndex, setNewsIndex] = useState(0);
   const headerRef = useRef<HTMLElement>(null);
+  const { filterDrawerOpen, setFilterDrawerOpen, isFilterActive } = useSite();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchPlaceholder = useTypewriterPlaceholder(searchInputRef, true, term.length > 0);
 
@@ -259,6 +261,10 @@ export default function IndustryPartnerPage() {
           </div>
 
           <div className="nav-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
             <input
               ref={searchInputRef}
               type="text"
@@ -267,10 +273,57 @@ export default function IndustryPartnerPage() {
               value={term}
               onChange={(e) => setTerm(e.target.value)}
             />
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
+            <div
+              style={{
+                width: "1px",
+                height: "16px",
+                backgroundColor: "rgba(107, 99, 73, 0.35)",
+                margin: "0 2px",
+                flexShrink: 0,
+              }}
+            />
+            <button
+              type="button"
+              className="search-filter-btn"
+              title="Filters"
+              aria-label="Filters"
+              onClick={() => setFilterDrawerOpen(!filterDrawerOpen)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                cursor: "pointer",
+                padding: "4px 6px",
+                borderRadius: "999px",
+                color: "#6b6349",
+                transition: "all .18s ease",
+                flexShrink: 0,
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="4" y1="21" x2="4" y2="14" />
+                <line x1="4" y1="10" x2="4" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12" y2="3" />
+                <line x1="20" y1="21" x2="20" y2="16" />
+                <line x1="20" y1="12" x2="20" y2="3" />
+                <line x1="1" y1="14" x2="7" y2="14" />
+                <line x1="9" y1="8" x2="15" y2="8" />
+                <line x1="17" y1="16" x2="23" y2="16" />
+              </svg>
+            </button>
           </div>
 
           <div className="nav-utility-stack">
@@ -326,7 +379,7 @@ export default function IndustryPartnerPage() {
             </div>
           </div>
 
-          <button className="filters-btn" onClick={() => showToast("Filters — opening…")}>
+          <button className="filters-btn" onClick={() => setFilterDrawerOpen(!filterDrawerOpen)}>
             <span>Filters</span>
           </button>
           <button className="all-listings-btn active" aria-pressed="true">

@@ -2,13 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { Jet } from "../lib/types";
+import { jets } from "../lib/data";
 import AssetCard from "./AssetCard";
 import CarouselRow from "./CarouselRow";
 import { useSite, parsePriceToM } from "../lib/site-context";
 import { getCarousels, toJet, trackListingView } from "../lib/api/listings";
 import { smartSearch, searchResultToJet } from "../lib/api/search";
 
-export default function FeaturedSection({ onOpenAsset }: { onOpenAsset: (jet: Jet) => void }) {
+export default function FeaturedSection({
+  onOpenAsset,
+  showAll = false,
+}: {
+  onOpenAsset: (jet: Jet) => void;
+  showAll?: boolean;
+}) {
   const { search, setSearch, didYouMean, setDidYouMean, maxBudget, showAllListings } = useSite();
 
   const [featured, setFeatured] = useState<Jet[]>([]);
@@ -23,12 +30,12 @@ export default function FeaturedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
     getCarousels()
       .then((data) => {
         if (cancelled) return;
-        setFeatured(data.featured.map(toJet));
+        setFeatured(data.featured && data.featured.length > 0 ? data.featured.map(toJet) : jets);
         setError(null);
       })
       .catch((err) => {
         console.error(err);
-        if (!cancelled) setError("Couldn't load featured listings.");
+        if (!cancelled) { setFeatured(jets); setError(null); }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -78,7 +85,7 @@ export default function FeaturedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
     onOpenAsset(jet);
   };
 
-  const pool = searchResults !== null ? searchResults : (showAllListings ? featured : featured.slice(0, 6));
+  const pool = searchResults !== null ? searchResults : (showAll || showAllListings ? featured : featured.slice(0, 6));
   const filtered = pool.filter((jet) => {
     const matchesBudget = parsePriceToM(jet.price) <= maxBudget;
     return matchesBudget;

@@ -50,6 +50,9 @@ interface SiteContextValue {
   toggleShowAllListings: () => void;
   toast: string | null;
   showToast: (msg: string) => void;
+  filterDrawerOpen: boolean;
+  setFilterDrawerOpen: (v: boolean) => void;
+  isFilterActive: boolean;
 
   // --- backend-connected state ---
   user: UserRead | null;
@@ -77,6 +80,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [jetType, setJetType] = useState("");
   const [minPassengers, setMinPassengers] = useState(0);
   const [minRange, setMinRange] = useState(0);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -181,6 +185,13 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       toggleShowAllListings,
       toast,
       showToast,
+      filterDrawerOpen,
+      setFilterDrawerOpen,
+      isFilterActive:
+        maxBudget < BUDGET_MAX ||
+        Boolean(jetType) ||
+        minPassengers > 0 ||
+        minRange > 0,
       user,
       profile,
       isAuthLoading,
@@ -207,6 +218,8 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       toggleShowAllListings,
       toast,
       showToast,
+      filterDrawerOpen,
+      setFilterDrawerOpen,
       user,
       profile,
       isAuthLoading,

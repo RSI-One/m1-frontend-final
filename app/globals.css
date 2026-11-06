@@ -2613,6 +2613,54 @@ body {
 /* ============================================================
    FOOTER (new header/footer design)
 ============================================================ */
+/* Footer Jet Flight Animations */
+@keyframes flightBobLeft {
+  0%, 100% {
+    transform: translateY(0px) rotate(12deg);
+  }
+  50% {
+    transform: translateY(-8px) translateX(2px) rotate(13.5deg);
+  }
+}
+
+@keyframes flightBobRight {
+  0%, 100% {
+    transform: scaleX(-1) translateY(0px) rotate(12deg);
+  }
+  50% {
+    transform: scaleX(-1) translateY(-8px) translateX(2px) rotate(13.5deg);
+  }
+}
+
+@keyframes slipstream {
+  0% {
+    transform: translateX(80px) translateY(-18px);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  75% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(-110px) translateY(24px);
+    opacity: 0;
+  }
+}
+
+.animate-flight-bob-left {
+  animation: flightBobLeft 4.5s ease-in-out infinite;
+}
+
+.animate-flight-bob-right {
+  animation: flightBobRight 4.5s ease-in-out infinite;
+}
+
+.animate-slipstream {
+  animation: slipstream 1.4s linear infinite;
+}
+
 .site-footer {
   position: relative;
   border-top: 1px solid var(--line);
@@ -6795,4 +6843,9 @@ body {
   border-color: rgba(214, 173, 92, .5);
   color: var(--gold-bright);
   transform: translateY(-1px);
+}
+
+.search-filter-btn:hover {
+  background: rgba(42, 37, 23, 0.14) !important;
+  color: #1a1710 !important;
 }
