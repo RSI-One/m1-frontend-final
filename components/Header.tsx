@@ -372,7 +372,7 @@ export default function Header({
             ✕
           </button>
         ) : (
-          <span className="search-shortcut">⌘K</span>
+          <span className="search-shortcut"></span>
         )}
 
         {/* Filter button directly inside Home search bar at the end */}

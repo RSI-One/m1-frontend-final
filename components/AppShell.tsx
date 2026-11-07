@@ -113,6 +113,7 @@ export default function AppShell({ children }: AppShellProps) {
         onOpenReportProblem={() => setSupportModalType("report")}
         onOpenGetSupport={() => setSupportModalType("support")}
         onOpenAcquisitionHistory={openAcquisitionHistory}
+        onOpenAsset={openAssetFromJet}
       />
 
       <AssetModal asset={selectedAsset} onClose={closeAssetModal} />

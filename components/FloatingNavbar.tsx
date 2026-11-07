@@ -5,6 +5,9 @@ import { useRouter, usePathname } from "next/navigation";
 import { useSite, BUDGET_MIN, BUDGET_MAX } from "../lib/site-context";
 import { api } from "../lib/api";
 import IntelligenceModal from "./IntelligenceModal";
+import SavedAssetsModal from "./SavedAssetsModal";
+import EcosystemModal from "./EcosystemModal";
+import { Jet } from "../lib/types";
 
 type PanelKey = "filter" | "menu" | null;
 
@@ -26,6 +29,7 @@ type FloatingNavbarProps = {
   onOpenReportProblem?: () => void;
   onOpenGetSupport?: () => void;
   onOpenAcquisitionHistory?: () => void;
+  onOpenAsset?: (jet: Jet) => void;
 };
 
 export default function FloatingNavbar({
@@ -35,12 +39,15 @@ export default function FloatingNavbar({
   onOpenReportProblem,
   onOpenGetSupport,
   onOpenAcquisitionHistory,
+  onOpenAsset,
 }: FloatingNavbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [openPanel, setOpenPanel] = useState<PanelKey>(null);
   const [hiddenAtBottom, setHiddenAtBottom] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [savedAssetsOpen, setSavedAssetsOpen] = useState(false);
+  const [ecosystemOpen, setEcosystemOpen] = useState(false);
 
   const {
     maxBudget,
@@ -55,6 +62,8 @@ export default function FloatingNavbar({
     showToast,
     refreshUser,
     unreadCount,
+    showAllListings,
+    toggleShowAllListings,
   } = useSite();
 
   // Hide suspended bar when user hits the very bottom edge (near footer copyright)
@@ -104,8 +113,40 @@ export default function FloatingNavbar({
 
     if (label === "Your Active Listings") {
       setOpenPanel(null);
-      const el = document.getElementById("active-listings");
-      if (el) el.scrollIntoView({ behavior: "smooth" });
+      if (!showAllListings) {
+        toggleShowAllListings();
+      }
+      setTimeout(() => {
+        const el = document.getElementById("active-listings");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 150);
+      return;
+    }
+
+    if (label === "Saved Assets") {
+      setOpenPanel(null);
+      setSavedAssetsOpen(true);
+      return;
+    }
+
+    if (label === "M1 Ecosystem") {
+      setOpenPanel(null);
+      setEcosystemOpen(true);
+      return;
+    }
+
+    if (label === "Join the exclusive circle") {
+      setOpenPanel(null);
+      const el = document.getElementById("exclusive-circle");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => {
+          const input = el.querySelector("input");
+          if (input) input.focus();
+        }, 500);
+      }
       return;
     }
 
@@ -311,6 +352,18 @@ export default function FloatingNavbar({
       <IntelligenceModal
         open={intelligenceOpen}
         onClose={() => setIntelligenceOpen(false)}
+      />
+
+      <SavedAssetsModal
+        open={savedAssetsOpen}
+        onClose={() => setSavedAssetsOpen(false)}
+        onSelectAsset={onOpenAsset}
+      />
+
+      <EcosystemModal
+        open={ecosystemOpen}
+        onClose={() => setEcosystemOpen(false)}
+        onOpenIntelligence={() => setIntelligenceOpen(true)}
       />
 
       {/* ── Overlay Backdrop ── */}
