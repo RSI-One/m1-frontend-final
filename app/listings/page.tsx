@@ -1,28 +1,28 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "../../components/AppShell";
-import AllListings from "../../components/AllListings";
 import FeaturedSection from "../../components/FeaturedSection";
 import VerifiedSection from "../../components/VerifiedSection";
-import Hero from "../../components/Hero";
-import Wizard from "../../components/Wizard";
-import GeneralListing from "../../components/GeneralListing";
-import Newlisting from "@/components/Newlisting";
+import ActiveListingsSection from "../../components/ActiveListingsSection";
+import TrendingSection from "../../components/TrendingSection";
+
 export default function ListingsPage() {
   const router = useRouter();
-  const [started, setStarted] = useState(false);
 
   return (
     <AppShell>
-      {({ openAssetFromSf, openAssetFromJet, openCompareModal }) => (
+      {({ openAssetFromJet, openNewListing, refreshKey }) => (
         <>
+          {/* Back button aligned to the left corner of the page */}
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
-              padding: "20px clamp(20px, 4vw, 64px) 0",
+              justifyContent: "flex-start",
+              padding: "20px clamp(20px, 4vw, 64px) 8px",
+              maxWidth: 1380,
+              margin: "0 auto",
+              width: "100%",
             }}
           >
             <button
@@ -30,20 +30,33 @@ export default function ListingsPage() {
               onClick={() => router.back()}
               className="all-listings-view-all"
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: 6,
+                gap: 8,
+                padding: "8px 18px",
+                background: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid rgba(255, 255, 255, 0.16)",
+                borderRadius: "8px",
+                color: "#e6e9ee",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: "13px",
+                transition: "all .18s ease",
               }}
             >
               ← Back
             </button>
           </div>
 
-          <AllListings onOpenAsset={openAssetFromSf} />
-          <FeaturedSection onOpenAsset={openAssetFromJet} />
+          {/* All 4 rows: Featured, Verified, Your Active Listings, and Trending */}
+          <FeaturedSection onOpenAsset={openAssetFromJet} showAll />
           <VerifiedSection onOpenAsset={openAssetFromJet} />
-          <GeneralListing onOpenAsset={openAssetFromJet} />
-          <Newlisting onOpenAsset={openAssetFromJet} />
+          <ActiveListingsSection
+            onOpenAsset={openAssetFromJet}
+            onOpenNewListing={openNewListing}
+            refreshTrigger={refreshKey}
+          />
+          <TrendingSection onOpenAsset={openAssetFromJet} />
         </>
       )}
     </AppShell>

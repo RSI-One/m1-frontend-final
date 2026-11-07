@@ -20,7 +20,7 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
     getCarousels()
       .then((data) => {
         if (cancelled) return;
-        setListings(data.general.map(toJet));
+        setListings(data.new && data.new.length > 0 ? data.new.map(toJet) : []);
         setError(null);
       })
       .catch((err) => {
@@ -30,6 +30,7 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
@@ -41,7 +42,7 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
   };
 
   const q = search.trim().toLowerCase();
-  const pool = showAllListings ? listings : listings.slice(0, 6);
+  const pool = listings;
   const filtered = pool.filter((jet) => {
     const matchesSearch =
       !q ||
@@ -52,8 +53,10 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
     return matchesSearch && matchesBudget;
   });
 
+  if (!loading && filtered.length === 0 && !search.trim()) return null;
+
   return (
-    <section className="below-section" id="verified">
+    <section className="below-section" id="new">
       <CarouselRow headClassName="carousel-block-head" headingTag="h2" title="New Listings">
         {loading ? (
           <div style={{ padding: "24px 4px", color: "var(--muted, var(--text-dim))", fontSize: 13.5 }}>

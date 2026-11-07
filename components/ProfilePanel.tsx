@@ -43,8 +43,10 @@ function toCombined(
 /* ─── Profile Panel ─────────────────────────────────────── */
 export default function ProfilePanel({
   onClose,
+  onOpenNotifications,
 }: {
   onClose: () => void;
+  onOpenNotifications?: () => void;
 }) {
   const router = useRouter();
   const { logoutLocally } = useSite();
@@ -259,23 +261,70 @@ export default function ProfilePanel({
       <div className="pp-topbar">
         <span className="pp-label">My Profile</span>
 
-        <button
-          className="pp-close"
-          onClick={onClose}
-          aria-label="Close profile"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {onOpenNotifications && (
+            <button
+              type="button"
+              className="pp-notif-btn"
+              onClick={onOpenNotifications}
+              title="Notifications"
+              aria-label="Notifications"
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: "50%",
+                border: "1px solid rgba(0, 0, 0, 0.14)",
+                background: "rgba(255, 255, 255, 0.45)",
+                display: "grid",
+                placeItems: "center",
+                color: "#4a5060",
+                cursor: "pointer",
+                position: "relative",
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.9"
+              >
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span
+                style={{
+                  position: "absolute",
+                  top: 5,
+                  right: 5,
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  backgroundColor: "#e5a93b",
+                }}
+              />
+            </button>
+          )}
+
+          <button
+            className="pp-close"
+            onClick={onClose}
+            aria-label="Close profile"
           >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Profile Hero */}

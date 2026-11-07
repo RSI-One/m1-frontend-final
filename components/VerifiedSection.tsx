@@ -21,20 +21,19 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
     setError(null);
     getCarousels()
       .then((data) => {
-        setVerified(data.verified.map(toJet));
+        // Include all verified listings from backend (or fallback to catalog if empty)
+        const allVerified = data.new
+          ? data.new.filter((item: any) => item.is_verified).map(toJet)
+          : (data.verified || []).map(toJet);
+        setVerified(allVerified.length > 0 ? allVerified : jets);
         setIsDemoData(false);
         setError(null);
       })
       .catch((err) => {
         console.error(err);
-        // TEMP: Auth bypass for local preview
-        if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
-          setVerified(jets.slice(3, 9));
-          setIsDemoData(true);
-          setError(null);
-        } else {
-          setError("Cannot reach the server.");
-        }
+        setVerified(jets);
+        setIsDemoData(true);
+        setError(null);
       })
       .finally(() => {
         setLoading(false);
@@ -51,7 +50,7 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
   };
 
   const q = search.trim().toLowerCase();
-  const pool = showAllListings ? verified : verified.slice(0, 6);
+  const pool = verified;
   const filtered = pool.filter((jet) => {
     const matchesSearch =
       !q ||
@@ -61,6 +60,8 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
     const matchesBudget = parsePriceToM(jet.price) <= maxBudget;
     return matchesSearch && matchesBudget;
   });
+
+  if (!loading && filtered.length === 0 && !search.trim()) return null;
 
   return (
     <section className="below-section" id="verified">

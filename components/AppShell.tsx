@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import AuthScreen from "./auth/AuthScreen";
 import Header from "./Header";
 import Footer from "./Footer";
+import FloatingNavbar from "./FloatingNavbar";
 import AssetModal from "./AssetModal";
 import CompareModal from "./CompareModal";
 import Toast from "./Toast";
 import SupportModals from "./SupportModals";
 import MessagingPage from "./MessagingPage";
-import SellerMode from "./SellerMode";
+import NewListingWizard from "./NewListingWizard";
+import ListingFiltersDrawer from "./ListingFiltersDrawer";
 import AcquisitionHistoryPage from "./acquisition-history/AcquisitionHistoryPage";
 
 import { useSite } from "../lib/site-context";
@@ -21,6 +23,8 @@ interface AppShellProps {
     openAssetFromSf: (item: SfItem) => void;
     openAssetFromJet: (jet: Jet) => void;
     openCompareModal: (items: SfItem[]) => void;
+    openNewListing: () => void;
+    refreshKey: number;
   }) => React.ReactNode;
 }
 
@@ -31,14 +35,18 @@ export default function AppShell({ children }: AppShellProps) {
   const [acquisitionHistoryOpen, setAcquisitionHistoryOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Jet | SfItem | null>(null);
   const [compareItems, setCompareItems] = useState<SfItem[]>([]);
-  const [sellerModeOpen, setSellerModeOpen] = useState(false);
+  const [newListingOpen, setNewListingOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [messagingOpen, setMessagingOpen] = useState(false);
+
+  const openNewListing = () => setNewListingOpen(true);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("seller") === "1" || params.get("seller") === "true") {
-        setSellerModeOpen(true);
+        const el = document.getElementById("active-listings");
+        if (el) el.scrollIntoView({ behavior: "smooth" });
       }
     }
   }, []);
@@ -47,18 +55,17 @@ export default function AppShell({ children }: AppShellProps) {
     setAcquisitionHistoryOpen(false);
     setMessagingOpen(false);
     setSupportModalType(null);
-    setSellerModeOpen(true);
+    const el = document.getElementById("active-listings");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
   const openAcquisitionHistory = () => {
-    setSellerModeOpen(false);
     setMessagingOpen(false);
     setSupportModalType(null);
     setAcquisitionHistoryOpen(true);
   };
 
   const openMessaging = () => {
-    setSellerModeOpen(false);
     setAcquisitionHistoryOpen(false);
     setMessagingOpen(true);
   };
@@ -96,24 +103,31 @@ export default function AppShell({ children }: AppShellProps) {
         onOpenAcquisitionHistory={openAcquisitionHistory}
       />
 
-      {children({ openAssetFromSf, openAssetFromJet, openCompareModal })}
+      {children({ openAssetFromSf, openAssetFromJet, openCompareModal, openNewListing, refreshKey })}
 
       <Footer onOpenSellerMode={openSellerMode} />
+
+      <FloatingNavbar
+        onToggleChat={openMessaging}
+        onOpenNewListing={openNewListing}
+        onOpenReportProblem={() => setSupportModalType("report")}
+        onOpenGetSupport={() => setSupportModalType("support")}
+        onOpenAcquisitionHistory={openAcquisitionHistory}
+      />
 
       <AssetModal asset={selectedAsset} onClose={closeAssetModal} />
       <CompareModal items={compareItems} onClose={closeCompareModal} />
 
-      <SellerMode
-        open={sellerModeOpen}
-        onClose={() => setSellerModeOpen(false)}
-        jets={jets}
-        onOpenAsset={openAssetFromJet}
-        onToggleChat={openMessaging}
+      <NewListingWizard
+        open={newListingOpen}
+        onClose={() => {
+          setNewListingOpen(false);
+          setRefreshKey((k) => k + 1);
+        }}
         showToast={showToast}
-        onOpenAcquisitionHistory={openAcquisitionHistory}
-        onOpenReportProblem={() => setSupportModalType("report")}
-        onOpenGetSupport={() => setSupportModalType("support")}
       />
+
+      <ListingFiltersDrawer />
 
       <Toast />
 

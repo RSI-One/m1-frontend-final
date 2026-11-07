@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Jet } from "../lib/types";
+import { jets } from "../lib/data";
 import AssetCard from "./AssetCard";
 import CarouselRow from "./CarouselRow";
 import { useSite, parsePriceToM } from "../lib/site-context";
@@ -20,7 +21,7 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
     getCarousels()
       .then((data) => {
         if (cancelled) return;
-        setListings(data.general.map(toJet));
+        setListings(data.general && data.general.length > 0 ? data.general.map(toJet) : jets);
         setError(null);
       })
       .catch((err) => {
@@ -30,6 +31,7 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
@@ -41,7 +43,7 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
   };
 
   const q = search.trim().toLowerCase();
-  const pool = showAllListings ? listings : listings.slice(0, 6);
+  const pool = listings;
   const filtered = pool.filter((jet) => {
     const matchesSearch =
       !q ||
@@ -52,8 +54,10 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
     return matchesSearch && matchesBudget;
   });
 
+  if (!loading && filtered.length === 0 && !search.trim()) return null;
+
   return (
-    <section className="below-section" id="verified">
+    <section className="below-section" id="general">
       <CarouselRow headClassName="carousel-block-head" headingTag="h2" title="Other Listings">
         {loading ? (
           <div style={{ padding: "24px 4px", color: "var(--muted, var(--text-dim))", fontSize: 13.5 }}>

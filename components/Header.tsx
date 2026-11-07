@@ -1,31 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import ProfilePanel from "./ProfilePanel";
-import { useSite, BUDGET_MIN, BUDGET_MAX } from "../lib/site-context";
+import { useSite } from "../lib/site-context";
 import { useTypewriterPlaceholder } from "../lib/useTypewriterPlaceholder";
 import {
   getSearchSuggestions,
   getPopularSearches,
 } from "../lib/api/search";
-import { api } from "../lib/api";
 
-type PanelKey = "menu" | "profile" | "filter" | null;
-
-const menuItems = [
-  "Saved Assets",
-  "Acquisition history",
-  "Switch to selling mode",
-  "M1 Ecosystem",
-  "Report a problem",
-  "Get support",
-  "Join the exclusive circle",
-];
+type PanelKey = "profile" | "notifications" | null;
 
 type HeaderProps = {
-  onToggleChat: () => void;
-  onOpenSellerMode: () => void;
+  onToggleChat?: () => void;
+  onOpenSellerMode?: () => void;
   onOpenReportProblem?: () => void;
   onOpenGetSupport?: () => void;
   onOpenAcquisitionHistory?: () => void;
@@ -38,8 +26,6 @@ export default function Header({
   onOpenGetSupport,
   onOpenAcquisitionHistory,
 }: HeaderProps) {
-  const router = useRouter();
-
   const {
     search,
     setSearch,
@@ -48,16 +34,9 @@ export default function Header({
     setDidYouMean,
     activeSuggestions,
     setActiveSuggestions,
-    maxBudget,
-    setMaxBudget,
-    jetType,
-    setJetType,
-    minPassengers,
-    setMinPassengers,
-    minRange,
-    setMinRange,
-    showToast,
-    refreshUser,
+    filterDrawerOpen,
+    setFilterDrawerOpen,
+    isFilterActive,
     profile,
   } = useSite();
 
@@ -78,13 +57,12 @@ export default function Header({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [popularKeywords, setPopularKeywords] = useState<string[]>([]);
   const [trendingCategories, setTrendingCategories] = useState<
-  { category: string; count: number }[] >([]);
+    { category: string; count: number }[]
+  >([]);
 
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
-  const [suggestionsError, setSuggestionsError] = useState<string | null>(
-    null
-  );
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
 
   // Fetch popular searches once on mount
@@ -194,6 +172,11 @@ export default function Header({
     };
 
     const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setSuggestionsOpen(true);
+      }
       if (e.key === "Escape") {
         setOpenPanel(null);
         setSuggestionsOpen(false);
@@ -232,12 +215,8 @@ export default function Header({
     scrollToResults();
   };
 
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>
-  ) => {
-    const list = search.trim()
-      ? suggestions
-      : popularKeywords;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const list = search.trim() ? suggestions : popularKeywords;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -285,45 +264,6 @@ export default function Header({
     setOpenPanel((cur) => (cur === key ? null : key));
   };
 
-  // Menu item handler
-  const handleMenuItem = (label: string) => {
-    if (label === "Switch to selling mode") {
-      setOpenPanel(null);
-      api.post("/auth/switch-mode").then(() => refreshUser?.()).catch(() => {});
-      onOpenSellerMode?.();
-      return;
-    }
-
-    if (label === "Report a problem") {
-      setOpenPanel(null);
-      onOpenReportProblem?.();
-      return;
-    }
-
-    if (label === "Acquisition history") {
-      setOpenPanel(null);
-      onOpenAcquisitionHistory?.();
-      return;
-    }
-
-    if (label === "Get support") {
-      setOpenPanel(null);
-      onOpenGetSupport?.();
-      return;
-    }
-
-    showToast(label + " — opening…");
-    setOpenPanel(null);
-  };
-
-  const clearFilters = () => {
-    setMaxBudget(BUDGET_MAX);
-    setSearch("");
-    setDidYouMean(null);
-
-    showToast("Filters cleared.");
-    setOpenPanel(null);
-  };
 
   const runSearch = (value: string) => {
     setSuggestionsOpen(false);
@@ -410,8 +350,8 @@ export default function Header({
           }}
         />
 
-        {/* CLEAR SEARCH */}
-        {search && (
+        {/* CLEAR SEARCH / SHORTCUT */}
+        {search ? (
           <button
             type="button"
             className="search-clear-btn"
@@ -429,9 +369,78 @@ export default function Header({
               setSelectedIndex(-1);
             }}
           >
-            âœ•
+            ✕
           </button>
+        ) : (
+          <span className="search-shortcut">⌘K</span>
         )}
+
+        {/* Filter button directly inside Home search bar at the end */}
+        <div
+          style={{
+            width: "1px",
+            height: "16px",
+            backgroundColor: "rgba(107, 99, 73, 0.35)",
+            margin: "0 2px",
+            flexShrink: 0,
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => setFilterDrawerOpen(!filterDrawerOpen)}
+          className={`search-filter-btn ${isFilterActive ? "active" : ""}`}
+          title="Filters"
+          aria-label="Filters"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: filterDrawerOpen ? "rgba(42, 37, 23, 0.15)" : "transparent",
+            border: "none",
+            outline: "none",
+            cursor: "pointer",
+            padding: "4px 6px",
+            borderRadius: "999px",
+            color: filterDrawerOpen || isFilterActive ? "#1a1710" : "#6b6349",
+            transition: "all .18s ease",
+            flexShrink: 0,
+            position: "relative",
+          }}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="4" y1="21" x2="4" y2="14" />
+            <line x1="4" y1="10" x2="4" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12" y2="3" />
+            <line x1="20" y1="21" x2="20" y2="16" />
+            <line x1="20" y1="12" x2="20" y2="3" />
+            <line x1="1" y1="14" x2="7" y2="14" />
+            <line x1="9" y1="8" x2="15" y2="8" />
+            <line x1="17" y1="16" x2="23" y2="16" />
+          </svg>
+          {isFilterActive && (
+            <span
+              style={{
+                position: "absolute",
+                top: 2,
+                right: 2,
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                backgroundColor: "#d6ad5c",
+              }}
+            />
+          )}
+        </button>
 
         {/* SEARCH DROPDOWN */}
         {suggestionsOpen && (
@@ -592,85 +601,32 @@ export default function Header({
       </div>
 
       {/* NAV UTILITY */}
-      <div className="nav-utility">
-        {/* + Button */}
-        <button
-          id="newListingBtn"
-          className="new-listing-btn"
-          title="New Listing"
-          aria-label="New Listing"
-          onClick={onOpenSellerMode}
-        >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.4"
-          >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
-
-        {/* Messages */}
+      {/* NAV UTILITY */}
+      <div className="nav-utility" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Notifications */}
         <button
           className="icon-btn"
-          title="Messages"
-          aria-label="Messages"
-          onClick={onToggleChat}
+          title="Notifications"
+          aria-label="Notifications"
+          onClick={() => togglePanel("notifications")}
+          style={{ position: "relative" }}
         >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-          >
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
-
-          <span className="dot" />
-        </button>
-
-        {/* Menu */}
-        <button
-          className="icon-btn"
-          title="Menu"
-          aria-label="Menu"
-          onClick={() =>
-            togglePanel("menu")
-          }
-        >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-          >
-            <line
-              x1="3"
-              y1="6"
-              x2="21"
-              y2="6"
-            />
-            <line
-              x1="3"
-              y1="12"
-              x2="21"
-              y2="12"
-            />
-            <line
-              x1="3"
-              y1="18"
-              x2="21"
-              y2="18"
-            />
-          </svg>
+          <span
+            style={{
+              position: "absolute",
+              top: 5,
+              right: 5,
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              backgroundColor: "#ffffff",
+              boxShadow: "0 0 6px rgba(255,255,255,0.8)",
+            }}
+          />
         </button>
 
         {/* Profile Avatar */}
@@ -678,9 +634,7 @@ export default function Header({
           className="avatar-btn"
           title="Profile"
           aria-label="Profile"
-          onClick={() =>
-            togglePanel("profile")
-          }
+          onClick={() => togglePanel("profile")}
         >
           <img
             src={profile?.profile_picture_url || "https://randomuser.me/api/portraits/men/32.jpg"}
@@ -715,42 +669,6 @@ export default function Header({
           </span>
         </button>
       </div>
-
-      {/* ACTIONS — direct grid children of .navbar (no wrapper),
-          so the .filters-btn / .all-listings-btn grid-column /
-          grid-row / justify-self rules in the CSS actually apply */}
-      <button
-        className={`filters-btn ${
-          openPanel === "filter"
-            ? "active"
-            : ""
-        }`}
-        onClick={() =>
-          togglePanel("filter")
-        }
-      >
-        <span>Filters</span>
-
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          style={{ marginLeft: 6 }}
-        >
-          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-        </svg>
-      </button>
-
-      <button
-        className="all-listings-btn"
-        onClick={() => router.push("/listings")}
-      >
-        <span>All Listings</span>
-      </button>
-
       {/* OVERLAY */}
       {openPanel && (
         <div
@@ -761,170 +679,37 @@ export default function Header({
         />
       )}
 
-      {/* FILTER DRAWER */}
-      {openPanel === "filter" && (
-        <div className="drawer show">
-          <h3>Listing Filters</h3>
-
-          <p>
-            Refine displayed fleet assets.
-          </p>
-
-          <div style={{ marginTop: 20 }}>
-            <label
+      {/* NOTIFICATIONS DRAWER */}
+      {openPanel === "notifications" && (
+        <div className="drawer show" style={{ zIndex: 820 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 style={{ margin: 0 }}>Notifications</h3>
+            <button
+              type="button"
+              onClick={() => setOpenPanel(null)}
               style={{
-                display: "flex",
-                justifyContent:
-                  "space-between",
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
-              <span>Max Budget</span>
-
-              <span
-                style={{
-                  color: "var(--gold-2)",
-                }}
-              >
-                ${maxBudget}M
-              </span>
-            </label>
-
-            <input
-              type="range"
-              min={BUDGET_MIN}
-              max={BUDGET_MAX}
-              step={1}
-              value={maxBudget}
-              onChange={(e) =>
-                setMaxBudget(
-                  Number(e.target.value)
-                )
-              }
-              style={{
-                width: "100%",
-                marginTop: 10,
-                accentColor:
-                  "var(--gold)",
-              }}
-            />
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent:
-                  "space-between",
-                fontSize: 11,
+                background: "transparent",
+                border: "none",
                 color: "var(--muted)",
-                marginTop: 4,
+                fontSize: 16,
+                cursor: "pointer",
+                padding: "2px 6px",
               }}
+              aria-label="Close"
             >
-              <span>
-                ${BUDGET_MIN}M
-              </span>
-
-              <span>
-                ${BUDGET_MAX}M
-              </span>
-            </div>
-          </div>
-                       <div className="mini" style={{ borderTop: "none", paddingTop: 4, flexDirection: "column", gap: 10 }}>
-            <label style={{ fontSize: 12, opacity: 0.8 }}>Jet Type</label>
-            <select
-              value={jetType}
-              onChange={(e) => setJetType(e.target.value)}
-              style={{ width: "100%", padding: "6px 8px" }}
-            >
-              <option value="">Any</option>
-              <option value="LIGHT_JET">Light Jet</option>
-              <option value="MID_SIZE_JET">Mid-Size Jet</option>
-              <option value="SUPER_MID_JET">Super Mid Jet</option>
-              <option value="HEAVY_JET">Heavy Jet</option>
-              <option value="ULTRA_LONG_RANGE">Ultra Long Range</option>
-              <option value="TURBOPROP">Turboprop</option>
-              <option value="HELICOPTER">Helicopter</option>
-              <option value="MARITIME_VESSEL">Maritime Vessel</option>
-            </select>
-          </div>
-
-          <div className="mini" style={{ borderTop: "none", paddingTop: 4, flexDirection: "column", gap: 10 }}>
-            <div className="badge">Min Passengers: {minPassengers}</div>
-            <input
-              type="range"
-              min={0}
-              max={20}
-              step={1}
-              value={minPassengers}
-              onChange={(e) => setMinPassengers(Number(e.target.value))}
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <div className="mini" style={{ borderTop: "none", paddingTop: 4, flexDirection: "column", gap: 10 }}>
-            <div className="badge">Min Range: {minRange} NM</div>
-            <input
-              type="range"
-              min={0}
-              max={7000}
-              step={100}
-              value={minRange}
-              onChange={(e) => setMinRange(Number(e.target.value))}
-              style={{ width: "100%" }}
-            />
-          </div>
-          <div
-            className="btn-row"
-            style={{ marginTop: 28 }}
-          >
-            <button
-              className="btn-sharp"
-              onClick={clearFilters}
-            >
-              Reset
-            </button>
-
-            <button
-              className="btn-sharp btn-gold"
-              onClick={() =>
-                setOpenPanel(null)
-              }
-            >
-              Apply
+              ✕
             </button>
           </div>
+          <p>Buyer inquiries, listing status changes, and platform updates will appear here.</p>
         </div>
       )}
 
       {/* PROFILE DRAWER */}
       {openPanel === "profile" && (
-        <ProfilePanel onClose={() => setOpenPanel(null)} />
-      )}
-
-      {/* MENU DRAWER */}
-      {openPanel === "menu" && (
-        <div className="drawer show">
-          <h3>Marketplace Index</h3>
-
-          <p>
-            Global aircraft and private yacht
-            transactions.
-          </p>
-
-          <ul>
-            {menuItems.map((item) => (
-              <li
-                key={item}
-                className="menu-item"
-                onClick={() =>
-                  handleMenuItem(item)
-                }
-              >
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ProfilePanel
+          onClose={() => setOpenPanel(null)}
+          onOpenNotifications={() => setOpenPanel("notifications")}
+        />
       )}
     </header>
   );
