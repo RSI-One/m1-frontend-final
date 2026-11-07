@@ -16,6 +16,8 @@ import ProfilePanel from "./ProfilePanel";
 import AssetCard from "./AssetCard";
 import { subscribeToNewsletter } from "@/lib/api/newsletter";
 import { FooterJetThrustFire } from "./Footer";
+import SavedAssetsModal from "./SavedAssetsModal";
+import EcosystemModal from "./EcosystemModal";
 
 type SellerPanelKey = "notifications" | "menu" | "profile" | "filter" | null;
 
@@ -69,6 +71,8 @@ export default function SellerMode({
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
+  const [savedAssetsOpen, setSavedAssetsOpen] = useState(false);
+  const [ecosystemOpen, setEcosystemOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -278,6 +282,28 @@ export default function SellerMode({
     if (label === "Switch to buying mode") {
       setOpenPanel(null);
       onClose();
+      return;
+    }
+
+    if (label === "Saved Assets") {
+      setOpenPanel(null);
+      setSavedAssetsOpen(true);
+      return;
+    }
+
+    if (label === "M1 Ecosystem") {
+      setOpenPanel(null);
+      setEcosystemOpen(true);
+      return;
+    }
+
+    if (label === "Join the exclusive circle") {
+      setOpenPanel(null);
+      const input = document.querySelector(".seller-mode-body input[type='email']");
+      if (input) {
+        input.scrollIntoView({ behavior: "smooth", block: "center" });
+        (input as HTMLInputElement).focus();
+      }
       return;
     }
 
@@ -1104,6 +1130,17 @@ export default function SellerMode({
           loadMyListings();
         }}
         showToast={showToast}
+      />
+
+      <SavedAssetsModal
+        open={savedAssetsOpen}
+        onClose={() => setSavedAssetsOpen(false)}
+        onSelectAsset={onOpenAsset}
+      />
+
+      <EcosystemModal
+        open={ecosystemOpen}
+        onClose={() => setEcosystemOpen(false)}
       />
     </div>
   );

@@ -5,6 +5,9 @@ import { useRouter, usePathname } from "next/navigation";
 import { useSite, BUDGET_MIN, BUDGET_MAX } from "../lib/site-context";
 import { api } from "../lib/api";
 import IntelligenceModal from "./IntelligenceModal";
+import SavedAssetsModal from "./SavedAssetsModal";
+import EcosystemModal from "./EcosystemModal";
+import { Jet } from "../lib/types";
 
 type PanelKey = "filter" | "menu" | null;
 
@@ -26,6 +29,7 @@ type FloatingNavbarProps = {
   onOpenReportProblem?: () => void;
   onOpenGetSupport?: () => void;
   onOpenAcquisitionHistory?: () => void;
+  onOpenAsset?: (jet: Jet) => void;
 };
 
 export default function FloatingNavbar({
@@ -35,14 +39,20 @@ export default function FloatingNavbar({
   onOpenReportProblem,
   onOpenGetSupport,
   onOpenAcquisitionHistory,
+  onOpenAsset,
 }: FloatingNavbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [openPanel, setOpenPanel] = useState<PanelKey>(null);
   const [hiddenAtBottom, setHiddenAtBottom] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [savedAssetsOpen, setSavedAssetsOpen] = useState(false);
+  const [ecosystemOpen, setEcosystemOpen] = useState(false);
 
   const {
+    theme,
+    setTheme,
+    toggleTheme,
     maxBudget,
     setMaxBudget,
     jetType,
@@ -55,6 +65,8 @@ export default function FloatingNavbar({
     showToast,
     refreshUser,
     unreadCount,
+    showAllListings,
+    toggleShowAllListings,
   } = useSite();
 
   // Hide suspended bar when user hits the very bottom edge (near footer copyright)
@@ -96,6 +108,12 @@ export default function FloatingNavbar({
   };
 
   const handleMenuItem = (label: string) => {
+    if (label.startsWith("Theme:") || label.startsWith("Switch to")) {
+      toggleTheme();
+      showToast(theme === "light" ? "Switched to Dark Mode" : "Switched to Light Mode");
+      return;
+    }
+
     if (label === "Publish New Asset") {
       setOpenPanel(null);
       onOpenNewListing?.();
@@ -104,8 +122,40 @@ export default function FloatingNavbar({
 
     if (label === "Your Active Listings") {
       setOpenPanel(null);
-      const el = document.getElementById("active-listings");
-      if (el) el.scrollIntoView({ behavior: "smooth" });
+      if (!showAllListings) {
+        toggleShowAllListings();
+      }
+      setTimeout(() => {
+        const el = document.getElementById("active-listings");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 150);
+      return;
+    }
+
+    if (label === "Saved Assets") {
+      setOpenPanel(null);
+      setSavedAssetsOpen(true);
+      return;
+    }
+
+    if (label === "M1 Ecosystem") {
+      setOpenPanel(null);
+      setEcosystemOpen(true);
+      return;
+    }
+
+    if (label === "Join the exclusive circle") {
+      setOpenPanel(null);
+      const el = document.getElementById("exclusive-circle");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => {
+          const input = el.querySelector("input");
+          if (input) input.focus();
+        }, 500);
+      }
       return;
     }
 
@@ -148,28 +198,29 @@ export default function FloatingNavbar({
 
   return (
     <>
-      {/* ── Suspended Floating Bottom Navigation Bar (Matching Reference Website) ── */}
+      {/* ── Screen-Attached Bottom Navigation Bar ── */}
       <header
-        className={`fixed bottom-7 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none select-none transition-all duration-500 ease-out ${
-          hiddenAtBottom ? "translate-y-28 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
+        className={`fixed bottom-0 left-0 right-0 z-50 w-full pointer-events-none select-none transition-all duration-300 ease-out ${
+          hiddenAtBottom ? "translate-y-full opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
         }`}
       >
         <nav
-          aria-label="Floating Actions Navigation"
-          className="pointer-events-auto flex items-center justify-between sm:justify-center gap-2 sm:gap-4 md:gap-5 px-5 sm:px-7 py-2 sm:py-2.5 rounded-full backdrop-blur-xl border border-white/20 hover:border-white/35 text-white transition-all max-w-5xl md:max-w-5xl lg:max-w-6xl w-full sm:w-auto overflow-x-auto no-scrollbar font-mono text-[11px] sm:text-xs uppercase tracking-wider shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.3)]"
+          aria-label="Bottom Navigation Bar"
+          className="bottom-nav-bar pointer-events-auto w-full flex items-center justify-center gap-2 sm:gap-4 px-4 py-2 backdrop-blur-2xl border-t border-white/12 text-white font-mono text-[11px] sm:text-xs uppercase tracking-wider shadow-[0_-6px_28px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)]"
           style={{
-            background:
-              "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(10, 15, 25, 0.78) 50%, rgba(5, 8, 14, 0.92) 100%)",
+            minHeight: "56px",
           }}
         >
-          {/* 2. Explore Button (Replaced All Listings) */}
+          {/* 1. Explore Button */}
           <button
             type="button"
+            title="Explore Listings"
+            aria-label="Explore Listings"
             onClick={() => router.push("/listings")}
-            className={`group flex items-center gap-2 px-3.5 py-1.5 rounded-full font-bold tracking-[0.14em] transition-all duration-300 cursor-pointer ${
+            className={`group flex items-center justify-center p-2 sm:px-3 sm:py-2 rounded-xl transition-all duration-200 cursor-pointer ${
               pathname === "/listings"
-                ? "text-white bg-white/20 border border-white/60 shadow-[0_0_16px_rgba(255,255,255,0.38)]"
-                : "text-zinc-200 hover:text-white border border-transparent hover:border-white/25 hover:bg-white/10"
+                ? "text-white bg-white/20 shadow-[0_0_14px_rgba(255,255,255,0.25)]"
+                : "text-zinc-300 hover:text-white hover:bg-white/10"
             }`}
           >
             <svg
@@ -186,17 +237,15 @@ export default function FloatingNavbar({
               <circle cx="12" cy="12" r="10" />
               <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="currentColor" fillOpacity="0.25" />
             </svg>
-            {/* <span>Explore</span> */}
           </button>
 
-          {/* 3. Intelligence Button - SI (Intelligence) */}
-
+          {/* 2. Intelligence Button - SI (Intelligence) */}
           <button
             type="button"
             title="SI (Intelligence)"
             aria-label="SI (Intelligence)"
             onClick={() => setIntelligenceOpen(true)}
-            className="group flex items-center gap-2 px-3.5 py-1.5 rounded-full font-bold tracking-[0.14em] text-zinc-200 hover:text-white border border-transparent hover:border-white/25 hover:bg-white/10 transition-all duration-300 cursor-pointer"
+            className="group flex items-center justify-center p-2 sm:px-3 sm:py-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-all duration-200 cursor-pointer"
           >
             <svg
               width="20"
@@ -215,7 +264,6 @@ export default function FloatingNavbar({
               <path d="M21 17v4" />
               <path d="M23 19h-4" />
             </svg>
-            {/* <span>SI</span> */}
           </button>
 
           {/* Left Divider */}
@@ -227,7 +275,7 @@ export default function FloatingNavbar({
             title="Publish New Asset"
             aria-label="Publish New Asset"
             onClick={onOpenNewListing}
-            className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white text-white hover:text-black border border-white/30 hover:border-white transition-all duration-200 cursor-pointer shadow-[0_0_14px_rgba(255,255,255,0.18)] hover:shadow-[0_0_20px_rgba(255,255,255,0.45)]"
+            className="group flex items-center justify-center h-9 w-9 rounded-full bg-white/10 hover:bg-white text-white hover:text-black border border-white/30 hover:border-white transition-all duration-200 cursor-pointer shadow-[0_0_14px_rgba(255,255,255,0.18)] hover:shadow-[0_0_20px_rgba(255,255,255,0.45)]"
           >
             <svg
               width="20"
@@ -254,7 +302,7 @@ export default function FloatingNavbar({
             title="Messages"
             aria-label="Messages"
             onClick={onToggleChat}
-            className="group relative p-2 rounded-full text-zinc-300 hover:text-white hover:bg-white/15 border border-transparent hover:border-white/25 transition-all duration-200 flex items-center justify-center shrink-0 cursor-pointer"
+            className="group relative p-2 sm:px-3 sm:py-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-all duration-200 flex items-center justify-center cursor-pointer"
           >
             <svg
               width="20"
@@ -283,10 +331,10 @@ export default function FloatingNavbar({
             title="Menu"
             aria-label="Extended Menu"
             onClick={() => togglePanel("menu")}
-            className={`group p-2 rounded-full text-zinc-300 hover:text-white hover:bg-white/15 border transition-all duration-200 flex items-center justify-center shrink-0 cursor-pointer ${
+            className={`group p-2 sm:px-3 sm:py-2 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer ${
               openPanel === "menu"
-                ? "bg-white/20 text-white border-white/50 shadow-[0_0_14px_rgba(255,255,255,0.3)]"
-                : "border-transparent hover:border-white/25"
+                ? "bg-white/20 text-white shadow-[0_0_14px_rgba(255,255,255,0.3)]"
+                : "text-zinc-300 hover:text-white hover:bg-white/10"
             }`}
           >
             <svg
@@ -311,6 +359,18 @@ export default function FloatingNavbar({
       <IntelligenceModal
         open={intelligenceOpen}
         onClose={() => setIntelligenceOpen(false)}
+      />
+
+      <SavedAssetsModal
+        open={savedAssetsOpen}
+        onClose={() => setSavedAssetsOpen(false)}
+        onSelectAsset={onOpenAsset}
+      />
+
+      <EcosystemModal
+        open={ecosystemOpen}
+        onClose={() => setEcosystemOpen(false)}
+        onOpenIntelligence={() => setIntelligenceOpen(true)}
       />
 
       {/* ── Overlay Backdrop ── */}
@@ -344,6 +404,41 @@ export default function FloatingNavbar({
             </button>
           </div>
           <p>Global aircraft and private yacht transactions.</p>
+
+          {/* Millennium / Luxury Appearance Theme Switcher */}
+          <div className="drawer-theme-box">
+            <div className="drawer-theme-text-col">
+              <span className="drawer-theme-tag">Interface Theme</span>
+              <span className="drawer-theme-state">
+                {theme === "light" ? "Light Mode Active" : "Dark Mode Active"}
+              </span>
+            </div>
+            <div className="drawer-theme-toggle-group">
+              <button
+                type="button"
+                onClick={() => {
+                  setTheme("dark");
+                  showToast("Dark Mode activated");
+                }}
+                className={`drawer-theme-btn ${theme === "dark" ? "active" : ""}`}
+                title="Dark Mode"
+              >
+                Dark
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTheme("light");
+                  showToast("Light Mode activated");
+                }}
+                className={`drawer-theme-btn ${theme === "light" ? "active" : ""}`}
+                title="Light Mode"
+              >
+                Light
+              </button>
+            </div>
+          </div>
+
           <ul>
             {menuItems.map((item) => (
               <li

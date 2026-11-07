@@ -19,6 +19,26 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var t = localStorage.getItem('m1_theme');
+                  if (t === 'light') {
+                    document.documentElement.classList.add('light');
+                    document.documentElement.setAttribute('data-theme', 'light');
+                  } else {
+                    document.documentElement.classList.remove('light');
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body suppressHydrationWarning>
         <SiteProvider>{children}</SiteProvider>
       </body>
