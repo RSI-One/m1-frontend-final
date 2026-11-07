@@ -35,7 +35,7 @@ export default function Page() {
           <FeaturedSection onOpenAsset={openAssetFromJet} />
           <VerifiedSection onOpenAsset={openAssetFromJet} />
 
-          {showAllListings && (
+          {showAllListings ? (
             <>
               <ActiveListingsSection
                 onOpenAsset={openAssetFromJet}
@@ -44,7 +44,10 @@ export default function Page() {
               />
               <TrendingSection onOpenAsset={openAssetFromJet} />
             </>
-          )}
+          ) : null}
+
+          {/* Bottom Dock Clearance Spacing */}
+          <div className="pb-16 sm:pb-24 pointer-events-none" aria-hidden="true" />
         </>
       )}
     </AppShell>

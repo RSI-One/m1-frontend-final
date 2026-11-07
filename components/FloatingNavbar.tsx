@@ -50,6 +50,9 @@ export default function FloatingNavbar({
   const [ecosystemOpen, setEcosystemOpen] = useState(false);
 
   const {
+    theme,
+    setTheme,
+    toggleTheme,
     maxBudget,
     setMaxBudget,
     jetType,
@@ -105,6 +108,12 @@ export default function FloatingNavbar({
   };
 
   const handleMenuItem = (label: string) => {
+    if (label.startsWith("Theme:") || label.startsWith("Switch to")) {
+      toggleTheme();
+      showToast(theme === "light" ? "Switched to Dark Mode" : "Switched to Light Mode");
+      return;
+    }
+
     if (label === "Publish New Asset") {
       setOpenPanel(null);
       onOpenNewListing?.();
@@ -197,7 +206,7 @@ export default function FloatingNavbar({
       >
         <nav
           aria-label="Floating Actions Navigation"
-          className="pointer-events-auto flex items-center justify-between sm:justify-center gap-2 sm:gap-4 md:gap-5 px-5 sm:px-7 py-2 sm:py-2.5 rounded-full backdrop-blur-xl border border-white/20 hover:border-white/35 text-white transition-all max-w-5xl md:max-w-5xl lg:max-w-6xl w-full sm:w-auto overflow-x-auto no-scrollbar font-mono text-[11px] sm:text-xs uppercase tracking-wider shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.3)]"
+          className="floating-dock-nav pointer-events-auto flex items-center justify-between sm:justify-center gap-2 sm:gap-4 md:gap-5 px-5 sm:px-7 py-2 sm:py-2.5 rounded-full backdrop-blur-xl border border-white/20 hover:border-white/35 text-white transition-all max-w-5xl md:max-w-5xl lg:max-w-6xl w-full sm:w-auto overflow-x-auto no-scrollbar font-mono text-[11px] sm:text-xs uppercase tracking-wider shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.3)]"
           style={{
             background:
               "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(10, 15, 25, 0.78) 50%, rgba(5, 8, 14, 0.92) 100%)",
@@ -397,7 +406,69 @@ export default function FloatingNavbar({
             </button>
           </div>
           <p>Global aircraft and private yacht transactions.</p>
+
+          {/* Millennium / Luxury Appearance Theme Switcher */}
+          <div className="drawer-theme-box">
+            <div className="drawer-theme-meta">
+              <span className="drawer-theme-glyph">{theme === "light" ? "☀️" : "🌙"}</span>
+              <div className="drawer-theme-text-col">
+                <span className="drawer-theme-tag">Interface Theme</span>
+                <span className="drawer-theme-state">
+                  {theme === "light" ? "Light Mode Active" : "Dark Mode Active"}
+                </span>
+              </div>
+            </div>
+            <div className="drawer-theme-toggle-group">
+              <button
+                type="button"
+                onClick={() => {
+                  setTheme("dark");
+                  showToast("Dark Mode activated");
+                }}
+                className={`drawer-theme-btn ${theme === "dark" ? "active" : ""}`}
+                title="Dark Mode"
+              >
+                <span>☾</span>
+                <span>Dark</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTheme("light");
+                  showToast("Light Mode activated");
+                }}
+                className={`drawer-theme-btn ${theme === "light" ? "active" : ""}`}
+                title="Light Mode"
+              >
+                <span>☼</span>
+                <span>Light</span>
+              </button>
+            </div>
+          </div>
+
           <ul>
+            <li
+              className="menu-item theme-menu-item"
+              onClick={() => {
+                toggleTheme();
+                showToast(theme === "light" ? "Switched to Dark Mode" : "Switched to Light Mode");
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                <span>{theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}</span>
+                <span style={{
+                  fontSize: 11,
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  background: "var(--panel-2)",
+                  color: "var(--gold)",
+                  border: "1px solid var(--hairline)",
+                  letterSpacing: "0.05em"
+                }}>
+                  {theme === "light" ? "☾ Dark" : "☼ Light"}
+                </span>
+              </span>
+            </li>
             {menuItems.map((item) => (
               <li
                 key={item}

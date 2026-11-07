@@ -28,7 +28,12 @@ export interface UserProfileRead {
   phone_number: string | null;
 }
 
+export type Theme = "dark" | "light";
+
 interface SiteContextValue {
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+  toggleTheme: () => void;
   search: string;
   setSearch: (v: string) => void;
   committedSearch: string;
@@ -71,6 +76,7 @@ export const BUDGET_MIN = 5;
 export const BUDGET_MAX = 80;
 
 export function SiteProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setThemeState] = useState<Theme>("dark");
   const [search, setSearchState] = useState("");
   const [committedSearch, setCommittedSearch] = useState("");
   const [didYouMean, setDidYouMean] = useState<string | null>(null);
@@ -88,6 +94,48 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfileRead | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Theme synchronization with localStorage and documentElement
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("m1_theme") as Theme | null;
+      if (saved === "light" || saved === "dark") {
+        setThemeState(saved);
+        document.documentElement.classList.toggle("light", saved === "light");
+        document.documentElement.setAttribute("data-theme", saved);
+      } else {
+        document.documentElement.classList.remove("light");
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const setTheme = useCallback((nextTheme: Theme) => {
+    setThemeState(nextTheme);
+    try {
+      localStorage.setItem("m1_theme", nextTheme);
+      document.documentElement.classList.toggle("light", nextTheme === "light");
+      document.documentElement.setAttribute("data-theme", nextTheme);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => {
+      const next = prev === "light" ? "dark" : "light";
+      try {
+        localStorage.setItem("m1_theme", next);
+        document.documentElement.classList.toggle("light", next === "light");
+        document.documentElement.setAttribute("data-theme", next);
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -164,6 +212,9 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(
     () => ({
+      theme,
+      setTheme,
+      toggleTheme,
       search,
       setSearch,
       committedSearch,
@@ -203,6 +254,9 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       logoutLocally,
     }),
     [
+      theme,
+      setTheme,
+      toggleTheme,
       search,
       setSearch,
       committedSearch,
