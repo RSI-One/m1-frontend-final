@@ -19,7 +19,7 @@ export default function Page() {
       {({ openAssetFromSf, openAssetFromJet, openCompareModal, openNewListing, refreshKey }) => (
         <>
           <section className="engine-section" id="workspace">
-            <div className="engine-shell">
+            <div className={`engine-shell ${!started ? "engine-shell-hero" : ""}`}>
               {!started ? (
                 <Hero onStart={() => setStarted(true)} />
               ) : (
