@@ -60,7 +60,7 @@ export default function SellerMode({
   onToggleChat: () => void;
   showToast: (msg: string) => void;
 }) {
-  const { profile, unreadCount } = useSite();
+  const { profile, unreadCount, filterDrawerOpen, setFilterDrawerOpen } = useSite();
 
   const [term, setTerm] = useState("");
   const [newListingOpen, setNewListingOpen] = useState(false);

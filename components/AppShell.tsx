@@ -45,18 +45,17 @@ export default function AppShell({ children }: AppShellProps) {
     setAcquisitionHistoryOpen(false);
     setMessagingOpen(false);
     setSupportModalType(null);
-    setSellerModeOpen(true);
+    const el = document.getElementById("active-listings");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
   const openAcquisitionHistory = () => {
-    setSellerModeOpen(false);
     setMessagingOpen(false);
     setSupportModalType(null);
     setAcquisitionHistoryOpen(true);
   };
 
   const openMessaging = () => {
-    setSellerModeOpen(false);
     setAcquisitionHistoryOpen(false);
     setMessagingOpen(true);
   };

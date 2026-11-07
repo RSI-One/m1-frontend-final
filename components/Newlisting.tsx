@@ -30,9 +30,8 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    if (!loading && filtered.length === 0 && !search.trim()) return null;
 
-  return () => {
+    return () => {
       cancelled = true;
     };
   }, []);
@@ -54,8 +53,10 @@ export default function VerifiedSection({ onOpenAsset }: { onOpenAsset: (jet: Je
     return matchesSearch && matchesBudget;
   });
 
+  if (!loading && filtered.length === 0 && !search.trim()) return null;
+
   return (
-    <section className="below-section" id="verified">
+    <section className="below-section" id="new">
       <CarouselRow headClassName="carousel-block-head" headingTag="h2" title="New Listings">
         {loading ? (
           <div style={{ padding: "24px 4px", color: "var(--muted, var(--text-dim))", fontSize: 13.5 }}>
