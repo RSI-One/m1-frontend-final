@@ -471,7 +471,7 @@ export default function Footer({ onOpenSellerMode, partnerMode, onNewListing }: 
         </div>
 
         {/* ── Newsletter Section (M1 High-Tech Aesthetic) ──────────── */}
-        <div id="exclusive-circle" className="border border-zinc-800/80 bg-zinc-950/60 backdrop-blur-md rounded-2xl p-6 sm:p-10 mb-12 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
+        <div id="exclusive-circle" className="newsletter-box border border-zinc-800/80 bg-zinc-950/60 backdrop-blur-md rounded-2xl p-6 sm:p-10 mb-12 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
           <div>
             <h4 className="text-xl sm:text-2xl font-light text-white tracking-wide">
               Join the exclusive circle

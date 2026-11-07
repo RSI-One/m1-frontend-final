@@ -3940,6 +3940,49 @@ html.light .floating-dock-nav .h-4.w-\[1px\] {
   background-color: rgba(0, 0, 0, 0.15) !important;
 }
 
+/* Light mode styling for 'Join the exclusive circle' in footer */
+html.light #exclusive-circle,
+html.light .newsletter-box {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light #exclusive-circle h4 {
+  color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
+html.light #exclusive-circle p {
+  color: #475569 !important;
+}
+
+html.light #exclusive-circle input {
+  background: #f8fafc !important;
+  border: 1px solid rgba(0, 0, 0, 0.18) !important;
+  color: #0f172a !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) inset !important;
+}
+
+html.light #exclusive-circle input::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.light #exclusive-circle input:focus {
+  border-color: #0f172a !important;
+  background: #ffffff !important;
+}
+
+html.light #exclusive-circle button[type="submit"] {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.25) !important;
+}
+
+html.light #exclusive-circle button[type="submit"]:hover {
+  background: #1e293b !important;
+}
+
 .drawer .mini {
   display: flex;
   gap: 12px;

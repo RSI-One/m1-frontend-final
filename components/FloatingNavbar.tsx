@@ -409,14 +409,11 @@ export default function FloatingNavbar({
 
           {/* Millennium / Luxury Appearance Theme Switcher */}
           <div className="drawer-theme-box">
-            <div className="drawer-theme-meta">
-              <span className="drawer-theme-glyph">{theme === "light" ? "☀️" : "🌙"}</span>
-              <div className="drawer-theme-text-col">
-                <span className="drawer-theme-tag">Interface Theme</span>
-                <span className="drawer-theme-state">
-                  {theme === "light" ? "Light Mode Active" : "Dark Mode Active"}
-                </span>
-              </div>
+            <div className="drawer-theme-text-col">
+              <span className="drawer-theme-tag">Interface Theme</span>
+              <span className="drawer-theme-state">
+                {theme === "light" ? "Light Mode Active" : "Dark Mode Active"}
+              </span>
             </div>
             <div className="drawer-theme-toggle-group">
               <button
@@ -428,8 +425,7 @@ export default function FloatingNavbar({
                 className={`drawer-theme-btn ${theme === "dark" ? "active" : ""}`}
                 title="Dark Mode"
               >
-                <span>☾</span>
-                <span>Dark</span>
+                Dark
               </button>
               <button
                 type="button"
@@ -440,35 +436,12 @@ export default function FloatingNavbar({
                 className={`drawer-theme-btn ${theme === "light" ? "active" : ""}`}
                 title="Light Mode"
               >
-                <span>☼</span>
-                <span>Light</span>
+                Light
               </button>
             </div>
           </div>
 
           <ul>
-            <li
-              className="menu-item theme-menu-item"
-              onClick={() => {
-                toggleTheme();
-                showToast(theme === "light" ? "Switched to Dark Mode" : "Switched to Light Mode");
-              }}
-            >
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                <span>{theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}</span>
-                <span style={{
-                  fontSize: 11,
-                  padding: "2px 8px",
-                  borderRadius: 999,
-                  background: "var(--panel-2)",
-                  color: "var(--gold)",
-                  border: "1px solid var(--hairline)",
-                  letterSpacing: "0.05em"
-                }}>
-                  {theme === "light" ? "☾ Dark" : "☼ Light"}
-                </span>
-              </span>
-            </li>
             {menuItems.map((item) => (
               <li
                 key={item}
