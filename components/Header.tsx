@@ -37,6 +37,7 @@ export default function Header({
     filterDrawerOpen,
     setFilterDrawerOpen,
     isFilterActive,
+    profile,
   } = useSite();
 
   const [scrolled, setScrolled] = useState(false);
@@ -263,6 +264,7 @@ export default function Header({
     setOpenPanel((cur) => (cur === key ? null : key));
   };
 
+
   const runSearch = (value: string) => {
     setSuggestionsOpen(false);
     setSelectedIndex(-1);
@@ -290,7 +292,7 @@ export default function Header({
 
         <div className="brand-copy">
           <strong>Marketplace</strong>
-          <span>Aviation </span>
+          <span>Aviation &amp; Maritime</span>
         </div>
       </div>
 
@@ -599,6 +601,7 @@ export default function Header({
       </div>
 
       {/* NAV UTILITY */}
+      {/* NAV UTILITY */}
       <div className="nav-utility" style={{ display: "flex", alignItems: "center", gap: 10 }}>
         {/* Notifications */}
         <button
@@ -626,34 +629,46 @@ export default function Header({
           />
         </button>
 
-        {/* Profile */}
+        {/* Profile Avatar */}
         <button
-          className="icon-btn"
+          className="avatar-btn"
           title="Profile"
           aria-label="Profile"
-          onClick={() =>
-            togglePanel("profile")
-          }
+          onClick={() => togglePanel("profile")}
         >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
+          <img
+            src={profile?.profile_picture_url || "https://randomuser.me/api/portraits/men/32.jpg"}
+            alt="Profile"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              const fallback = e.currentTarget.parentElement?.querySelector(".avatar-fallback");
+              if (fallback) (fallback as HTMLElement).style.display = "flex";
+            }}
+          />
+          <span
+            className="avatar-fallback"
+            style={{
+              display: "none",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
+              height: "100%",
+            }}
           >
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-
-            <circle
-              cx="12"
-              cy="7"
-              r="4"
-            />
-          </svg>
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </span>
         </button>
       </div>
-
       {/* OVERLAY */}
       {openPanel && (
         <div

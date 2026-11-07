@@ -95,7 +95,7 @@ export function FooterJetThrustFire() {
           width: "16%",
           height: "22px",
           transformOrigin: "right center",
-          transform: "translateY(-50%) rotate(-24.5deg)",
+          transform: "translateY(-50%) rotate(-15.5deg)",
         }}
       >
         <JetFlameTorch idPrefix="e1" />
@@ -104,8 +104,8 @@ export function FooterJetThrustFire() {
       <div
         className="absolute opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out origin-right"
         style={{
-          top: "72.4%",
-          right: "62.6%",
+          top: "68.2%",
+          right: "83.5%",
           width: "16%",
           height: "22px",
           transformOrigin: "right center",
@@ -118,7 +118,13 @@ export function FooterJetThrustFire() {
   );
 }
 
-export default function Footer() {
+interface FooterProps {
+  onOpenSellerMode?: () => void;
+  partnerMode?: boolean;
+  onNewListing?: () => void;
+}
+
+export default function Footer({ onOpenSellerMode, partnerMode, onNewListing }: FooterProps = {}) {
   const { showToast } = useSite();
 
   const notify = (label: string) => (e: MouseEvent) => {
@@ -129,13 +135,13 @@ export default function Footer() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
-  const handleNewsletterSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleNewsletterSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!email || status === "loading") return;
+    if (!email) return;
 
     setStatus("loading");
     try {
-      await subscribeToNewsletter(email, "footer");
+      await subscribeToNewsletter(email);
       setStatus("success");
       showToast(`Subscribed — ${email}.`);
       setEmail("");
@@ -148,7 +154,6 @@ export default function Footer() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // ── Background Video Playback matching M1 Website ──
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -158,172 +163,66 @@ export default function Footer() {
     };
 
     applySpeed();
-    video.play().catch(() => {});
-
-    const startPlay = () => {
-      video.play().catch(() => {});
-    };
-    window.addEventListener("scroll", startPlay, { passive: true, once: true });
-    window.addEventListener("click", startPlay, { passive: true, once: true });
-    window.addEventListener("touchstart", startPlay, { passive: true, once: true });
-
-    let observer: IntersectionObserver | null = null;
-    if (typeof IntersectionObserver !== "undefined") {
-      observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              video.play().catch(() => {});
-            }
-          });
-        },
-        { rootMargin: "300px" }
-      );
-      observer.observe(video);
-    }
-
-    const handleTimeUpdate = () => {
-      if (video.playbackRate !== 1.0) {
-        video.playbackRate = 1.0;
-      }
-      if (video.currentTime >= 10 && video.currentTime < 20) {
-        video.currentTime = 20;
-      }
-      if (video.currentTime >= 55) {
-        video.currentTime = 0;
-        video.playbackRate = 1.0;
-        video.play().catch(() => {});
-      } else if (video.duration && video.currentTime >= video.duration - 0.2) {
-        video.currentTime = 0;
-        video.playbackRate = 1.0;
-        video.play().catch(() => {});
-      }
-    };
-
-    const handleEnded = () => {
-      video.currentTime = 0;
-      video.playbackRate = 1.0;
-      video.play().catch(() => {});
-    };
-
-    video.addEventListener("timeupdate", handleTimeUpdate);
-    video.addEventListener("ended", handleEnded);
-    video.addEventListener("loadedmetadata", applySpeed);
     video.addEventListener("play", applySpeed);
-    video.addEventListener("canplay", applySpeed);
+    video.addEventListener("loadeddata", applySpeed);
 
     return () => {
-      if (observer) observer.disconnect();
-      window.removeEventListener("scroll", startPlay);
-      window.removeEventListener("click", startPlay);
-      window.removeEventListener("touchstart", startPlay);
-      video.removeEventListener("timeupdate", handleTimeUpdate);
-      video.removeEventListener("ended", handleEnded);
-      video.removeEventListener("loadedmetadata", applySpeed);
       video.removeEventListener("play", applySpeed);
-      video.removeEventListener("canplay", applySpeed);
+      video.removeEventListener("loadeddata", applySpeed);
     };
   }, []);
 
   return (
-    <footer className="relative bg-black text-zinc-400 border-t border-zinc-900 pt-44 sm:pt-48 pb-20 sm:pb-28 overflow-hidden select-none">
-      {/* ── Background Video covering entire footer ───────────── */}
-      <video
-        ref={videoRef}
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0"
-        src="/videos/hero.mp4"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        aria-hidden="true"
-      />
+    <footer className={`relative bg-black text-white pt-24 pb-12 overflow-hidden border-t border-zinc-900 select-none site-footer ${partnerMode ? "partner-footer" : ""}`}>
+      {/* ── Background Ambience Glows ───────────────────────────────── */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-sky-500/5 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-orange-500/5 rounded-full blur-[140px] pointer-events-none" />
 
-      {/* Subtle dark tint over full video for clean visual contrast & text legibility */}
-      <div className="absolute inset-0 bg-black/40 pointer-events-none z-0" />
+      {/* ── Giant Runway Interactive Jet Hover Container ────────────── */}
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-20 group">
+        <div className="relative w-full aspect-[21/9] sm:aspect-[24/8] md:aspect-[32/9] max-h-[380px] rounded-3xl overflow-hidden border border-zinc-800/60 bg-gradient-to-b from-zinc-950 via-black to-zinc-950 flex items-center justify-center shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+          {/* Subtle Grid Runway Lines on Floor */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30" />
 
-      {/* ── Left Supersonic Jet (Hovering with Streamlines & Dynamic Afterburner Fire) ── */}
-      <div className="absolute left-[-25px] sm:left-0 md:left-6 lg:left-12 top-[-52px] sm:top-[-38px] md:top-[-32px] lg:top-[-28px] w-[340px] sm:w-[460px] md:w-[560px] lg:w-[640px] h-[230px] sm:h-[310px] md:h-[380px] lg:h-[430px] z-10 group pointer-events-auto cursor-pointer">
-        <div className="relative w-full h-full flex items-center justify-center rotate-[12deg] transition-transform duration-500 ease-out group-hover:translate-x-3 group-hover:-translate-y-3 group-hover:rotate-[14deg] animate-flight-bob-left animate-[flightBobLeft_4.5s_ease-in-out_infinite]">
-          <div className="relative w-full aspect-[1376/768]">
-            <div className="absolute inset-0 pointer-events-none overflow-visible z-20">
-              <span className="absolute top-[35%] left-[25%] w-16 sm:w-24 h-[1.5px] bg-gradient-to-r from-transparent via-cyan-300/80 to-transparent blur-[0.5px] animate-slipstream animate-[slipstream_1.4s_linear_infinite]" />
-              <span className="absolute top-[48%] left-[45%] w-24 sm:w-36 h-[1.5px] bg-gradient-to-r from-transparent via-white/90 to-transparent blur-[0.5px] animate-slipstream animate-[slipstream_1.1s_linear_infinite] delay-300" />
-              <span className="absolute top-[62%] left-[18%] w-20 sm:w-28 h-[1.5px] bg-gradient-to-r from-transparent via-sky-300/70 to-transparent blur-[0.5px] animate-slipstream animate-[slipstream_1.7s_linear_infinite] delay-700" />
-              <span className="absolute top-[22%] left-[55%] w-14 sm:w-20 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 to-transparent blur-[0.5px] animate-slipstream animate-[slipstream_1.3s_linear_infinite] delay-500" />
-            </div>
-
-            <Image
-              src="/images/footer-jet.png"
-              alt="M1 Supersonic Interceptor"
-              fill
-              sizes="(max-width: 768px) 340px, 640px"
-              className="object-contain relative z-10 drop-shadow-[0_15px_35px_rgba(0,0,0,0.95)]"
-            />
-
+          {/* Center Luxury Aircraft Image */}
+          <div className="relative w-[85%] sm:w-[75%] md:w-[65%] h-[85%] flex items-center justify-center transition-transform duration-700 ease-out group-hover:scale-[1.03]">
+            {/* Supersonic Thrust Flame overlay (ignites on hover) */}
             <FooterJetThrustFire />
+
+            {/* Jet Silhouette / Cutout Image */}
+            <img
+              src="/images/footer-jet.png"
+              alt="M1 High-Speed Fleet Aircraft"
+              className="relative w-full h-full object-contain filter drop-shadow-[0_25px_35px_rgba(0,0,0,0.9)] z-10 select-none pointer-events-none"
+            />
+          </div>
+
+          {/* Interactive Badge Hover Hint */}
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-700/50 backdrop-blur-md text-[11px] sm:text-xs font-mono uppercase tracking-[0.2em] text-zinc-400 group-hover:text-white group-hover:border-zinc-500 transition-all duration-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+            <span>Hover To Ignite Thrust</span>
           </div>
         </div>
       </div>
 
-      {/* ── Right Supersonic Jet (Mirrored, Banking toward Top Center & Dynamic Thrust Fire) ── */}
-      <div className="absolute right-[-25px] sm:right-0 md:right-6 lg:right-12 top-[-10px] sm:top-2 w-[340px] sm:w-[460px] md:w-[560px] lg:w-[640px] h-[230px] sm:h-[310px] md:h-[380px] lg:h-[430px] z-10 group pointer-events-auto cursor-pointer">
-        <div className="relative w-full h-full flex items-center justify-center scale-x-[-1] rotate-[12deg] transition-transform duration-500 ease-out group-hover:-translate-x-3 group-hover:-translate-y-3 group-hover:rotate-[14deg] animate-flight-bob-right animate-[flightBobRight_4.5s_ease-in-out_infinite]">
-          <div className="relative w-full aspect-[1376/768]">
-            <div className="absolute inset-0 pointer-events-none overflow-visible z-20">
-              <span className="absolute top-[35%] left-[25%] w-16 sm:w-24 h-[1.5px] bg-gradient-to-r from-transparent via-cyan-300/80 to-transparent blur-[0.5px] animate-slipstream animate-[slipstream_1.4s_linear_infinite]" />
-              <span className="absolute top-[48%] left-[45%] w-24 sm:w-36 h-[1.5px] bg-gradient-to-r from-transparent via-white/90 to-transparent blur-[0.5px] animate-slipstream animate-[slipstream_1.1s_linear_infinite] delay-300" />
-              <span className="absolute top-[62%] left-[18%] w-20 sm:w-28 h-[1.5px] bg-gradient-to-r from-transparent via-sky-300/70 to-transparent blur-[0.5px] animate-slipstream animate-[slipstream_1.7s_linear_infinite] delay-700" />
-              <span className="absolute top-[22%] left-[55%] w-14 sm:w-20 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 to-transparent blur-[0.5px] animate-slipstream animate-[slipstream_1.3s_linear_infinite] delay-500" />
-            </div>
-
-            <Image
-              src="/images/footer-jet.png"
-              alt="M1 Supersonic Fleet Interceptor"
-              fill
-              sizes="(max-width: 768px) 340px, 640px"
-              className="object-contain relative z-10 drop-shadow-[0_15px_35px_rgba(0,0,0,0.95)]"
-            />
-
-            <FooterJetThrustFire />
-          </div>
-        </div>
-      </div>
-
-      {/* ── Main Footer Information Grid ─────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-6 md:px-12 relative z-10 pt-36 sm:pt-44 md:pt-48">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 mb-16">
-          {/* Col 1: Brand & Contact Info */}
-          <div className="space-y-4">
-            <Link
-              href="/"
-              className="flex items-center gap-3 group"
-              aria-label="M1 Marketplace Home"
-            >
-              <Image
-                src="/m1-logo.png"
-                alt="M1 Marketplace Logo"
-                width={130}
-                height={45}
-                className="h-8 w-auto opacity-90 group-hover:opacity-100 transition-opacity object-contain"
-              />
-              <span className="text-white text-base sm:text-lg font-light tracking-widest uppercase text-zinc-300 group-hover:text-white transition-colors">
-                Marketplace
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* ── Main Footer Columns Grid ─────────────────────────────── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 pb-16 border-b border-zinc-900">
+          {/* Col 1: Brand & Identity */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-light tracking-[0.25em] text-white uppercase font-sans">
+                M1 Marketplace
               </span>
-            </Link>
-
-            <div className="pt-2 space-y-3 text-sm sm:text-base font-mono">
-              <div>
-                <a
-                  href="mailto:support@m-1.tech"
-                  className="text-zinc-200 hover:text-white transition-colors font-medium"
-                >
-                  support@m-1.tech
-                </a>
-              </div>
-              <div className="text-zinc-300 pt-1 space-y-1">
-                <div className="text-xs text-zinc-400 uppercase tracking-widest font-sans font-medium">Corporate Comms</div>
+            </div>
+            <p className="text-zinc-400 text-sm sm:text-base leading-relaxed max-w-sm">
+              The premier private acquisition engine connecting qualified principals with verified aircraft and maritime assets across exclusive fleets.
+            </p>
+            <div className="pt-2 text-xs sm:text-sm font-mono text-zinc-500 space-y-2">
+              <div className="text-zinc-300 space-y-1">
+                <div className="text-xs text-zinc-400 uppercase tracking-widest font-sans font-medium">Headquarters</div>
+                <div>100 King Street West, Suite 5600</div>
+                <div>Toronto, ON, Canada</div>
                 <a href="tel:+14379945030" className="hover:text-white transition-colors block text-sm sm:text-base">
                   +1 (437) 994-5030
                 </a>
@@ -342,37 +241,60 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Col 2: Resources */}
+          {/* Col 2: Resources & Tools */}
           <div className="space-y-4">
             <h3 className="text-sm sm:text-base font-mono uppercase tracking-[0.2em] text-white font-medium">
-              Resources
+              {partnerMode ? "Seller Tools" : "Resources"}
             </h3>
             <ul className="space-y-2.5 text-sm sm:text-base text-zinc-300">
-              <li>
-                <a href="#workspace" className="hover:text-white transition-colors inline-block">
-                  Research
-                </a>
-              </li>
-              <li>
-                <a href="#" onClick={notify("Market Reports")} className="hover:text-white transition-colors inline-block">
-                  Market Reports
-                </a>
-              </li>
-              <li>
-                <a href="#" onClick={notify("FAQs")} className="hover:text-white transition-colors inline-block">
-                  FAQs
-                </a>
-              </li>
-              <li>
-                <a href="#" onClick={notify("Documentation")} className="hover:text-white transition-colors inline-block">
-                  Documentation
-                </a>
-              </li>
-              <li>
-                <a href="#" onClick={notify("Blog")} className="hover:text-white transition-colors inline-block">
-                  Blog
-                </a>
-              </li>
+              {partnerMode ? (
+                <>
+                  <li>
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (onNewListing) onNewListing();
+                        else showToast("Create Listing — coming soon.");
+                      }}
+                      className="hover:text-white transition-colors inline-block"
+                    >
+                      Create Listing
+                    </a>
+                  </li>
+                  <li><a href="#" onClick={notify("Manage Listings")} className="hover:text-white transition-colors inline-block">Manage Listings</a></li>
+                  <li><a href="#" onClick={notify("Buyer Inquiries")} className="hover:text-white transition-colors inline-block">Buyer Inquiries</a></li>
+                  <li><a href="#" onClick={notify("Seller Analytics")} className="hover:text-white transition-colors inline-block">Seller Analytics</a></li>
+                </>
+              ) : (
+                <>
+                  <li>
+                    <a href="#workspace" className="hover:text-white transition-colors inline-block">
+                      Research
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#" onClick={notify("Market Reports")} className="hover:text-white transition-colors inline-block">
+                      Market Reports
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#" onClick={notify("FAQs")} className="hover:text-white transition-colors inline-block">
+                      FAQs
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#" onClick={notify("Documentation")} className="hover:text-white transition-colors inline-block">
+                      Documentation
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#" onClick={notify("Blog")} className="hover:text-white transition-colors inline-block">
+                      Blog
+                    </a>
+                  </li>
+                </>
+              )}
             </ul>
           </div>
 
@@ -384,46 +306,56 @@ export default function Footer() {
             <ul className="space-y-2.5 text-sm sm:text-base text-zinc-300">
               <li>
                 <a href="#" onClick={notify("Contact")} className="hover:text-white transition-colors inline-block">
-                  Contact
+                  Contact Support
                 </a>
               </li>
               <li>
-                <a href="#" onClick={notify("Live Chat")} className="hover:text-white transition-colors inline-block">
-                  Live Chat
+                <a href="#" onClick={notify("Help Desk")} className="hover:text-white transition-colors inline-block">
+                  Help Desk
                 </a>
               </li>
               <li>
-                <a href="#" onClick={notify("Email")} className="hover:text-white transition-colors inline-block">
-                  Email
+                <a href="#" onClick={notify("Live Concierge")} className="hover:text-white transition-colors inline-block">
+                  Live Concierge
                 </a>
               </li>
               <li>
-                <a href="#" onClick={notify("Help Center")} className="hover:text-white transition-colors inline-block">
-                  Help Center
+                <a href="#" onClick={notify("Security Audit")} className="hover:text-white transition-colors inline-block">
+                  Security Audit
+                </a>
+              </li>
+              <li>
+                <a href="#" onClick={notify("Escrow Protocol")} className="hover:text-white transition-colors inline-block">
+                  Escrow Protocols
                 </a>
               </li>
             </ul>
           </div>
 
-          {/* Col 4: Legal */}
+          {/* Col 4: Platform & Legal */}
           <div className="space-y-4">
             <h3 className="text-sm sm:text-base font-mono uppercase tracking-[0.2em] text-white font-medium">
-              Legal
+              Platform
             </h3>
             <ul className="space-y-2.5 text-sm sm:text-base text-zinc-300">
               <li>
-                <a href="#" onClick={notify("Privacy Policy")} className="hover:text-white transition-colors inline-block">
-                  Privacy Policy
+                <a href="#workspace" className="hover:text-white transition-colors inline-block">
+                  Aviation Fleet
                 </a>
               </li>
               <li>
-                <a href="#" onClick={notify("Terms of Service")} className="hover:text-white transition-colors inline-block">
-                  Terms of Service
+                <a href="#workspace" className="hover:text-white transition-colors inline-block">
+                  Maritime Fleet
                 </a>
               </li>
               <li>
-                <a href="#" onClick={notify("Cookie Policy")} className="hover:text-white transition-colors inline-block">
-                  Cookie Policy
+                <a href="#" onClick={notify("Marketplace Standards")} className="hover:text-white transition-colors inline-block">
+                  Marketplace Standards
+                </a>
+              </li>
+              <li>
+                <a href="#" onClick={notify("Verification Badge")} className="hover:text-white transition-colors inline-block">
+                  Verification Badges
                 </a>
               </li>
               <li>
@@ -526,7 +458,7 @@ export default function Footer() {
               Cookies
             </a>
           </div>
-          <span className="text-zinc-500">Made with premium UI.</span>
+          <span className="text-zinc-500">{partnerMode ? "Seller Console" : "Made with premium UI."}</span>
         </div>
       </div>
     </footer>

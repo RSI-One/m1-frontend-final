@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AuthScreen from "./auth/AuthScreen";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -41,6 +41,16 @@ export default function AppShell({ children }: AppShellProps) {
 
   const openNewListing = () => setNewListingOpen(true);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("seller") === "1" || params.get("seller") === "true") {
+        const el = document.getElementById("active-listings");
+        if (el) el.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  }, []);
+
   const openSellerMode = () => {
     setAcquisitionHistoryOpen(false);
     setMessagingOpen(false);
@@ -78,7 +88,8 @@ export default function AppShell({ children }: AppShellProps) {
     );
   }
 
-  if (!user) {
+  // TEMP: Auth bypass for local preview
+  if (!user && process.env.NEXT_PUBLIC_BYPASS_AUTH !== "true") {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
 
@@ -94,7 +105,7 @@ export default function AppShell({ children }: AppShellProps) {
 
       {children({ openAssetFromSf, openAssetFromJet, openCompareModal, openNewListing, refreshKey })}
 
-      <Footer />
+      <Footer onOpenSellerMode={openSellerMode} />
 
       <FloatingNavbar
         onToggleChat={openMessaging}
