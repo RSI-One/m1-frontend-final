@@ -165,17 +165,17 @@ export default function ListingFiltersDrawer({
           <select
             value={jetType}
             onChange={(e) => setJetType(e.target.value)}
-            style={{ width: "100%", padding: "6px 8px" }}
+            className="w-full rounded-md border border-[var(--gold-2)] bg-white px-3 py-2 font-semibold text-[var(--gold)] outline-none transition-colors duration-200 hover:bg-[var(--gold)] hover:text-white focus:ring-2 focus:ring-[var(--gold)]"
           >
-            <option value="">Any</option>
-            <option value="LIGHT_JET">Light Jet</option>
-            <option value="MID_SIZE_JET">Mid-Size Jet</option>
-            <option value="SUPER_MID_JET">Super Mid Jet</option>
-            <option value="HEAVY_JET">Heavy Jet</option>
-            <option value="ULTRA_LONG_RANGE">Ultra Long Range</option>
-            <option value="TURBOPROP">Turboprop</option>
-            <option value="HELICOPTER">Helicopter</option>
-            <option value="MARITIME_VESSEL">Maritime Vessel</option>
+            <option className="bg-white text-[var(--gold)]" value="">Any</option>
+            <option className="bg-white text-[var(--gold)]" value="LIGHT_JET">Light Jet</option>
+            <option className="bg-white text-[var(--gold)]" value="MID_SIZE_JET">Mid-Size Jet</option>
+            <option className="bg-white text-[var(--gold)]" value="SUPER_MID_JET">Super Mid Jet</option>
+            <option className="bg-white text-[var(--gold)]" value="HEAVY_JET">Heavy Jet</option>
+            <option className="bg-white text-[var(--gold)]" value="ULTRA_LONG_RANGE">Ultra Long Range</option>
+            <option className="bg-white text-[var(--gold)]" value="TURBOPROP">Turboprop</option>
+            <option className="bg-white text-[var(--gold)]" value="HELICOPTER">Helicopter</option>
+            <option className="bg-white text-[var(--gold)]" value="MARITIME_VESSEL">Maritime Vessel</option>
           </select>
         </div>
 
