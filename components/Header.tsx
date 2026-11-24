@@ -604,30 +604,57 @@ export default function Header({
       {/* NAV UTILITY */}
       <div className="nav-utility" style={{ display: "flex", alignItems: "center", gap: 10 }}>
         {/* Notifications */}
-        <button
-          className="icon-btn"
-          title="Notifications"
-          aria-label="Notifications"
-          onClick={() => togglePanel("notifications")}
-          style={{ position: "relative" }}
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-          <span
-            style={{
-              position: "absolute",
-              top: 5,
-              right: 5,
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              backgroundColor: "#ffffff",
-              boxShadow: "0 0 6px rgba(255,255,255,0.8)",
-            }}
-          />
-        </button>
+        <div className="notification-anchor">
+          <button
+            className="icon-btn"
+            title="Notifications"
+            aria-label="Notifications"
+            onClick={() => togglePanel("notifications")}
+            style={{ position: "relative" }}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <span
+              style={{
+                position: "absolute",
+                top: 5,
+                right: 5,
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                backgroundColor: "#ffffff",
+                boxShadow: "0 0 6px rgba(255,255,255,0.8)",
+              }}
+            />
+          </button>
+
+          {/* NOTIFICATIONS DRAWER */}
+          {openPanel === "notifications" && (
+            <div className="drawer show notification-drawer" style={{ zIndex: 820 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h3 style={{ margin: 0 }}>Notifications</h3>
+                <button
+                  type="button"
+                  onClick={() => setOpenPanel(null)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--muted)",
+                    fontSize: 16,
+                    cursor: "pointer",
+                    padding: "2px 6px",
+                  }}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+              <p>Buyer inquiries, listing status changes, and platform updates will appear here.</p>
+            </div>
+          )}
+        </div>
 
         {/* Profile Avatar */}
         <button
@@ -677,31 +704,6 @@ export default function Header({
             setOpenPanel(null)
           }
         />
-      )}
-
-      {/* NOTIFICATIONS DRAWER */}
-      {openPanel === "notifications" && (
-        <div className="drawer show" style={{ zIndex: 820 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h3 style={{ margin: 0 }}>Notifications</h3>
-            <button
-              type="button"
-              onClick={() => setOpenPanel(null)}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "var(--muted)",
-                fontSize: 16,
-                cursor: "pointer",
-                padding: "2px 6px",
-              }}
-              aria-label="Close"
-            >
-              ✕
-            </button>
-          </div>
-          <p>Buyer inquiries, listing status changes, and platform updates will appear here.</p>
-        </div>
       )}
 
       {/* PROFILE DRAWER */}

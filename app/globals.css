@@ -3783,6 +3783,22 @@ html.light .icon-btn:hover {
   -webkit-backdrop-filter: blur(24px);
 }
 
+.notification-anchor {
+  position: relative;
+}
+
+@media (min-width: 481px) {
+  .notification-drawer {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    bottom: auto;
+    left: auto;
+    width: min(380px, calc(100vw - 36px));
+    max-height: calc(100vh - 120px);
+  }
+}
+
 .drawer.show {
   display: block;
   animation: fadeInQDrawer .22s ease both;
